@@ -48,9 +48,14 @@ function Publicar($situacion, $mensaje) {
             [IO.File]::WriteAllText($tmp, $linea, [Text.Encoding]::Default)     # página de códigos ANSI del sistema: es lo que lee FileRead de NSIS (acentos incluidos)
             Move-Item -Force $tmp $Estado -ErrorAction Stop
             return
-        } catch { Start-Sleep -Milliseconds 150 }
+        } catch { $ultimo = $_.Exception.Message; Start-Sleep -Milliseconds 150 }
     }
+    if (-not $script:avisoEstado) { $script:avisoEstado = $true; Anotar "AVISO: no se pudo escribir el estado en $Estado ($ultimo); el final se avisa por instalacion.ok / instalacion.error" }
 }
+
+# El final también se deja en dos archivos de la carpeta del motor (que sí se sabe escribible: ahí va el registro): si el archivo de estado no llega
+# (antivirus, bloqueos...), el asistente sigue enterándose de que ha terminado o ha fallado y no se queda esperando.
+function Marcar([string]$nombre, [string]$texto) { try { Set-Content -Path (Join-Path $Motor $nombre) -Value $texto -Encoding Default } catch { } }
 
 function Comprobar { if (Test-Path $Cancelar) { throw 'Instalación cancelada.' } }
 
@@ -266,9 +271,11 @@ try {
         [ordered]@{ motor = $Motor; datos = $Datos; modelos_ollama = $Modelos } | ConvertTo-Json | Set-Content -Path $Config -Encoding UTF8
     }
     Anotar 'instalación terminada'
+    Marcar 'instalacion.ok' 'ok'
     Publicar 'ok' 'Todo listo.'
 } catch {
     Anotar "ERROR: $($_.Exception.Message)"
+    Marcar 'instalacion.error' $_.Exception.Message
     Publicar 'error' $_.Exception.Message
     exit 1
 }

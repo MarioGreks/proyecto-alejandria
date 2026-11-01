@@ -438,6 +438,7 @@ Function AvanzarInstalacion
     Return
   ${EndIf}
   Call LeerEstadoPs
+  Call ComprobarFinPs
   Call DibujarInstalacion
   ${If} $EstadoPs == "error"
     Call MostrarError

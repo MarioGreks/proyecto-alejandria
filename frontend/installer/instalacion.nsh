@@ -54,6 +54,8 @@ Function LanzarPowerShell
   File "/oname=$PLUGINSDIR\instalar.ps1" "instalar.ps1"
   Delete "$PLUGINSDIR\estado.txt"
   Delete "$PLUGINSDIR\cancelar.flag"
+  Delete "$RutaMotor\instalacion.ok"
+  Delete "$RutaMotor\instalacion.error"
   ${If} $ModeloSel = 1
     StrCpy $ModeloNombre "qwen2.5:1.5b"
   ${ElseIf} $ModeloSel = 2
@@ -75,6 +77,45 @@ Function LanzarPowerShell
   FileClose $0
   Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\instalar.ps1" -Parametros "$PLUGINSDIR\parametros.txt"'
   StrCpy $PsLanzado 1
+FunctionEnd
+
+; Respaldo del archivo de estado: instalar.ps1 deja además instalacion.ok / instalacion.error en la carpeta del motor al terminar. Si el archivo de estado
+; no llega (antivirus, bloqueos, rutas raras), el asistente se entera igualmente del final en vez de quedarse esperando.
+Function ComprobarFinPs
+  ${If} $EstadoPs == "ok"
+  ${OrIf} $EstadoPs == "error"
+    Return
+  ${EndIf}
+  ${If} ${FileExists} "$RutaMotor\instalacion.ok"
+    StrCpy $EstadoPs "ok"
+    ${If} $FasePct2 <> -1
+      StrCpy $FasePct2 100
+    ${EndIf}
+    ${If} $FasePct3 <> -1
+      StrCpy $FasePct3 100
+    ${EndIf}
+    ${If} $FasePct4 <> -1
+      StrCpy $FasePct4 100
+    ${EndIf}
+    ${If} $FasePct5 <> -1
+      StrCpy $FasePct5 100
+    ${EndIf}
+    ${If} $FasePct6 <> -1
+      StrCpy $FasePct6 100
+    ${EndIf}
+    ${If} $FasePct7 <> -1
+      StrCpy $FasePct7 100
+    ${EndIf}
+  ${ElseIf} ${FileExists} "$RutaMotor\instalacion.error"
+    StrCpy $MensajePs "La instalación falló"
+    ClearErrors
+    FileOpen $0 "$RutaMotor\instalacion.error" r
+    ${IfNot} ${Errors}
+      FileRead $0 $MensajePs
+      FileClose $0
+    ${EndIf}
+    StrCpy $EstadoPs "error"
+  ${EndIf}
 FunctionEnd
 
 ; Lee la línea de estado «uv|python|librerías|ollama|modelo|estado|mensaje» que deja instalar.ps1

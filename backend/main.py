@@ -11,7 +11,7 @@ import intercambio
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import ensure_ollama_running, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.1.1"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.1.2"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
