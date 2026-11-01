@@ -233,7 +233,14 @@ fn lanzar(app: &AppHandle, guardado: &Mutex<Option<Child>>, python: &Path, backe
         .env("ALEJANDRIA_PADRE", std::process::id().to_string()) // el backend se cierra solo si esta app muere sin avisar
         .env("PYTHONUTF8", "1")
         .env("PYTHONDONTWRITEBYTECODE", "1") // la carpeta de instalación puede no ser escribible
-        .stdout(Stdio::null()).stderr(Stdio::null()).stdin(Stdio::null()).creation_flags(SIN_VENTANA);
+        .stdin(Stdio::null()).creation_flags(SIN_VENTANA);
+    // La salida del backend va a un archivo (backend.log, junto al motor): si se cae al arrancar, ahí queda el porqué (antes se tiraba).
+    let registro = motor.join("backend.log");
+    let (salida, errores) = match fs::File::create(&registro).and_then(|f| f.try_clone().map(|g| (f, g))) {
+        Ok((a, b)) => (Stdio::from(a), Stdio::from(b)),
+        Err(_) => (Stdio::null(), Stdio::null()),
+    };
+    c.stdout(salida).stderr(errores);
     let hijo = c.spawn().map_err(|e| format!("No se pudo arrancar el backend: {e}"))?;
     *guardado.lock().unwrap() = Some(hijo);
     let limite = Instant::now() + Duration::from_secs(90);
@@ -243,7 +250,9 @@ fn lanzar(app: &AppHandle, guardado: &Mutex<Option<Child>>, python: &Path, backe
         }
         if let Some(h) = guardado.lock().unwrap().as_mut() {
             if let Ok(Some(codigo)) = h.try_wait() {
-                return Err(format!("El backend se cerró nada más arrancar (código {})", codigo.code().unwrap_or(-1)));
+                let c = codigo.code().unwrap_or(-1);
+                let pista = if c == -1073741819 { " Es un fallo del propio programa al cargar una biblioteca nativa (acceso inválido a memoria), casi siempre por un Visual C++ de Microsoft antiguo: actualízalo o repáralo (Configuración > Aplicaciones > Microsoft Visual C++ v14 Redistributable) y reinicia." } else { "" };
+                return Err(format!("El backend se cerró nada más arrancar (código {c}).{pista} Registro: {}", registro.display()));
             }
         }
         std::thread::sleep(Duration::from_millis(300));

@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory)][string]$Base,
     [Parameter(Mandatory)][string]$Salida,
     [switch]$OllamaForzar,
+    [string[]]$Extra = @(),             # interruptores de prueba del instalador: /VCVIEJO, /MOTORFALLA, /FALLAR
     [int]$MinutosMax = 12
 )
 Add-Type -AssemblyName System.Drawing
@@ -32,6 +33,7 @@ function Siguiente($h) { [void][W.N]::PostMessage($h, 0x111, [IntPtr]1, [IntPtr]
 
 $args2 = @("/PRUEBA=`"$Base`"")
 if ($OllamaForzar) { $args2 += '/OLLAMA-FORZAR' }
+$args2 += $Extra
 $p = Start-Process $Instalador -ArgumentList $args2 -PassThru
 $h = [IntPtr]::Zero
 # se espera a la ventana real (título del asistente y tamaño de ventana), no a un manejador provisional
@@ -50,12 +52,13 @@ foreach ($n in 1..4) {            # bienvenida, rutas, componentes, resumen
     Siguiente $h
 }
 $fin = Join-Path $Base 'config\instalacion.json'
+$fallo = Join-Path $Base 'motor\instalacion.error'
 $limite = (Get-Date).AddMinutes($MinutosMax); $k = 0
-while ((Get-Date) -lt $limite -and -not (Test-Path $fin) -and -not $p.HasExited) {
+while ((Get-Date) -lt $limite -and -not (Test-Path $fin) -and -not (Test-Path $fallo) -and -not $p.HasExited) {
     Start-Sleep -Seconds 4
     $k++; if ($k % 3 -eq 1) { Capturar $h (Join-Path $Salida ("instalando{0:00}.png" -f $k)) }
 }
-"instalación terminada: $(Test-Path $fin)"
+"instalación terminada: $(Test-Path $fin); con error: $(Test-Path $fallo)"
 Start-Sleep -Seconds 3
 Capturar $h (Join-Path $Salida 'instalando_final.png')
 Siguiente $h; Start-Sleep -Seconds 3

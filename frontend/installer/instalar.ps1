@@ -40,13 +40,12 @@ function Anotar($texto) { Add-Content -Path $registro -Value ("{0:HH:mm:ss} {1}"
 
 function Publicar($situacion, $mensaje) {
     $linea = '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}' -f $avance.uv, $avance.python, $avance.libs, $avance.clasif, $avance.ollama, $avance.modelo, $situacion, ($mensaje -replace '[|\r\n]', ' ')
-    $tmp = "$Estado.tmp"
-    # El asistente lee este archivo a la vez: si justo lo tiene abierto, Move-Item falla («no se puede crear un archivo que ya existe»).
-    # El estado es solo cosmético: se reintenta unas veces y, si no hay manera, se ignora en vez de abortar la instalación.
+    # Se escribe directamente en el archivo (sin pasar por un temporal que luego se renombra): en un equipo el renombrado fallaba siempre, seguramente porque algo
+    # del sistema retenía el temporal, y el asistente no recibía ningún estado. Si el asistente lo tiene abierto justo en ese instante, se reintenta.
+    # El estado es solo cosmético: tras unos intentos se ignora en vez de abortar la instalación.
     for ($i = 0; $i -lt 8; $i++) {
         try {
-            [IO.File]::WriteAllText($tmp, $linea, [Text.Encoding]::Default)     # página de códigos ANSI del sistema: es lo que lee FileRead de NSIS (acentos incluidos)
-            Move-Item -Force $tmp $Estado -ErrorAction Stop
+            [IO.File]::WriteAllText($Estado, $linea, [Text.Encoding]::Default)     # página de códigos ANSI del sistema: es lo que lee FileRead de NSIS (acentos incluidos)
             return
         } catch { $ultimo = $_.Exception.Message; Start-Sleep -Milliseconds 150 }
     }
@@ -58,6 +57,36 @@ function Publicar($situacion, $mensaje) {
 function Marcar([string]$nombre, [string]$texto) { try { Set-Content -Path (Join-Path $Motor $nombre) -Value $texto -Encoding Default } catch { } }
 
 function Comprobar { if (Test-Path $Cancelar) { throw 'Instalación cancelada.' } }
+
+# ---- Visual C++ de Microsoft ---------------------------------------------------------------------------------------------------------------------------
+# onnxruntime (que usa la app) se cae sin mensaje (código 0xC0000005) si el msvcp140.dll del sistema es antiguo. Se mira la versión REAL del archivo y no la del
+# registro: en un equipo el paquete nuevo figuraba como instalado y el archivo de System32 seguía siendo el de 2020.
+$VC_MINIMO = [version]'14.40'
+$AYUDA_VC = 'Instala el Visual C++ actual de Microsoft (https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist) o, si ya figura instalado, repáralo en Configuración > Aplicaciones > «Microsoft Visual C++ v14 Redistributable (x64)» > Modificar > Reparar y reinicia.'
+function VersionVC {
+    if ($Prueba -eq 4) { return [version]'14.26.28720.3' }          # prueba: Visual C++ antiguo simulado
+    $f = Join-Path $env:SystemRoot 'System32\msvcp140.dll'
+    if (-not (Test-Path $f)) { return $null }
+    $v = (Get-Item $f).VersionInfo
+    return [version]('{0}.{1}.{2}.{3}' -f $v.FileMajorPart, $v.FileMinorPart, $v.FileBuildPart, $v.FilePrivatePart)
+}
+function ExplicarCodigo([int]$codigo) {
+    if ($codigo -eq -1073741819) { return " Es un fallo del propio programa al cargar una biblioteca nativa (acceso inválido a memoria), casi siempre por un Visual C++ antiguo. $AYUDA_VC" }
+    return ''
+}
+
+# Datos del equipo en el registro, para poder diagnosticar sin ir y venir (versión de Windows, procesador, Visual C++, disco, rutas con acentos).
+function Diagnostico {
+    try {
+        $so = Get-CimInstance Win32_OperatingSystem
+        $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
+        Anotar ("Equipo: {0} (compilación {1}); {2}" -f $so.Caption, $so.BuildNumber, $cpu)
+        Anotar ("Visual C++ (msvcp140.dll de System32): {0}" -f (VersionVC))
+        $fs = try { (Get-Volume -DriveLetter $Motor.Substring(0, 1) -ErrorAction Stop).FileSystemType } catch { '?' }
+        Anotar "Carpeta del motor: $Motor (sistema de archivos: $fs); TEMP: $env:TEMP"
+        if ("$Motor$env:TEMP$env:USERPROFILE" -match '[^\x00-\x7F]') { Anotar 'Aviso: alguna de esas rutas lleva caracteres no ASCII (acentos...)' }
+    } catch { Anotar "Diagnóstico incompleto: $($_.Exception.Message)" }
+}
 
 function Porcentaje([double]$hecho, [double]$total) {
     if ($total -le 0) { return 0 }
@@ -90,7 +119,7 @@ function Ejecutar([string]$exe, [string[]]$argumentos, [scriptblock]$alAvanzar, 
     $p = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -WindowStyle Hidden -RedirectStandardOutput $salida -RedirectStandardError "$salida.err"
     Esperar $p $alAvanzar
     foreach ($f in $salida, "$salida.err") { if (Test-Path $f) { Get-Content $f -ErrorAction SilentlyContinue | ForEach-Object { Anotar "  $_" }; Remove-Item $f -Force -ErrorAction SilentlyContinue } }
-    if ($p.ExitCode -ne 0) { throw "$que falló (código $($p.ExitCode)); mira $registro" }
+    if ($p.ExitCode -ne 0) { throw ("$que falló (código $($p.ExitCode)); mira $registro." + (ExplicarCodigo $p.ExitCode)) }
 }
 
 # Descarga con curl.exe (viene con Windows 10/11) midiendo el archivo parcial frente al tamaño total que anuncia el servidor.
@@ -116,6 +145,11 @@ function Bajar([string]$url, [string]$destino, [string]$fase, [string]$texto, [s
 try {
     Anotar "=== instalación: motor=$Motor ollama=$Ollama modelo=$Modelo prueba=$Prueba"
     Publicar 'trabajando' 'Empezando...'
+    Diagnostico
+    $vc = VersionVC
+    if (-not $vc -or $vc -lt $VC_MINIMO) {      # antes de descargar nada: no tiene sentido bajar 500 MB para que luego el motor no arranque
+        throw ("Falta actualizar el Visual C++ de Microsoft: el msvcp140.dll de este equipo es la versión {0} y hace falta la {1} o posterior. {2}" -f $(if ($vc) { $vc } else { 'inexistente' }), $VC_MINIMO, $AYUDA_VC)
+    }
 
     # ---------------------------------------------------------------- uv
     $uv = Join-Path $Motor 'uv\uv.exe'
@@ -178,6 +212,18 @@ try {
     }
     $avance.libs = 100
 
+    # ---------------------------------------------------------------- Prueba del motor: se importa lo que usa la app, antes de bajar el modelo (240 MB)
+    # Una caída nativa (0xC0000005 por un Visual C++ antiguo, un antivirus, una CPU sin ciertas instrucciones...) no deja mensaje de Python: así se detecta
+    # aquí, con una explicación, y no como un error de «descarga del modelo».
+    Publicar 'trabajando' 'Comprobando que el motor arranca...'
+    $codigoPrueba = if ($Prueba -eq 5) { 'import os; os._exit(-1073741819)' } else { 'import numpy, pandas, pyarrow, onnxruntime, fastembed' }    # 5: caída simulada
+    $salidaPrueba = Join-Path $Motor 'prueba_motor.tmp'
+    $pp = Start-Process -FilePath $pythonExe -ArgumentList @('-X', 'faulthandler', '-c', "`"$codigoPrueba`"") -PassThru -WindowStyle Hidden -RedirectStandardOutput $salidaPrueba -RedirectStandardError "$salidaPrueba.err"
+    Esperar $pp { Publicar 'trabajando' 'Comprobando que el motor arranca...' }
+    foreach ($f in $salidaPrueba, "$salidaPrueba.err") { if (Test-Path $f) { Get-Content $f -ErrorAction SilentlyContinue | ForEach-Object { Anotar "  $_" }; Remove-Item $f -Force -ErrorAction SilentlyContinue } }
+    if ($pp.ExitCode -ne 0) { throw ("El motor no arranca en este equipo (código {0}).{1}" -f $pp.ExitCode, (ExplicarCodigo $pp.ExitCode)) }
+    Anotar 'Prueba del motor: correcta'
+
     # ---------------------------------------------------------------- Modelo de clasificación (embeddings de fastembed, ~230 MB de HuggingFace)
     # Si no se baja aquí, la primera neurona que se importe lo baja en silencio y la app parece colgada durante minutos.
     $modelos = Join-Path $Motor 'modelos'
@@ -196,7 +242,8 @@ try {
                 } 'La descarga del modelo de clasificación'
                 break
             } catch {
-                if ($intento -eq 3) { throw }
+                # solo se reintenta lo que puede ser la red (Python sale con el código 1 ante una excepción); una caída nativa o cualquier otro código se repetiría igual
+                if ($intento -eq 3 -or $_.Exception.Message -notmatch 'código 1\)') { throw }
                 Publicar 'trabajando' "Fallo de red; reintentando ($intento/3)"
                 Start-Sleep -Seconds 5
             }

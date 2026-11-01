@@ -17,7 +17,7 @@ ManifestDPIAware notset              ; Windows escala la ventana entera: un poco
 
 !define APP "Proyecto Alejandría"
 !define EXE "ProyectoAlejandria.exe"
-!define VERSION "0.1.2"
+!define VERSION "0.1.3"
 !define ID "dev.alejandria.app"      ; el mismo que tauri.conf.json: de él salen las carpetas de datos de la app
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define WEBVIEW2 "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
@@ -42,6 +42,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 
 !include "ui.nsh"
 !include "pilar.nsh"
+!include "rutas.nsh"
 !include "paginas.nsh"
 !include "instalacion.nsh"
 !include "desinstalador.nsh"
@@ -79,6 +80,14 @@ Function .onInit
     ${GetOptions} $R0 "/OLLAMA-FORZAR" $R2
     ${IfNot} ${Errors}
       StrCpy $PruebaNum 2        ; descarga 50 MB de Ollama aunque ya esté instalado, para ver la barra
+    ${EndIf}
+    ${GetOptions} $R0 "/VCVIEJO" $R2
+    ${IfNot} ${Errors}
+      StrCpy $PruebaNum 4        ; como si el msvcp140.dll del equipo fuera el de 2020: debe parar al principio con su aviso
+    ${EndIf}
+    ${GetOptions} $R0 "/MOTORFALLA" $R2
+    ${IfNot} ${Errors}
+      StrCpy $PruebaNum 5        ; la prueba del motor se cae a propósito (0xC0000005): debe parar tras instalar las librerías, con su aviso
     ${EndIf}
   ${Else}
     StrCpy $ModoPrueba 0

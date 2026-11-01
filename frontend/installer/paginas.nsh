@@ -48,39 +48,91 @@ Var EdMotor
 Var EdDatos
 Var EdModelos
 
-!macro DefExaminar NOMBRE ED TITULO
+Var UnaCarpeta        ; 1 = todo en una sola carpeta (cada parte en su subcarpeta)
+Var LblUna
+
+; Con «Examinar» se elige una carpeta y la ruta queda «carpeta elegida\SUBCARPETA». UNICA = 1: si la casilla «una sola carpeta» está marcada, la elegida vale para todas.
+!macro DefExaminar NOMBRE ED TITULO SUBCARPETA UNICA
   Function ${NOMBRE}
     Pop $Tmp
     ${NSD_GetText} ${ED} $0
     nsDialogs::SelectFolderDialog "${TITULO}" "$0"
     Pop $0
     ${If} $0 != error
-      ${NSD_SetText} ${ED} $0
+      ${If} ${UNICA} = 1
+      ${AndIf} $UnaCarpeta = 1
+        Call AplicarCarpetaUnica
+      ${Else}
+        StrCpy $R0 $0
+        StrCpy $R1 "${SUBCARPETA}"
+        Call ComponerRuta
+        ${NSD_SetText} ${ED} $R0
+      ${EndIf}
     ${EndIf}
   FunctionEnd
 !macroend
-!insertmacro DefExaminar ExaminarApp $EdApp "Carpeta de la aplicación"
-!insertmacro DefExaminar ExaminarMotor $EdMotor "Carpeta del motor (Python y librerías)"
-!insertmacro DefExaminar ExaminarDatos $EdDatos "Carpeta de tus neuronas"
-!insertmacro DefExaminar ExaminarModelos $EdModelos "Carpeta de los modelos de Ollama"
+
+; $0 = la carpeta elegida: cada parte va en su subcarpeta (la de los modelos se guarda en $RutaModelos, que se enseña en la página de componentes).
+Function AplicarCarpetaUnica
+  StrCpy $R0 $0
+  StrCpy $R1 "Aplicacion"
+  Call ComponerRuta
+  ${NSD_SetText} $EdApp $R0
+  StrCpy $R0 $0
+  StrCpy $R1 "Motor"
+  Call ComponerRuta
+  ${NSD_SetText} $EdMotor $R0
+  StrCpy $R0 $0
+  StrCpy $R1 "Neuronas"
+  Call ComponerRuta
+  ${NSD_SetText} $EdDatos $R0
+  StrCpy $R0 $0
+  StrCpy $R1 "Modelos"
+  Call ComponerRuta
+  StrCpy $RutaModelos $R0
+FunctionEnd
+
+Function AlternarUna
+  Pop $Tmp
+  ${If} $UnaCarpeta = 1
+    StrCpy $UnaCarpeta 0
+    ${NSD_SetText} $LblUna "[ ] Instalarlo todo en una sola carpeta (cada parte en su subcarpeta)"
+    Return
+  ${EndIf}
+  ${NSD_GetText} $EdApp $0
+  nsDialogs::SelectFolderDialog "Carpeta donde instalarlo todo (cada parte irá en su subcarpeta)" "$0"
+  Pop $0
+  ${If} $0 != error
+    StrCpy $UnaCarpeta 1
+    ${NSD_SetText} $LblUna "[x] Instalarlo todo en una sola carpeta (cada parte en su subcarpeta)"
+    Call AplicarCarpetaUnica
+  ${EndIf}
+FunctionEnd
+
+!insertmacro DefExaminar ExaminarApp $EdApp "Carpeta de la aplicación" "Aplicacion" 1
+!insertmacro DefExaminar ExaminarMotor $EdMotor "Carpeta del motor (Python y librerías)" "Motor" 1
+!insertmacro DefExaminar ExaminarDatos $EdDatos "Carpeta de tus neuronas" "Neuronas" 1
+!insertmacro DefExaminar ExaminarModelos $EdModelos "Carpeta de los modelos de Ollama" "Modelos" 0
 
 Function PgRutas
   !insertmacro NuevaPagina "¿DÓNDE LO INSTALAMOS?"
-  !insertmacro Texto $0 30 80 640 18 "Puedes dejar las carpetas que propone el instalador." ${C_SUAVE} $Mono
+  StrCpy $UnaCarpeta 0
+  !insertmacro Texto $0 30 78 640 18 "Con [ Examinar ] eliges una carpeta y cada parte se guarda en su subcarpeta." ${C_SUAVE} $Mono
+  !insertmacro Casilla $LblUna 30 100 640 20 0 "[ ] Instalarlo todo en una sola carpeta (cada parte en su subcarpeta)" AlternarUna
 
-  !insertmacro Texto $0 30 120 520 18 "Aplicación · el programa (~40 MB)" ${C_BLANCO} $Mono
-  !insertmacro Campo $EdApp 30 142 520 24 "$RutaApp"
-  !insertmacro BotonSuave $0 560 142 110 24 "[ Examinar ]" ExaminarApp
+  !insertmacro Texto $0 30 142 520 18 "Aplicación · el programa (~40 MB)" ${C_BLANCO} $Mono
+  !insertmacro Campo $EdApp 30 164 520 24 "$RutaApp"
+  !insertmacro BotonSuave $0 560 164 110 24 "[ Examinar ]" ExaminarApp
 
-  !insertmacro Texto $0 30 200 640 18 "Motor · Python y librerías (~500 MB, se puede regenerar)" ${C_BLANCO} $Mono
-  !insertmacro Campo $EdMotor 30 222 520 24 "$RutaMotor"
-  !insertmacro BotonSuave $0 560 222 110 24 "[ Examinar ]" ExaminarMotor
+  !insertmacro Texto $0 30 214 640 18 "Motor · Python y librerías (~500 MB, se puede regenerar)" ${C_BLANCO} $Mono
+  !insertmacro Campo $EdMotor 30 236 520 24 "$RutaMotor"
+  !insertmacro BotonSuave $0 560 236 110 24 "[ Examinar ]" ExaminarMotor
 
-  !insertmacro Texto $0 30 280 640 18 "Tus neuronas · lo más valioso: conviene que esté en una carpeta con copia de seguridad" ${C_BLANCO} $Mono
-  !insertmacro Campo $EdDatos 30 302 520 24 "$RutaDatos"
-  !insertmacro BotonSuave $0 560 302 110 24 "[ Examinar ]" ExaminarDatos
+  !insertmacro Texto $0 30 286 640 18 "Tus neuronas · lo más valioso: conviene una carpeta con copia de seguridad" ${C_BLANCO} $Mono
+  !insertmacro Campo $EdDatos 30 308 520 24 "$RutaDatos"
+  !insertmacro BotonSuave $0 560 308 110 24 "[ Examinar ]" ExaminarDatos
 
-  !insertmacro Texto $0 30 370 640 60 "Se instala solo para tu usuario: no hace falta ser administrador.$\r$\nEl motor y tus neuronas quedan fuera de la carpeta de la aplicación, así que$\r$\nactualizar o desinstalar el programa no toca tus datos." ${C_SUAVE} $Mono
+  !insertmacro Texto $0 30 372 640 60 "Se instala solo para tu usuario: no hace falta ser administrador.$\r$\nEl motor y tus neuronas quedan fuera de la carpeta de la aplicación, así que$\r$\nactualizar o desinstalar el programa no toca tus datos." ${C_SUAVE} $Mono
   !insertmacro PieConAtras "[ Siguiente > ]"
   nsDialogs::Show
 FunctionEnd
@@ -323,6 +375,7 @@ Var FasePct6
 Var FasePct7
 Var FasesTxt
 Var Girando
+Var SinNoticias        ; tics (150 ms) seguidos sin ningún mensaje de instalar.ps1
 Var Hecho
 Var BtnCerrar
 
@@ -397,7 +450,7 @@ Function MostrarError
   ${NSD_SetText} $LblLog "[ERROR] $MensajePs"
   ${NSD_SetText} $LblRegistro "Registro: $RutaMotor\instalacion.log"
   ShowWindow $LblRegistro ${SW_SHOW}
-  !insertmacro Texto $0 30 440 640 18 "Puedes volver a ejecutar el instalador: retoma lo que falte." ${C_SUAVE} $Mono
+  !insertmacro Texto $0 30 424 640 18 "Puedes volver a ejecutar el instalador: retoma lo que falte." ${C_SUAVE} $Mono
   ShowWindow $BtnCerrar ${SW_SHOW}
 FunctionEnd
 
@@ -459,7 +512,16 @@ Function AvanzarInstalacion
   ${ElseIf} $R2 = 3
     StrCpy $R1 "\"
   ${EndIf}
-  ${NSD_SetText} $LblLog "$R1 $MensajePs"
+  ${If} $MensajePs == ""
+    IntOp $SinNoticias $SinNoticias + 1
+  ${Else}
+    StrCpy $SinNoticias 0
+  ${EndIf}
+  ${If} $SinNoticias > 400    ; un minuto sin recibir nada: se dice, con la ruta del registro, en vez de dejar la pantalla muda
+    ${NSD_SetText} $LblLog "$R1 Sin noticias del instalador desde hace un minuto. Si no avanza, mira el registro: $RutaMotor\instalacion.log"
+  ${Else}
+    ${NSD_SetText} $LblLog "$R1 $MensajePs"
+  ${EndIf}
 FunctionEnd
 
 Function PgInstalar
@@ -470,6 +532,7 @@ Function PgInstalar
   StrCpy $EstadoPs ""
   StrCpy $MensajePs ""
   StrCpy $Girando 0
+  StrCpy $SinNoticias 0
   StrCpy $Hecho 0
   StrCpy $FasePct1 0
   StrCpy $FasePct2 0
@@ -489,7 +552,7 @@ Function PgInstalar
 
   !insertmacro Texto $LblGlobal 30 90 640 20 "" ${C_DORADO} $Mono
   !insertmacro Texto $LblFases 30 140 640 150 "" ${C_BLANCO} $Mono
-  !insertmacro Texto $LblLog 30 330 640 120 "" ${C_SUAVE} $Mono
+  !insertmacro Texto $LblLog 30 300 640 98 "" ${C_SUAVE} $Mono
   !insertmacro Boton $BtnSigInst 560 505 110 26 "[ Siguiente > ]" IrSiguiente
   ShowWindow $BtnSigInst ${SW_HIDE}
   !insertmacro TextoRuta $LblRegistro 30 400 640 18 "" ${C_SUAVE} $Mono
