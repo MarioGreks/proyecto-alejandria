@@ -1,0 +1,300 @@
+# Estado del Desarrollo - Proyecto Alejandría
+*Documento de caché de memoria y registro de versiones para el desarrollo.*
+
+## 🧠 Contexto General del Proyecto
+**Alejandría** es un "Segundo Cerebro" orientado a matemáticas, estadística, economía y finanzas. 
+- **Filosofía:** Aprendizaje guiado por el usuario ("Human-in-the-loop"). Los apuntes se generan mediante prompts externos, se filtran, y se almacenan en el programa.
+- **Visualización:** Red neuronal biológica en 3D. El conocimiento no es una lista de carpetas, es un tejido vivo (nodos = somas, relaciones = dendritas y sinapsis).
+- **Stack Técnico:** 
+  - **Frontend:** React + Tauri (Aplicación nativa), React Three Fiber (Renderizado 3D), KaTeX (Fórmulas matemáticas). Estética: *Glassmorphism* y neones oscuros.
+  - **Backend:** Python + FastAPI + Jupyter Kernel nativo (`jupyter_client`).
+  - **Motor RAG Híbrido:** `fastembed` para embeddings locales + `Ollama (phi3:mini)` para razonamiento lógico de relaciones.
+  - **Base de Datos:** Parquet (PyArrow) para persistencia rápida y ligera de nodos y aristas sin bases de datos externas.
+
+---
+
+## 🖥️ Guía de Arranque Manual
+
+Si necesitas arrancar el entorno de desarrollo manualmente por separado, abre dos terminales en la raíz del proyecto y ejecuta:
+
+**1. Levantar el Backend (FastAPI + Ollama + Jupyter):**
+```powershell
+cd C:\Github\Proyectos-personales\Proyectos-personales\proyecto_alejandria\backend
+.venv\Scripts\uvicorn.exe main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**2. Levantar el Frontend (React + Tauri en Modo Dev):**
+```powershell
+cd C:\Github\Proyectos-personales\Proyectos-personales\proyecto_alejandria\frontend
+npm run tauri dev
+```
+
+---
+
+## 🏗️ Arquitectura del Segundo Cerebro
+
+### 1. Ingesta de Neuronas
+Al asimilar un nuevo bloque de conocimiento, el sistema realiza lo siguiente:
+1. Extrae términos clave y genera un glosario con IA.
+2. Calcula los vectores semánticos (Embeddings) de forma local usando `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` mediante la librería `fastembed`.
+3. Almacena la estructura del concepto (Soma) en `nodos.parquet`.
+
+### 2. Trazado de Sinapsis (Motor RAG Híbrido)
+El proceso de conexión entre ideas no es estático, se compone de dos capas de Inteligencia Artificial que se ejecutan en segundo plano (`BackgroundTasks`) para no bloquear la Interfaz de Usuario:
+- **Capa Matemática (Criba):** Se calcula la distancia euclidiana (similitud del coseno) del nuevo nodo contra toda la base de datos de embeddings. Se extraen los 5 nodos matemáticamente más afines (Top-K).
+- **Capa Lógica (Razonamiento):** Se inyectan las candidatas como contexto al modelo local de Ollama (`phi3:mini`). El LLM razona y decide con cuáles de ellas existe una dependencia constructiva o estructural real, justificando su motivo. Las decisiones se consolidan en `aristas.parquet`.
+
+### 3. Visualización 3D
+El cliente React consume los nodos y aristas vía `/api/universe`. 
+Se renderiza un *Force Graph* biológico donde las conexiones (links) se dibujan exclusivamente trazando las rutas reales ratificadas por Ollama, representadas como curvas Bezier 3D suavizadas.
+
+---
+
+## 🚀 Historial de Versiones y Progreso
+
+### [Fase 1] Infraestructura y Backend Base ✅ Completada
+- Se implementó `alejandria.bat` para automatizar la creación del entorno virtual (`.venv`) y arrancar el backend (`uvicorn`).
+- Se definió el esquema de base de datos relacional/grafo utilizando DataFrames guardados como archivos `.parquet` (`database.py`).
+- *Decisión clave:* Evitar bases de datos externas complejas en favor de archivos locales en la máquina del usuario (`%APPDATA%` en el futuro).
+
+### [Fase 2] Motor Lógico e Integración Jupyter ✅ Completada
+- Se integró `jupyter_engine.py` para levantar un kernel de Python en segundo plano.
+- Se implementó el endpoint `/execute` en FastAPI (`main.py`) para enviar código crudo y recibir resultados asíncronos (texto o imágenes base64 desde `matplotlib`).
+
+### [Fase 3] Desktop App y Visualizador 3D ✅ Completada
+- Se levantó la infraestructura base de Tauri.
+- Se implementó `Universe.tsx` con **React Three Fiber**.
+- *Renderizado biológico:*
+  - Se configuró la escena oscura con niebla (`fog`).
+  - Se reemplazaron líneas rectas por arcos de Bézier curvos (`QuadraticBezierCurve3`) para simular sinapsis orgánicas.
+  - Se añadieron ramificaciones fractales (`generateDendriteTree`) para darle a cada nodo un aspecto de célula nerviosa enraizada.
+  - Se implementó `InstancedMesh` para soportar cientos de neuronas sin caída de FPS.
+- *Navegación:* Controles orbitales inmersivos y desarrollo de un botón `CameraController` (interfaz superpuesta) para **centrar la vista** instantáneamente tras navegar por lo profundo del grafo.
+
+### [Fase 4] Panel de Conocimiento (UI Interactiva) ✅ Completada
+- Se implementó `KnowledgePanel.tsx`: Un HUD gigante estilo *Glassmorphism* (ventanas oscuras translúcidas con desenfoque) que emerge al hacer clic en un nodo 3D.
+- Se enrutó el evento de click (Raycaster de `InstancedMesh`) al panel.
+- Se configuraron las 4 pestañas obligatorias de la interfaz: **Teoría, Glosario, Laboratorio y Ejercicios**.
+- **Logro Técnico:** Se conectó bidireccionalmente el Frontend (React) con el Backend (FastAPI). Se resolvió el CORS y el widget de **Laboratorio** ya es capaz de inyectar scripts matemáticos (`numpy`, `matplotlib`) al motor Jupyter en segundo plano, obteniendo y renderizando gráficos Base64 en la UI en tiempo real.
+- **Rendimiento e Interactividad Extrema (Arquitectura Doble Motor):** Se migró del renderizado clásico en backend (Matplotlib PNG a 15 FPS) a un patrón híbrido. Python ejecuta los cálculos matemáticos (Jupyter) y devuelve puro JSON. El Frontend de React (con `Recharts`) parsea los arrays y dibuja gráficamente mediante el navegador a 60 FPS sin latencia.
+- **Perfeccionamiento Estético y Oclusión Z:** 
+  - Se redondearon las interfaces (pestañas y Knowledge Panel).
+  - Se introdujo un buscador dinámico en 3D que atenúa mediante shader/color la luminiscencia de los nodos no coincidentes.
+  - Se colocaron etiquetas espaciales nativas en WebGL usando `<Billboard>` y `<Text>`. Esto permite que los nombres de los clústeres mantengan una jerarquía 3D absoluta y sean ocluidos físicamente por las neuronas (Geometry) o por otras etiquetas de clústeres que estén por delante en el eje Z.
+
+### [Fase 5] Motor de Persistencia Parquet y Nodos Vivos ✅ Completada
+- Se eliminaron los datos *dummy* y de relleno; ahora el universo 3D **crece de forma puramente orgánica** reflejando únicamente los nodos de conocimiento reales que el usuario ha introducido, generando clústeres dinámicamente según la información existente.
+- Se ha implementado un motor ultra-rápido de recompilación que escanea `data/raw/*.json` y los comprime a un único fichero en formato columnar `.parquet` gestionado mediante PyArrow, logrando cargas iniciales en el cliente en milisegundos incluso con cientos de nodos.
+- **Blindaje del Kernel Jupyter:** Se introdujo un sistema de protección (`interrupt_kernel()`) con Timeout Absoluto. Esto evita bloqueos permanentes o consumo excesivo de memoria por generación de bucles infinitos en el código de Python inyectado por las IAs, garantizando que un script fallido no colapse todo el sistema HUD.
+- **Caché Inteligente:** La base de datos Parquet ahora vive en RAM (Pandas DataFrame) y solo recarga disco físico comprobando huellas de tiempo (`mtime`) con el sistema operativo, optimizando las peticiones de `/api/universe` a coste *O(1)*.
+
+### [Fase 6] Motor de Prompts e Inyector Neuronal ✅ Completada
+- Se implementó el **Sintetizador e Inyector Neuronal** en la UI principal. Permite copiar Prompts Maestros con modalidades dinámicas (Fuentes Propias vs. Exploración Libre) adaptadas a rigor de nivel doctorado.
+- Se configuró el endpoint `POST /api/node` en el backend para recibir JSON crudos (incluso con envolturas Markdown), guardarlos en disco y forzar la recompilación automática en vivo del grafo Parquet.
+- **Gestión de Crecimiento Restringido:** Se actualizaron las directivas de los Prompts Maestros para forzar a las IAs a usar "Macro-categorías simples" en el campo de *cluster*, evitando la explosión fractal incontrolable de mini-galaxias.
+- **Destrucción Sináptica:** Se implementó una ruta `DELETE /api/node` y un botón en el Panel de Conocimiento para borrar neuronas permanentemente y recargar el universo sin necesidad de tocar los ficheros `.json` a mano.
+- **Renderizado Matemático (KaTeX) Perfeccionado:** Se implementó una capa de CSS hiper-específica para KaTeX que incluye escalado paramétrico, colores neón diferenciados (Celeste para matemáticas inline y Magenta para bloques), y **numeración automática de ecuaciones tipo paper** mediante contadores puros de CSS.
+
+### [Fase 7] Consola Jupyter Nativa y Laboratorio Didáctico Avanzado ✅ Completada
+- **Modelo Híbrido UI-Python (Sliders Inteligentes):** El Laboratorio utiliza componentes nativos de interfaz (sliders/deslizables) para modificar las variables matemáticas. En lugar de procesar datos en React, la UI inyecta los valores en el script de Python y se compila a tiempo real mediante el Kernel de Jupyter. El código base es visible ("Ver Código Python") en modo solo-lectura para garantizar la estabilidad pedagógica.
+- **Gráficos Matplotlib Nativos:** El backend de Jupyter (\`jupyter_engine.py\`) es capaz de interceptar mensajes \`display_data\` y devolver gráficos generados por \`matplotlib\` en formato Base64 nativo.
+- **Auto-validación Algorítmica (Prompts):** Se blindó el prompt maestro obligando a las IAs a correr su script en su propio entorno Python antes de generar el JSON, filtrando proactivamente valores \`NaN\` e \`Infinity\` que corrompen el grafo.
+- **Teoría Contextual:** El JSON incorpora un nuevo campo `explicacion` que desglosa en el laboratorio qué representan exactamente los ejes X e Y y el modelo matemático subyacente.
+- **Robustez UI/UX (Tauri WebView):** Se implementó un *fallback* puro de `document.execCommand` para la función de copiado del Inyector, superando las estrictas restricciones de permisos del portapapeles nativo de Tauri/Windows.
+- **Pre-procesador Markdown Definitivo:** Se diseñó un algoritmo Regex avanzado (`forceBlockMath`) a nivel de React que escanea y aísla los bloques de ecuaciones `$$...$$` mediante dobles saltos de línea y desactiva el modo estricto de KaTeX. Esto asegura un renderizado académico perfecto (`\tag`, `\partial`, etc.) anulando los errores sintácticos habituales generados por las LLMs en formato Markdown.
+
+### [Fase 8] Motor de Búsqueda Predictivo y Semántico ✅ Completada
+- Se reconstruyó el buscador superior introduciendo un **Desplegable Predictivo (Typeahead)** con estética Glassmorphism.
+- **Predicciones Multi-Capa:** El motor ahora busca coincidencias en tiempo real priorizando el título (Resultados Exactos), el cluster de origen, y buscando menciones de la palabra dentro de la Teoría, Ejercicios y Glosario (Resultados Relacionados).
+- **Normalización de Texto NFD:** Se inyectó un sistema de limpieza que ignora tildes y caracteres diacríticos, garantizando que búsquedas simples ("matematicas") crucen exitosamente con bases de datos que contienen tildes ("Matemáticas"). Además, se parsea el JSON crudo en memoria para evitar falsos positivos con etiquetas técnicas como `termino` o `definicion`.
+- **Apagón 3D Inteligente:** Al buscar un término, las conexiones neuronales de todo el universo ("bracitos") caen a un `opacity` de 0.05 y las neuronas no coincidentes se vuelven gris oscuro (fantasmas), dejando únicamente iluminados de blanco los nodos relevantes y forzando un multiplicador x2.5 para deslumbrar mediante el efecto post-procesado (Bloom).
+
+### [Fase 9] Motor de Clasificación Autónomo y Fallback LLM Local (Ollama) ✅ Completada
+- Se reconstruyó el motor de asimilación neuronal (`clasificador.py`) estructurándolo en un embudo de 4 capas para ingestar nuevos apuntes de forma inteligente sin hardcodear el clúster:
+  1. **Capa 1 - Heurística (Reglas):** Búsqueda ultrarrápida de palabras clave para clústeres obvios mediante lowercasing.
+  2. **Capa 2 - Similitud Vectorial (Matemática):** Corazón del sistema. Se integró `fastembed` para cargar el modelo local `paraphrase-multilingual-MiniLM-L12-v2` en memoria. Al ingresar texto, se genera un vector de 384 dimensiones que compite contra el resto de la base de datos buscando al vecino más cercano mediante similitud del coseno.
+  3. **Capa 3 - Metadatos Ponderados:** En la propia rutina de matemáticas, las clasificaciones que el usuario hizo manualmente tienen un peso adicional (+15% de bonificación), enseñando al modelo a preferir rutas dictadas por el usuario.
+  4. **Capa 4 - El Juez (Ollama):** Fallback local integrado con `Ollama`. Si la confianza matemática cae por debajo del 82%, el backend "despierta" el modelo lógico (`phi3:mini`) instándolo a clasificar el apunte usando puro raciocinio y devolviendo estrictamente el resultado en JSON.
+- **Robustez Matemática (Arrays Vacíos):** Se blindó el cálculo `np.dot` contra corrupciones de base de datos. Si una neurona se guardó defectuosa (con un vector matemático nulo `[]` por apagones de dependencias), el cálculo de Numpy no explota con errores de alineación `shapes (384,) and (0,) not aligned`, sino que el sistema filtra silenciosamente el error y salta al siguiente nodo válido.
+- **Correcciones Human-in-the-Loop:** Se introdujo un sistema de supervisión humana inyectando un nuevo componente en la botonera de las ventanas de conocimiento (KnowledgePanel). Al pulsar el "lápiz dorado", se invoca el endpoint `PUT /api/node/{id}/cluster` que sobrescribe la tabla, marca el nodo como "correccion_manual" y hace un Hot-Reload automático del espacio 3D forzando a la neurona a volar a su nueva galaxia, de forma completamente transparente.
+
+### [Fase 10] Trazado de Sinapsis y Tolerancia a Fallos ✅ Completada
+- Se completó el sistema híbrido que evalúa las matemáticas y confía la generación de las relaciones causales reales a Ollama, guardándolas en `aristas.parquet`.
+- **Tolerancia a fallos por Timeout (Generación Incremental):** Se modificó la arquitectura de guardado de los scripts asíncronos (`regenerar_enlaces.py` y `POST /api/regenerar_aristas`, que solo añaden aristas nuevas y nunca borran ni pisan las existentes). En vez de guardar la lista gigante de conexiones al final de la ejecución, el script inyecta a la BD cada arista descubierta en tiempo real y gestiona excepciones (Ej: un timeout de Ollama no revienta todo el progreso, permitiendo arrancar desde donde se quedó).
+- **Asincronía React-FastAPI (Botón Recargar):** Se constató un fallo de sincronización por el cual React no se enteraba si el Backend generaba aristas en segundo plano. Se añadió a la interfaz 3D un botón "Recargar" HUD en la esquina superior derecha que vuelve a mapear y redibujar (`fetch()`) el universo con la base de datos fresca sin necesidad de recargar la App.
+- **Escalado del Motor Lógico:** Tras comprobar que los modelos sub-2B sufrían de "alucinaciones lógicas" al rechazar dependencias verdaderas si pertenecían a dominios muy dispares, se migró el motor local a `phi3:mini` (~3.8B), logrando un salto masivo en la capacidad deductiva (conectando Letras Griegas y Black-Scholes exitosamente).
+- **Trazado Bézier Dinámico:** Las conexiones utilizan `QuadraticBezierCurve3`, calculando distancias, forzando tangentes ortogonales aleatorias con un arco orgánico para evitar que líneas superpuestas se solapen visualmente entre neuronas alejadas.
+
+### [Fase 10.5] Afinamiento de Experiencia de Usuario y Servicios Autónomos ✅ Completada
+- **Auto-Arranque Transparente de Ollama (`ollama_service.py`):**
+  - Se implementó un subsistema en Python que detecta si el servidor de Ollama (`localhost:11434`) está activo.
+  - Si está apagado, rastrea automáticamente la ubicación de `ollama.exe` en `%PATH%`, `%LOCALAPPDATA%\Programs\Ollama` o `%ProgramFiles%\Ollama` y lo arranca en segundo plano como proceso desasociado e invisible (`CREATE_NO_WINDOW`), sin ventanas negras de consola emergentes.
+  - Se integró en `@app.on_event("startup")` de FastAPI (`main.py`) para que al abrir el backend Ollama esté listo de inmediato, y se expone su estado en `GET /status`.
+  - **Re-despertar bajo demanda:** Tanto la Capa 4 de clasificación como el evaluador de sinapsis (`clasificador.py`) invocan `ensure_ollama_running()` antes de emitir inferencias, asegurando tolerancia total a fallos si el servicio se hubiera cerrado.
+  - **Resolución dinámica de modelos:** Se escanean los modelos instalados y se asigna el mejor candidato (`phi3:mini`) dinámicamente evitando errores por tags inexistentes.
+- **Ergonomía 3D (Desactivación de Auto-Zoom):**
+  - Se anuló en `Universe.tsx` el `useEffect` que provocaba un salto supersónico de la cámara hacia la neurona seleccionada. Ahora el panel HUD se abre al instante sin mover la perspectiva del usuario, preservando la orientación espacial en el clúster.
+- **Evolución del Prompt de Exploración Libre (`prompts.ts` y `prompt_maestro.md`):**
+  - **Filtro Anti-Alucinaciones:** Se exige a la IA un paso previo de auto-verificación crítica de fuentes científicas para impedir que invente papers o autores ficticios.
+  - **Fuentes con Enlaces Directos:** Obligación de incluir enlaces clicables (DOI resoluble `https://doi.org/...`, arXiv o URL directa) tanto en la explicación teórica como en el apartado 5 (`## Fuentes y Referencias Académicas`) del campo `teoria` del JSON.
+  - **Secuencia Estricta de 2 Partes:** Se corrigió la regla 6 final del prompt que forzaba a la IA a omitir la explicación y dar solo el JSON. Ahora se garantiza contractualmente que la IA genere primero la explicación magistral doctoral y luego el bloque JSON para inyectar en Alejandría.
+- **Apertura de Enlaces en Navegador Externo (`@tauri-apps/plugin-opener`):**
+  - Se configuró la API nativa de Tauri (`openUrl`) para interceptar cualquier clic en enlaces externos (`http://` o `https://`).
+  - Se blindó a nivel de `KnowledgePanel.tsx` (inyectando `markdownComponents` en cada instancia de `ReactMarkdown`) y mediante un listener global en `App.tsx`.
+  - Ahora cualquier enlace (DOI, paper, web de referencia) se abre limpiamente en el navegador predeterminado del sistema operativo (Chrome, Edge, Firefox...), evitando que la WebView de Tauri navegue fuera de la aplicación.
+  - Se añadieron estilos neón a los hipervínculos en `App.css` (`#00ccff` con efecto hover resplandeciente en `#00ffaa`).
+- **Pestaña y Modelo Dedicado de Referencias Bibliográficas con Notas de Extracción:**
+  - **Segregación Estructural:** Se separaron definitivamente las referencias del cuerpo de texto de `teoria` (que vuelve a centrarse con pulcritud en los 4 apartados académicos fundamentales), otorgando a las fuentes bibliográficas un modelo de datos y una pestaña propia en la interfaz.
+  - **Esquema de Datos Enriquecido:** Cada referencia almacena ahora `titulo`, `autores` (año incluido), `url` (DOI o repositorio académico) y `nota` (explicación detallada de qué concepto, axioma o deducción matemática se ha extraído de esa fuente).
+  - **Persistencia en Parquet (`database.py`):** Se actualizó la compilación incremental de `data/raw/*.json` hacia `nodos.parquet` y la reconstrucción en `get_node()` para incluir el campo `referencias`, permitiendo además que el buscador global (`get_universe_metadata`) encuentre neuronas por autor o paper de procedencia.
+  - **Pestaña "Referencias" en el HUD (`KnowledgePanel.tsx`):** Tarjetas estilo glassmorphism con acento cian (`#00ccff`), enlaces directos que abren el paper en el navegador nativo y una caja de llamada con acento esmeralda (`#00ffaa`) que renderiza con KaTeX la nota de conceptos y axiomas extraídos de cada obra.
+  - **Actualización de Prompts (`prompts.ts` y `prompt_maestro.md`):** Ambas modalidades del Prompt Maestro instruyen a la IA a verificar la existencia de las fuentes, acompañar cada una de su comentario explicativo de aportación teórica e inyectarlas en el nuevo array `referencias` del bloque JSON.
+
+### [Fase 11 - Futura] Fine-Tuning y Modelfile (Cerebro Dedicado) ⏳ Pendiente
+- **Recolección de Feedback:** Se ha implementado un sistema *Human-in-the-loop* en el panel de sinapsis de la UI. El usuario puede validar (✅) o rechazar (❌) las relaciones propuestas por el LLM.
+- **Creación del Dataset (Pendiente):** Cuando se alcance una masa crítica de validaciones (ej. 200-300 aristas aceptadas/rechazadas), se desarrollará un script (`generar_dataset.py`) para extraer y formatear estos datos en JSONL (formato ShareGPT/Alpaca).
+- **Entrenamiento (Pendiente):** Se utilizará el ordenador principal (GPU RTX 4060) y *Unsloth* para entrenar un adaptador LoRA sobre el modelo base.
+- **Integración con Modelfile (Pendiente):** El resultado se inyectará de vuelta al ecosistema mediante un `Modelfile` de Ollama, consolidando al modelo como un "Juez Académico" hiper-especializado, limpiando el código de Python de prompts extensos.
+---
+
+## 📝 Reglas Base del Código (Golden Rules)
+1. **Rendimiento Visual:** Todo lo que sea 3D masivo debe usar `InstancedMesh` o geometrías fusionadas (BufferGeometry) para no ahogar el hilo principal de React.
+2. **Dependencias Cero Extras:** Evitar añadir librerías pesadas si Tauri o las librerías base de Python/React pueden solucionarlo de forma nativa.
+3. **Estética Intocable:** Mantener los principios de neón, oscuridad (modo noche puro) y difuminados vítreos (`backdrop-filter`). Nada de interfaces "planas" o diseños de web corporativa; esto es un laboratorio futurista.
+4. **Independencia de Ejecución:** El programa final en Tauri deberá arrancar el backend de forma oculta y transparente para el usuario final mediante *Tauri Sidecars*.
+
+---
+
+## ⚠️ Problemas Recurrentes y Lecciones Aprendidas (Lessons Learned)
+Para evitar tropezar dos veces con la misma piedra en futuras modificaciones, estos son los problemas críticos más habituales que han surgido en el desarrollo:
+
+1. **Escapes en "Template Literals" de TypeScript:** Los Prompts Maestros en `prompts.ts` están inyectados en variables de TypeScript usando comillas invertidas (`...`). Cuando queramos exigir a la IA que use backticks (p. ej. aislar código o sintaxis markdown con \`$$\`), **NUNCA** debemos meter los backticks de manera cruda o con sobre-escape. Un backtick dentro de `prompts.ts` SIEMPRE debe llevar exactamente **una** barra invertida delante (`\`$$\``). Múltiples barras o ninguna provocan que el compilador de Vite asuma un final abrupto del string y escupa errores `[PARSE_ERROR]`.
+2. **KaTeX y el AST de Markdown:** Las IAs tienden a mezclar texto normal con matemáticas en bloque (ej. `Aquí tenemos la fórmula $$x=y$$`). Esto hace que el parser AST (Remark/Rehype) entre en pánico al leer comandos de entorno en línea (como `\tag{n}`). **Solución permanente:** Siempre hay que forzar a la IA vía prompt a aislar los bloques `$$` con saltos de línea (párrafos limpios), usar la función regex de `forceBlockMath()` en el componente reactivo antes del render, y deshabilitar el modo estricto en la configuración de KaTeX (`strict: false`).
+3. **Seguridad del Portapapeles (Tauri/WebView2):** Llamar a la API moderna `navigator.clipboard.writeText()` tiende a fallar estrepitosamente en el empaquetado nativo de Windows (WebView2) bajo ciertos contextos de foco. **Solución permanente:** Siempre hay que mantener e implementar un "fallback" anticuado pero infalible que genere un `textarea` temporal, lo seleccione, e invoque `document.execCommand('copy')`.
+4. **Ruido en el Kernel de Jupyter:** Al inyectar scripts en el Kernel en vivo de Python, ciertas librerías (como Matplotlib) imprimen basura a la salida estándar antes de devolver el Base64 (ej. `<Figure size 900x450...>`). **Solución:** Hay que filtrar proactivamente del output todo JSON en crudo o cadenas que representen punteros en memoria para no ensuciar la "Consola Interactiva" de la UI.
+5. **Pérdida de Datos en Tareas Largas y Asincronía Reactiva:** Delegar el procesamiento largo (como llamadas LLM iterativas en bucle) en el Backend y guardar todo *solo al final* es una receta para el desastre; cualquier Timeout destruye minutos de procesamiento e impide que el Frontend se dibuje. Además, React (`useEffect`) no sabe cuándo el Backend termina su tarea en background para repintar. **Solución:** Arquitecturas de guardado siempre **incrementales** (escribir en DB en cada iteración) y dotar a la UI de mecanismos claros de "Refresco/Recarga" (o usar WebSockets) para reconectar el estado de React con la realidad de la DB local.
+6. **El Espejismo de la Caché y las Alucinaciones de IDs:** Tras lograr un pipeline asíncrono estable, el frontend no dibujaba las aristas por dos motivos que ocultaban el éxito:
+   - El `fetch()` de React hacia el backend almacenaba en caché la respuesta inicial (vacía). Fue necesario añadir un *cache-buster* (`?t=${Date.now()}`) y `cache: "no-store"`.
+   - Ollama alucinaba IDs aleatorios (ej. `id_6`) o directamente copiaba el placeholder literal de las instrucciones (`ID_DE_LA_CANDIDATA`) en vez de respetar las cadenas reales. Se implementó una barrera de validación cruzada y rescate de nombres en el backend (`clasificador.py`) y se reescribió el Prompt con reglas extremadamente estrictas para obligarle a utilizar IDs exactos y reales de la lista proporcionada. ¡Victoria conseguida en el dibujo 3D!
+7. **Visión de Túnel RAG y Overfitting de Prompt:** El modelo LLM pequeño fallaba al detectar conexiones interdisciplinares obvias (ej. Finanzas con Estadística). Las causas técnicas descubiertas fueron:
+   - **Visión de túnel:** Filtrar sólo el `top_5` por similitud forzaba a que los conceptos interdisciplinares quedaran fuera de la vista de Ollama. **Solución:** Ampliar la muestra de candidatos (ej. a 15) para dar "visión periférica".
+   - **Overfitting de Prompt:** Poner ejemplos demasiado explícitos en prompts de LLMs pequeños (`qwen2.5:1.5b`) provoca que el modelo se ciegue intentando replicar el ejemplo. **Solución:** Usar reglas generales y abstractas en el sistema.
+   - **Tareas Asíncronas (FastAPI):** Si Ollama está apagado, las inyecciones de red fallaban silenciosamente. Además, la carga masiva requiere un script externo (`regenerar_enlaces.py`) o paciencia para que la cola asíncrona no sature la UI.
+8. **Auto-Arranque Transparente de Ollama:** Para evitar que las llamadas LLM fallen si el usuario no recuerda abrir Ollama a mano o si la terminal no lo arranca, se implementó `ollama_service.py` junto con un evento `@app.on_event("startup")` en FastAPI y verificación bajo demanda en `clasificador.py`. El backend busca el binario de Ollama en `%PATH%` y en `%LOCALAPPDATA%`, lo arranca en segundo plano sin ventana (`CREATE_NO_WINDOW`) y selecciona dinámicamente el mejor modelo disponible (`phi3:mini`).
+9. **El Sesgo de la Última Regla en Prompts Estructurados:** Si un prompt solicita generar dos secciones (ej. Parte 1 Explicación y Parte 2 JSON) pero al final del prompt en las "Reglas de Oro" se incluye una directiva absoluta como *"Devuelve ÚNICAMENTE el bloque JSON"*, el LLM sobreescribe la instrucción previa y omite por completo la explicación. **Solución permanente:** La última regla debe ordenar taxativamente la **secuencia estricta** (Parte 1 antes que Parte 2) y prohibir expresamente la omisión de la primera parte.
+
+
+
+
+---
+
+## ⚡ Laboratorios en vivo (dibujo en el navegador)
+- **Idea:** el cálculo de un laboratorio cuesta 0,3-7 ms; construir y renderizar la figura de matplotlib, 100-300 ms. `backend/labplot.py` ejecuta el MISMO código con un `pyplot` falso que solo anota qué se pidió (plot, scatter, bar, fill_between, rectas, textos, títulos, subplots) y `POST /execute_lab` devuelve esos datos; `frontend/src/components/LabChart.tsx` los pinta en un canvas (títulos con KaTeX). ~45 ms por cuadro frente a 115-395 ms.
+- **Sin reescribir laboratorios ni prompts:** si el código usa algo que la grabadora no sabe representar fielmente (contornos, 3D, imágenes, escala log, ticks a medida, argumentos desconocidos) o falla, se reejecuta con matplotlib real y se muestra la imagen PNG de siempre (etiqueta "imagen" junto al tiempo). Hoy 11 de los 13 laboratorios van en vivo (barras con nombres y colores por barra incluidas); `lagrangiano…` y `multiplicador…` (contornos) caen a imagen. Al pasar el ratón por la gráfica se ve el valor del punto más cercano.
+- **Controles:** deslizable (con campo numérico exacto), `"tipo": "checkbox"` (llega al código como True/False) y `"tipo": "select"` con `"opciones"`. Botón "Restablecer".
+- **Trampas aprendidas:** (1) devolver un `dict` grande desde FastAPI pasa por `jsonable_encoder` (~30 ms con 100 KB): usar `JSONResponse`. (2) `import matplotlib.pyplot as plt` mira primero el atributo `matplotlib.pyplot`, no solo `sys.modules`: hay que sustituir ambos. (3) Cualquier prueba que toque el kernel del backend lo deja contaminado hasta reiniciar: usar un kernel propio. (4) `.katex` global en App.css es casi blanco: las gráficas lo anulan con `.lab-chart .katex`.
+- **Tests:** `backend/test_backend.py` (grabadora) y `npm test` en `frontend/` (utilidades de `labSpec.ts`).
+- **Confirmación:** la primera vez que se abre el laboratorio de un código se muestra el código y hay que aprobarlo (se recuerda su SHA-256 en `localStorage`; si el código cambia, vuelve a preguntar). Viene de un JSON pegado y se ejecuta con tus permisos.
+
+
+---
+
+## 🔬 Sinapsis de una neurona nueva
+- **Qué pasaba:** el juez solo preguntaba "¿el NUEVO depende del viejo?" (un sentido), veía solo el nombre del candidato, usaba un umbral de embedding fijo (el embedding solo lee las primeras ~128 palabras: una neurona corta puntúa bajo con todos) y no daba ninguna señal en pantalla. Resultado típico: 0 aristas.
+- **Ahora** (`clasificador.evaluar_conexiones`): (1) candidatos = los 8 con mejor puntuación = similitud + empujón si un texto nombra al otro (palabras del nombre/glosario ponderadas por lo poco frecuentes que son en el corpus), sin umbral fijo; (2) el LLM local juzga cada pareja en CUALQUIER sentido (`A_se_basa_en_B`, `B_se_basa_en_A`, `relacionados`, `ninguna`) viendo glosario, resumen y las frases de cada texto que nombran al otro; `relacionados` solo vale con mención en los textos o similitud >= 0.5; (3) se descartan los veredictos cuyo motivo es corto (< 25 caracteres) o copia la pista del prompt, y `relacionados` si cada texto no nombra al otro; (4) se guardan las 3 MEJORES (no las primeras); (5) si no sale ninguna y la neurona no tiene aristas, se propone la más afín como `pendiente` ("Afinidad semántica…, revisa si procede"), también si Ollama está caído. Todas entran como `pendiente`: las aceptas o rechazas en la pestaña Sinapsis.
+- **Feedback:** `GET /api/sinapsis/estado` y, junto al contador de nodos, "🔬 Buscando conexiones de «X»… 3/8" y un aviso final con cuántas propuso. Una neurona tarda ~35 s (8 consultas de ~4 s a phi3:mini).
+- **Límite conocido:** phi3:mini es conservador y a veces acepta vínculos flojos (p. ej. "Multiplicador de Lagrange" con una distribución). Por eso entran como pendientes y no como aceptadas.
+
+
+---
+
+## ✎ Laboratorios editables
+- **Qué era rígido:** el código era de solo lectura, las variables las fijaba quien generó el nodo (los prompts decían "de 1 a 4"), no se podían cambiar los rangos y un nodo sin laboratorio no podía tener uno.
+- **Ahora:** en cada laboratorio, «✎ Editar laboratorio» abre un editor con: añadir/quitar variables (deslizable, casilla o desplegable, hasta 24), cambiar nombre, etiqueta, rango, paso, valor inicial y `grupo`; el código Python (Ctrl+Enter ejecuta); y un aviso de los `{nombres}` del código que no tienen control. Todo se prueba en vivo y solo se guarda al pulsar «Guardar en el nodo». Un nodo sin laboratorio ofrece «＋ Crear un laboratorio» con una plantilla.
+- **Guardado:** `PUT /api/node/{id}/laboratorio` valida (nombres de variable, min<max, paso>0, inicial en rango, desplegables con opciones, sin repetidas, código <= 60 000 caracteres), escribe el JSON de forma atómica y conserva el resto del nodo. El código que guardas tú se aprueba solo (no vuelve a salir el aviso).
+- **Grupos:** los controles con el mismo `grupo` se enseñan juntos bajo un título.
+- **Prompts:** ya no limitan a 1-4 variables: piden las necesarias para aprender el modelo (suelen ser 2-8, máximo 24), agrupadas si son muchas, con rangos que enseñen los regímenes interesantes.
+- **Trampa corregida:** un nodo sin laboratorio llega del backend como `{}` (no como `null`): hay que comprobar que tenga `codigo`.
+- **Borrar neuronas:** `DELETE /api/node/{id}` ahora también quita las aristas huérfanas (las del nodo borrado y cualquier otra cuyo extremo ya no exista; un nodo existe si hay un `data/raw/<id>.json`). Antes quedaban, contaban en el contador de aristas y, al crear otra neurona con el mismo id, reaparecían (también las rechazadas). Si la carpeta `raw` no existe no se toca nada.
+
+---
+
+## 🧪 Prototipo: laboratorios en Pyodide (Python/WebAssembly en el navegador)
+Objetivo: quitar el viaje al backend (y el kernel de Jupyter) de los laboratorios, y de paso tener un sandbox real. **Dependencia nueva: `pyodide` 0.29.5 (npm, MPL-2.0, sin scripts de instalación; Python 3.13).**
+- **Código:** `frontend/src/labs/labWorker.ts` (Web Worker: carga Pyodide, numpy y matplotlib, y ejecuta el MISMO `backend/labplot.py` — importado con `?raw` — más un respaldo con matplotlib real que devuelve PNG), `labRunner.ts` (cola con tiempo máximo: si se pasa, se mata el worker) y la página de pruebas `frontend/prototipo-pyodide.html` + `src/labs/prototipo.ts` (solo desarrollo: abrir `http://localhost:1420/prototipo-pyodide.html` y ejecutar `await window.__prototipo.bench(6)`; necesita `frontend/public/_prototipo/fixtures.json`, que se genera desde el historial de git y no se versiona).
+- **Resultados (13 laboratorios originales, runtime y paquetes del CDN ya en caché):** los 11 laboratorios en vivo dan **exactamente la misma figura que CPython** (tolerancia 1e-6); los 2 de contornos salen por el respaldo de matplotlib (PNG, ~0,5 s por cuadro, 2,3 s la primera vez). Cuadro por laboratorio: 2,5-14 ms la mayoría, 28 (Black-Scholes), 31 (browniano), 66 (Itô, 33 series).
+- **Arranque:** ~3,3 s (runtime 1,7 + numpy 0,3 + matplotlib 0,8 + módulos 0,4); el primer laboratorio que importa scipy tarda ~6,5 s más (descarga y carga de scipy: ~3,5 s). **Bucle infinito:** se corta a los 1,5 s matando el worker y vuelve a estar listo en ~2,8 s.
+- **Dónde se va el tiempo:** la mitad es el código del laboratorio + la grabadora; la otra mitad es `json.dumps` + pasar el texto de Python a JS + `JSON.parse` + mensaje (17-32 ms en los pesados). Margen de mejora claro: no redondear a 6 cifras con f-strings por elemento, devolver arrays tipados en lugar de JSON y parsear en el hilo principal.
+- **Integrado en la app:** `LaboratorioWidget` ya NO llama a `/execute_lab`: usa `obtenerRunner()` (un único motor compartido, `labRunner.ts`) y `adaptar.ts` convierte el resultado del worker al formato que ya pintaba el widget. `KnowledgePanel` lo precalienta al abrir un nodo (`precalentarLaboratorios()`); mientras arranca el widget muestra «Preparando el motor de laboratorios (solo la primera vez)…». Tiempo máximo por ejecución: 3 s (cuenta desde que el código empieza a correr; bajar scipy no cuenta, hasta 60 s). Medido arrastrando un control: Makeham 53 ejecuciones/s, Black-Scholes ~36 (con el servidor eran ~16); el backend no recibe ninguna llamada a `/execute_lab`.
+- **Trampa (corregida): el tiempo máximo contaba importar scipy.stats / pyplot.** La primera vez cuestan segundos; al pasarse de 3 s se mataba el worker y el reintento volvía a empezar en frío, así que el laboratorio daba «tardó más de 3 s» SIEMPRE (le pasó al de Poisson, que cae al respaldo en imagen por `plt.xticks`). Ahora el worker importa pyplot al arrancar y los módulos del código (`find_imports`) antes de arrancar el reloj. Probado con ese laboratorio real (`prototipo-widget.html?nodo=<id>` monta el de cualquier neurona del backend).
+- **Marcas a medida:** la grabadora soporta `plt.xticks(pos[, etiquetas])`, `plt.yticks` y `ax.set_xticks/set_yticks` (antes forzaban el respaldo en imagen: ~0,5 s por cuadro). El laboratorio real de Poisson pasó de imagen a «en vivo», 55 ejecuciones/s (5 ms). Con `rotation`/`fontsize`, leer los ticks (`plt.xticks()`) o sobre barras con nombres sigue cayendo a imagen. Otras cosas que aún fuerzan imagen: contornos, escala log, `bottom=`/apiladas, `where` en `fill_between`.
+- **Trampa:** scipy NO se precarga (instanciarlo congela el worker ~3,5 s y el laboratorio que se arrastra se queda parado); se baja bajo demanda al ejecutar un laboratorio que lo importe. Una medición hecha justo tras recargar la página da cifras absurdas (~0,3 fps) porque el worker aún está arrancando: esperar al primer gráfico antes de medir.
+- **Página de pruebas del widget (solo desarrollo):** `http://localhost:1420/prototipo-widget.html?lab=<nombre>` monta el widget real con los fixtures (sin backend).
+- **Sin internet + CSP estricta:** el runtime y los paquetes (numpy, scipy, matplotlib y 10 dependencias, ~40 MB) van en `frontend/public/pyodide/` (gitignorado). Los deja `frontend/scripts/bajar-pyodide.mjs` (copia el runtime del paquete npm, baja los paquetes del CDN oficial de esa versión y comprueba el sha256 de `pyodide-lock.json`; salta los que ya están; se ejecuta solo en `npm run dev` y `npm run build`). El lock se recorta a esos paquetes: importar otro (pandas...) da `ModuleNotFoundError`, no un 404; para añadirlo, ponerlo en `PAQUETES` del script. El worker lee de `/pyodide/` y ya no hay ninguna referencia a jsdelivr en `src/`.
+- **CSP** (`tauri.conf.json`, antes `null`): solo recursos propios + `'wasm-unsafe-eval'` (Pyodide) + `blob:` para workers + conexión al backend (`localhost:8000`) e IPC de Tauri. Probado con el `dist` servido con esa misma cabecera: el worker arranca y ejecuta un laboratorio con scipy, sin violaciones. **No probado:** los rótulos de clúster en la ventana de Tauri (no hay neuronas) ni el instalador final.
+- **Rótulos de clúster:** `<Text>` de drei/troika, sin `font`, bajaba la fuente de un CDN (no funcionaba sin internet y la CSP lo bloquea). Ahora usa `KaTeX_Main-Bold.woff` (ya está en node_modules). Un carácter que esa fuente no tenga se verá vacío (antes se pedía a un CDN).
+- **Backend adelgazado:** fuera Jupyter (`jupyter_engine.py`), `/execute` (que ejecutaba código arbitrario y no usaba nadie) y `/execute_lab`; `requirements.txt` ya no pide `jupyter_client`, `ipykernel`, `matplotlib` ni `scipy` (se queda `numpy`, que usa el clasificador). Comprobado bloqueando esos imports: los 38 tests del backend pasan y no se importa ninguno. **El `.venv` actual sigue teniéndolos instalados** (no se desinstaló nada); un entorno nuevo desde `requirements.txt` ya no los trae. Las secciones anteriores que mencionan Jupyter o `/execute_lab` son historia.
+- **`labplot.py`** vive ahora en `frontend/src/labs/` con sus 6 tests (`test_labplot.py`, necesitan numpy + matplotlib: hoy se ejecutan con el Python de `backend/.venv`; ver el comando en la cabecera del test). `public/_prototipo/` ya no entra en `dist` (plugin en `vite.config.ts`).
+- **Pendiente para el producto:** decidir cómo se ejecutan `test_labplot.py` cuando el backend ya no tenga matplotlib (entorno de desarrollo aparte o pasarlos a Pyodide), y los hitos que quedan (ver la sección siguiente).
+
+---
+
+## 📦 Hacia la versión pública (hecho / pendiente)
+**Hecho:**
+- **Ajustes** (⚙ arriba a la izquierda, `components/Ajustes.tsx` + `backend/ajustes.py` → `data/ajustes.json`): IA local activada/desactivada, modelo de Ollama (automático o uno de los instalados), carpeta de datos, versión, exportar/importar y «ver el tutorial». Con la IA desactivada ni se arranca Ollama ni se le pregunta nada: el clasificador usa solo las capas matemáticas y las conexiones salen como «afinidad» pendiente.
+- **Exportar / importar** (`backend/intercambio.py`, `GET /api/exportar`, `POST /api/importar`): un JSON `alejandria-neuronas` v1 con las neuronas (sin embedding; se regenera) y sus conexiones. Importar valida todo antes de escribir, NUNCA pisa una neurona con el mismo id, y solo admite conexiones que toquen una neurona recién añadida con ambos extremos existentes (las «rechazadas» de fuera entran como pendientes). 9 tests nuevos (47 en total en el backend).
+- **Tutorial** (`components/Tutorial.tsx`): 6 pasos con el logo; se enseña la primera vez (`localStorage`) y se reabre desde Ajustes. **Ejemplos:** `frontend/public/ejemplos/ejemplos.json` (derivada, Poisson y movimiento browniano, sacados de git 903ddb8, sin embeddings), con botón en el último paso del tutorial y en Ajustes.
+- **Marca:** nombre «Proyecto Alejandría» en `tauri.conf.json` (productName y ventana 1280x800), `index.html` (título, `lang="es"`, favicon `favicon.png`) y `Cargo.toml`; iconos regenerados con `tauri icon` desde `frontend/public/logo.png`; borrados el README y los SVG de la plantilla.
+- **Hallazgo:** en Windows, `localhost` desde Python (`urllib`) tardaba **2 s por llamada** a Ollama (prueba primero IPv6 y espera el fallo). Todas las URL de Ollama usan ya `127.0.0.1` (0,015 s): cada juicio de sinapsis y cada consulta de estado ganan ~2 s.
+- **Repo:** `LICENSE` (MIT, «Proyecto Alejandría contributors»), `README.md` bilingüe, `.github/workflows/tests.yml` (tests + build en cada push; **sin probar**: no se ha ejecutado en GitHub; solo actúa en un repositorio cuya raíz sea esta carpeta) y `.gitignore` con `.venv`, `node_modules`, `dist`, `target` y `backend/data/`.
+
+**Pendiente (necesita decisiones o pruebas reales):**
+- **Instalador generado, sin ejecutar:** `npx tauri build --bundles nsis` produce `frontend/src-tauri/target/release/bundle/nsis/Proyecto Alejandría_0.1.0_x64-setup.exe` (**35 MB**: app + Pyodide y sus paquetes para los laboratorios sin internet + código del backend; instalación por usuario, sin administrador; compila en ~3,5 min). Para ello Tauri descargó NSIS 3.11 y `nsis_tauri_utils.dll` de github.com/tauri-apps a `%LOCALAPPDATA%\\tauri` (fuera del proyecto). **No se ha ejecutado el instalador** (instalaría en tu equipo): no está verificado que los recursos queden en `<carpeta de instalación>\\backend` y que `carpeta_backend()` los encuentre (en las pruebas cae a la carpeta del repositorio, que solo existe en esta máquina).
+- **Probado el `.exe` de producción** (`target\\release\\frontend.exe`, controlado por CDP con `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 --remote-allow-origins=*`): con la CSP real (protocolo `tauri.localhost`), el worker de laboratorios arranca en 4,2 s, un laboratorio en vivo tarda 0,2 s y uno con scipy + respaldo en imagen 3,6 s la primera vez, sin ninguna violación de la CSP. Aparece el tutorial de primera vez y la interfaz habla con el backend.
+- **Instalador propio con asistente oscuro (`frontend/installer/`):** sustituye al de Tauri (blanco, de Windows). Script NSIS con páginas de nsDialogs: bienvenida (pilar ASCII girando, 24 fotogramas generados por `hacer_frames.mjs` con el mismo renderizador de la app), **rutas** (aplicación, motor y neuronas con «Examinar»), **componentes** (Ollama —se detecta si ya está—, modelo a elegir qwen2.5:1.5b / phi3:mini / ninguno, carpeta de modelos, acceso directo en el escritorio), resumen (descarga y espacio estimados), **instalación con barras ASCII** (`[####....] 45%`, una por fase y una total) y fin («abrir al terminar»). Botones y casillas son texto clicable (`[ Siguiente > ]`, `[x]`, `(*)`) porque los de Windows no se pueden colorear; la ventana se tiñe con `SetCtlColors` y se ocultan los botones estándar.
+- **Cómo instala:** NSIS copia la app (`ProyectoAlejandria.exe` + `backend\*.py`), crea `Desinstalar.exe`, accesos directos y la entrada de «Aplicaciones instaladas» (por usuario, sin administrador) y lanza `installer/instalar.ps1` en segundo plano, que hace uv (sha256 fijado) → Python 3.13 → entorno y librerías → Ollama (descarga con % real por bytes y comprobación de la firma Authenticode de Ollama, instalación silenciosa, `OLLAMA_MODELS` de usuario) → modelo (API `/api/pull` de Ollama, % real) y escribe `instalacion.json` con las rutas elegidas. El asistente lee su avance de un archivo de estado de una línea (`uv|python|libs|ollama|modelo|estado|mensaje`) con un temporizador. Cancelar crea un archivo de bandera que el script atiende. Python y librerías no dan bytes (uv no los informa): su % es una estimación por crecimiento de la carpeta.
+- **La app lee la configuración:** `lib.rs` toma motor y datos de `%APPDATA%\dev.alejandria.app\instalacion.json` (o `ALEJANDRIA_CONFIG`) y busca el backend en `backend\` junto al .exe. Si no hay instalador (desarrollo), todo sigue como antes.
+- **Desinstalador oscuro:** pregunta si borrar también las neuronas (por defecto NO), borra app, motor y accesos, deja Ollama y sus modelos y solo vacía carpetas que reconoce como suyas (marcas `instalacion.log` / `nodos.parquet` / `ajustes.json`); usa robocopy porque `RMDir /r` falla con las rutas largas de la caché de uv.
+- **Probado aquí (sin tocar tu sistema):** `Proyecto-Alejandria-Setup.exe /PRUEBA=<carpeta>` lo hace todo dentro de esa carpeta y de la clave de registro `HKCU\Software\ProyectoAlejandriaPrueba` (sin abrir la app, sin variables de entorno, sin accesos reales); `/OLLAMA-FORZAR` baja solo 50 MB de Ollama para ver su barra. `installer/probar.ps1` y `probar_desinstalar.ps1` recorren el instalador y el desinstalador y capturan SOLO su ventana (PrintWindow, nunca el escritorio). Resultado: las seis páginas, instalación completa (uv, Python, 44 librerías, Ollama en simulación, modelo ya presente) en ~25 s, la app instalada arranca su propio backend con el motor y los datos elegidos (8 s) y el desinstalador deja todo limpio (con y sin borrar neuronas, registro incluido). Se construye con `npm run instalador`.
+- **Sin probar:** instalar Ollama de verdad (1,56 GB), descargar un modelo de 1-2 GB, el modo normal fuera de `/PRUEBA` (accesos y registro reales, `OLLAMA_MODELS`), desinstalar desde «Aplicaciones instaladas», cancelar a mitad, un fallo de red, un Windows sin Python/curl/tar, pantallas con escala >100 % (el asistente se ve algo borroso) y WebView2 ausente.
+
+## 🚀 Arranque automático del backend (primera ejecución)
+- **Qué hace** (`frontend/src-tauri/src/lib.rs`, comando `arrancar_backend`; pantalla `components/Arranque.tsx`, estilo terminal con un pilar ASCII en 3D girando (`utils/pilarAscii.ts`, `components/PilarAscii.tsx`: superficie muestreada + z-buffer, ~3 ms por fotograma, 15 fps) y una barra `[####....]`): si el backend no responde en `127.0.0.1:8000` descarga `uv` 0.13.6 (15 MB, de la release oficial de GitHub, **sha256 fijado en el código**; si no coincide se descarta), instala Python 3.13 gestionado (22 MB) y un entorno, instala `requirements.txt` (44 paquetes, ~200 MB) y lanza `uvicorn`. Sin dependencias nuevas de Rust: usa `curl.exe`, `tar.exe` y `certutil` de Windows 10/11. Se salta lo ya hecho (las librerías solo se reinstalan si cambia `requirements.txt`). Al cerrar la ventana, la app cierra el backend que lanzó. Si ya hay un backend en el puerto (desarrollo con `alejandria.bat`) lo usa sin más.
+- **Dónde deja las cosas:** motor (uv, Python, entorno, caché, modelos de fastembed) en `%LOCALAPPDATA%\dev.alejandria.app\motor`; tus neuronas en `%APPDATA%\dev.alejandria.app\datos`. Variables para pruebas: `ALEJANDRIA_APP_DIR` (todo en otra carpeta), `ALEJANDRIA_BACKEND_DIR`. `FASTEMBED_CACHE_PATH` ya no cae en TEMP. En el paquete, el código del backend va como recurso (`bundle.resources`) y el instalador NSIS es por usuario (`installMode: currentUser`, español e inglés).
+- **Probado (carpeta temporal, `tauri dev`, sin backend):** primera ejecución completa en unos 3 min (uv, Python, entorno y 44 librerías), la interfaz entra sola cuando el backend responde, los datos van a la carpeta indicada, `--no-bin` evita que uv escriba en `~\.local\bin` (en la primera prueba suelta sí lo hizo y lo borré), y al cerrar la ventana no queda ningún proceso ni el puerto abierto. Segundo arranque: backend listo a los ~10 s contando Vite y la app.
+- **No probado:** un Windows sin Python/curl/tar, un fallo de red a mitad (hay botón «Reintentar»). (El puerto ocupado y el backend huérfano se resolvieron después: ver «Puerto dinámico y vigilante».)
+- **Logo del instalador** (tu logo ya está en los iconos de la app, el tutorial y el favicon; el instalador llevará el suyo propio, aún por hacer) y caché de fastembed fuera de TEMP.
+- **Limpieza antes de subir:** repo NUEVO con historial limpio; quitar rutas personales de este documento y de las memorias; revisar claves y datos personales (y el correo de la universidad en el historial viejo); `git rm --cached` de `backend/data/` si se reutiliza este árbol; poner tu nombre como titular del copyright si lo prefieres.
+- **Sin probar en la ventana de Tauri:** descarga del archivo exportado, rótulos de clúster con la fuente propia y la CSP en producción.
+
+**Ajustes posteriores (instalador y pilar):**
+- El asistente no abría la app al terminar aunque «Abrir al terminar» estuviera marcada: la función de salida de la página final estaba vacía. Ahora `PgFinSalir` lanza `ProyectoAlejandria.exe` (en `/PRUEBA` con `ALEJANDRIA_CONFIG` apuntando a la configuración de prueba); `probar.ps1` lo comprueba (la app se abre).
+- El pilar ASCII girando sale ahora también en el **tutorial** y al **asimilar una neurona** (`components/ProcesandoNeurona.tsx`: «Guardando y clasificando» → «Buscando conexiones» con barra `[####....] 37%` y `hecho/total` leídos de `/api/sinapsis/estado`, → «N conexiones propuestas» y recarga). La barra ASCII común está en `utils/barraAscii.ts`.
+
+**Fallos encontrados con la instalación real del usuario (y arreglos):**
+- **Neuronas que no se dibujaban en la app de producción** (el universo salía vacío y parecía «congelado»; el contador decía 3 nodos): la CSP bloqueaba el `blob:` que usa troika-three-text para su worker (`script-src` ahora incluye `blob:`), y troika además pedía a un CDN el índice de fuentes unicode porque la fuente de los rótulos (KaTeX Main Bold) no tenía la «Á». Ahora los rótulos usan **DejaVu Sans Bold** (de la rueda de matplotlib, licencia libre, en `public/fuentes/` con su LICENSE) y no se hace ninguna petición externa. Además `components/Seguro.tsx` aísla los rótulos: si uno falla, se omite en vez de dejar el universo en blanco. Comprobado con el `.exe` de producción controlado por CDP: 3 neuronas y los rótulos MATEMÁTICAS / ESTADÍSTICA, sin errores en consola. (Lección: en desarrollo no hay CSP, así que esto solo se ve probando el `.exe` de producción.)
+- **Instalador: «La instalación de librerías falló (código 2)»:** el entorno de Python había quedado sin `pyvenv.cfg` (un borrado interrumpido), y uv lo tomaba por el Python base («externally managed»). `instalar.ps1` y `lib.rs` ahora comprueban `pyvenv.cfg` y rehacen el entorno entero si falta (probado: se rompe a propósito y se recupera). El desinstalador, antes de borrar el motor, mata los procesos cuyo ejecutable está dentro (el backend de la app mantenía bloqueados los archivos y dejaba el borrado a medias).
+- **Instalador: [ Cerrar ] y [ Cancelar ] no cerraban:** usaban `Quit` dentro de una página de nsDialogs; ahora envían el mismo `WM_COMMAND 2` que el botón nativo de Cancelar. Probado con un clic real (`probar_fallo.ps1`, con `/PRUEBA /FALLAR` que provoca un error simulado). La ruta del registro en la pantalla de error se acorta por el medio.
+
+## 🔌 Puerto dinámico, vigilante, modelo en el instalador y publicación
+- **Puerto dinámico** (`lib.rs`: `elegir_puerto`, `es_nuestro`): se prefiere el 8000; si lo ocupa otro programa (que no responde como Alejandría) se usa uno libre y `arrancar_backend` devuelve el puerto; el frontend lo fija con `fijarPuerto()` (`utils/api.ts`, `API` es un `let`). La CSP admite `localhost:*` y `127.0.0.1:*`.
+- **Vigilante** (`backend/vigilante.py`): la app pasa su PID en `ALEJANDRIA_PADRE` y el backend se cierra solo si ese proceso desaparece (ctypes `OpenProcess` + `WaitForSingleObject`; en Windows no vale `os.kill(pid, 0)`). Tests: `TestVigilante` (56 en el backend).
+- **Modelo de clasificación en el instalador:** fase `clasif` de `instalar.ps1` (7 fases en total) descarga el modelo de fastembed (~230 MB) a `motor\modelos`, con % por tamaño de carpeta; la app lo hace igual en `lib.rs` si falta.
+- **Laboratorios:** `bar(..., bottom=)` apiladas, `fill_between(..., where=)` y escala logarítmica en base 10 (`set_xscale/yscale('log')`, `semilogx/y`, `loglog`) se dibujan en vivo (`labplot.py`, `labSpec.ts`, `LabChart.tsx`; 11 tests de Python, 25 de JS). Demo sin backend: `prototipo-widget.html?demo=graficos`. pandas 2.3.3 incluido en Pyodide (+4,5 MB; el resto de sus dependencias ya estaban; comprobado offline); contornos/3D siguen como imagen.
+- **Publicación:** `.github/workflows/publicar.yml` (al crear una etiqueta `v*`: construye el instalador y lo adjunta a una Release con `SHA256SUMS.txt`; **sin probar en GitHub**). El instalador no está firmado (SmartScreen avisa; explicado en el README). Capturas neutras en `docs/img/` (solo la ventana del instalador).
+- **Revisión previa a publicar:** escaneo de los archivos publicables (sin `backend/data/`): sin claves, tokens, `.env` ni rutas personales. Se publica un repositorio nuevo, sin el historial de desarrollo.
+- **Verificado en la prueba final:** instalación completa en `/PRUEBA` con la fase «Clasificación» (modelo de ~240 MB; HuggingFace falló una vez por red —certificado/WinError 10038— y el reintento automático de `instalar.ps1`, 3 intentos, lo resolvió), la app se abre al terminar; con el 8000 ocupado por un programa que acepta y no contesta, la app arranca el backend en otro puerto (`/status` OK) y, al matar la app de golpe, el backend se cierra en ~2 s. Esa prueba destapó un fallo: `Arranque.tsx` hacía `fetch` sin tiempo máximo y se quedaba en «Comprobando el motor 0%»; ahora lleva `AbortSignal.timeout` y exige la clave `db`. Aviso: una carpeta de instalación con ruta muy larga (>~200 caracteres) hace que onnxruntime no cargue su DLL («nombre demasiado largo»); con rutas normales no pasa.
+
+## 🖥️ Rediseño ASCII de las interfaces (en curso)
+Decisiones (grill-me): estilo terminal como Ajustes en todo; paleta verde `#00ffaa` / ámbar `#ffd166` / texto `#cfeee3` (sin magenta); iconos sustituidos por texto `[ Botón ]`; cromo en monoespaciada (DejaVu Sans Mono, empaquetada en `public/fuentes/`, sacada de la rueda de matplotlib) y teoría/fórmulas en sans; HUD en barras superior e inferior; barra de título propia; laboratorios con sliders ASCII; entrega por fases.
+- **Fase 1 (hecha, sin commit):** variables y clases en `App.css` (`--t-*`, `.t-btn`, `.t-marco`, `.t-input`, `.t-check`), piezas comunes en `components/terminal.tsx` (`Modal`, `Cabecera`, `Seccion`), `components/Hud.tsx` (barra superior: `[ Ajustes ]`, búsqueda con lista navegable por teclado y `[ Recargar ]`; barra inferior: `[ + Inyectar neurona ]`, `N nodos | M aristas | IA: ...` y `[ Centrar vista ]`), `components/BarraTitulo.tsx` (ventana sin decoración: `decorations: false`, arrastre con `data-tauri-drag-region`, `[_] [□] [x]` y 8 asas invisibles que llaman a `startResizeDragging`; permisos en `capabilities/default.json`), rótulos del universo `[ CLÚSTER ]` en DejaVu Sans Mono Bold sin brillo y tooltip terminal. `Universe` ya no usa `100vw/100vh`: llena `.contenido` (lo que deja la barra de título).
+- **Probado con el exe de producción por CDP:** HUD y búsqueda (navegación con flechas/Enter), Ajustes, panel abierto entre las barras, maximizar/restaurar/minimizar/cerrar. **No probado:** arrastrar la barra y redimensionar con el ratón (necesita un ratón real), y el instalador no se ha reconstruido con estos cambios.
+- **Fase 2 (hecha, sin commit):** Sintetizador de nodos (`Modal` + `Cabecera`, botones `[ Copiar: ... ]`, `[ Cancelar ]`, `[ Asimilar neurona ]` con `.t-btn.principal`), Tutorial (textos adaptados a las barras), pantalla de aprobación de laboratorio (`[!]`, código en marco mono) y `ProcesandoNeurona`/`Arranque`/`PilarAscii` con la variable `--t-mono`. Verificado con el exe de producción por CDP.
+- **Fase 3 (hecha, sin commit):** panel de neurona (`KnowledgePanel.tsx` reescrito): marco terminal entre las barras, cabecera `> Nombre` con `[ Editar clúster ]`, `[ Destruir ]` y `[x]`, pestañas de texto (`[ Teoría ]` la activa), tarjetas con borde recto para glosario, ejercicios, referencias y sinapsis (`[ Aceptar ]` / `[ Rechazar ]`), teoría y fórmulas en sans. Los `prompt`/`confirm`/`alert` nativos de Windows se sustituyen por `Dialogo` (en `terminal.tsx`) y un mensaje de error en la cabecera. Clases nuevas: `.t-btn.peligro`, `.t-campo`, `.t-tab`. Enlaces de la teoría en verde (sin cian).
+- **Fase 4 (hecha):** laboratorios. `components/SliderAscii.tsx` (barra `[#####-----]` arrastrable con ratón/táctil y teclado: flechas, RePág/AvPág, Inicio/Fin; `role="slider"`; el número de celdas se adapta al ancho), controles en marco discontinuo con `## Controles paramétricos`, `[ Restablecer ]`, casillas `[x]` y `<select class="t-campo">`, botones `[ Ver código Python ]` / `[ Editar laboratorio ]`, editor (`LabEditor`) con marco ámbar y `[ Ejecutar ]` / `[ Guardar en el nodo ]` / `[ Salir del editor ]`, estado `[en vivo] 883 ms`. El gráfico mantiene fondo blanco (los colores del código de cada laboratorio lo suponen) pero con esquinas rectas, borde fino y rótulos en DejaVu Sans Mono. Verificado por CDP: clic en la barra, flechas, Inicio/Fin y el gráfico se redibuja; no se probó arrastrar con ratón real ni guardar desde el editor.
+- **Rediseño ASCII completo (fases 1-4).** Pendiente solo lo ya conocido: reconstruir el instalador y refrescar la copia limpia antes de publicar.
+
+## 🧮 Fórmulas superpuestas o cortadas (arreglado)
+- **Causa:** el CSS de KaTeX era de la 0.19.0 (dependencia directa `katex`) pero `rehype-katex` generaba el HTML con su propia copia 0.16.47: las fracciones anidadas, exponentes y `\tag` se montaban unos sobre otros. **Arreglo:** `katex` pasa a `^0.16.47` (una sola versión: `npm ls katex` la muestra deduplicada). Si algún día se sube `katex`, hay que subir a la vez `rehype-katex` y comprobar `prototipo-widget.html?formulas`.
+- **CSS (`App.css`):** `.katex-display` con `overflow-y: hidden` y `padding: .6em 0` (con `overflow-x: auto` el otro eje también era `auto` y salía una barra vertical junto a cada ecuación) y sin `display: inline-block` en `.katex-display .katex` (pisaba el `display: block` de KaTeX y pegaba la etiqueta `\tag` a la ecuación según el orden de las hojas de estilo).
+- **Comprobación:** `prototipo-widget.html?formulas` (solo desarrollo) pinta con el mismo markdown y CSS del panel 7 casos difíciles (fracciones anidadas con `\tag`, matriz y `cases`, sumas e integrales, `aligned`, delimitadores grandes, en línea y una ecuación larguísima con scroll horizontal): sin cortes verticales ni errores. En la app de producción, las 3 ecuaciones de los ejercicios de Poisson y las 7 de su teoría, sin cortes ni errores.

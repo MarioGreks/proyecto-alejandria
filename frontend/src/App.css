@@ -1,0 +1,146 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Evitar barras de scroll */
+  background-color: #020202; /* Negro profundo del espacio */
+  font-family: 'Inter', system-ui, sans-serif; /* Tipografía técnica base */
+}
+
+.container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* El contenido ocupa lo que deja la barra de título propia */
+.contenido {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- Estética terminal (ASCII) compartida: variables, fuente y componentes básicos ---- */
+@font-face { font-family: 'DejaVu Sans Mono'; src: url('/fuentes/DejaVuSansMono.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DejaVu Sans Mono'; src: url('/fuentes/DejaVuSansMono-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+
+:root {
+  --t-mono: 'DejaVu Sans Mono', Consolas, 'Courier New', monospace;
+  --t-fondo: #05070d;
+  --t-verde: #00ffaa;
+  --t-ambar: #ffd166;
+  --t-texto: #cfeee3;
+  --t-suave: #77aaaa;
+  --t-linea: #1f5a47;
+  --t-error: #ff6b6b;
+}
+
+/* Botón de texto con borde recto de 1px */
+.t-btn {
+  font-family: var(--t-mono); font-size: 13px; line-height: 1.2;
+  background: transparent; color: var(--t-verde); border: 1px solid var(--t-verde);
+  padding: 6px 12px; cursor: pointer; white-space: nowrap; border-radius: 0;
+}
+.t-btn:hover:not(:disabled) { background: rgba(0, 255, 170, 0.14); }
+.t-btn:focus-visible { outline: 1px dashed var(--t-ambar); outline-offset: 2px; }
+.t-btn:disabled { opacity: 0.4; cursor: default; }
+.t-btn.principal { background: var(--t-verde); color: #000; font-weight: 700; }
+.t-btn.principal:hover:not(:disabled) { background: #5fffc8; }
+.t-btn.peligro { color: var(--t-error); border-color: var(--t-error); }
+.t-btn.peligro:hover:not(:disabled) { background: rgba(255, 107, 107, 0.14); }
+.t-btn.plano { border-color: transparent; padding: 6px 8px; }
+a.t-btn { text-decoration: none; display: inline-block; }
+
+/* Campo de formulario (select / input de una línea) */
+.t-campo { font-family: var(--t-mono); font-size: 13px; padding: 8px; background: var(--t-fondo); color: var(--t-texto); border: 1px solid var(--t-linea); border-radius: 0; outline: none; }
+.t-campo:focus { border-color: var(--t-verde); }
+
+/* Pestañas: texto plano, la activa entre corchetes */
+.t-tab { font-family: var(--t-mono); font-size: 13px; background: transparent; border: none; color: var(--t-suave); padding: 10px 6px; cursor: pointer; flex: 1; white-space: nowrap; }
+.t-tab:hover { color: var(--t-texto); }
+.t-tab.activa { color: var(--t-verde); font-weight: 700; }
+.t-btn.plano:hover:not(:disabled) { border-color: var(--t-linea); }
+
+/* Casilla ASCII: [ ] / [x] (el input sigue siendo un checkbox: teclado y lectores de pantalla funcionan igual) */
+input[type="checkbox"].t-check { appearance: none; -webkit-appearance: none; width: auto; height: auto; margin: 0; cursor: pointer; font-family: var(--t-mono); color: var(--t-verde); }
+input[type="checkbox"].t-check::before { content: '[ ]'; }
+input[type="checkbox"].t-check:checked::before { content: '[x]'; }
+input[type="checkbox"].t-check:focus-visible { outline: 1px dashed var(--t-ambar); outline-offset: 2px; }
+
+.t-marco { background: var(--t-fondo); border: 1px solid var(--t-verde); font-family: var(--t-mono); color: var(--t-texto); }
+.t-input {
+  font-family: var(--t-mono); font-size: 13px; background: transparent; color: var(--t-texto);
+  border: none; outline: none; border-radius: 0; min-width: 0;
+}
+.t-input::placeholder { color: var(--t-suave); opacity: 0.7; }
+
+/* Estilos personalizados para las fórmulas matemáticas (KaTeX) y enlaces Markdown */
+.markdown-container {
+}
+
+.markdown-container a {
+  color: var(--t-verde);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.markdown-container a:hover {
+  color: var(--t-ambar);
+}
+
+.katex {
+  font-size: 1.15em !important;
+  color: #f0f0f0; /* Blanco apagado para las matemáticas inline */
+  padding: 0 2px;
+}
+
+.katex-display {
+  margin: 30px 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;  /* con auto en los dos ejes salía una barra vertical junto a cada ecuación */
+  padding: 0.6em 0;    /* aire arriba y abajo: las fracciones anidadas y los exponentes no se recortan */
+  position: relative;
+  display: block; /* Asegurar que es un bloque */
+  width: 100%;
+}
+
+.katex-display .katex {
+  font-size: 1.25em !important;
+  color: #ffffff; /* Blanco puro para las ecuaciones en bloque */
+  /* sin `display`: KaTeX lo pone en block (y su etiqueta \tag se ancla al borde derecho); forzar inline-block la pegaba a la ecuación según el orden de las hojas */
+}
+
+/* Estilos de Scrollbar (Global y para ecuaciones) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 170, 0.25);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 170, 0.5);
+}
+
+/* Las gráficas del laboratorio van sobre fondo blanco: las fórmulas de títulos y etiquetas no pueden ser blancas. */
+.lab-chart .katex {
+  color: inherit;
+  font-size: 1em !important;
+  padding: 0;
+}

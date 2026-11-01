@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Backend
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          python -m unittest test_backend
+      - name: Grabadora de figuras (labplot)
+        working-directory: frontend/src/labs
+        run: |
+          pip install matplotlib
+          python -m unittest test_labplot
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npx tsc --noEmit
+          npm run build
+
+# Cuando el backend se empaquete con la app (arranque con uv), aquí irá el trabajo de publicación con tauri-action al crear una etiqueta v*.

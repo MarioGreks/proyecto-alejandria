@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Proyecto Alejandría",
+  "version": "0.1.0",
+  "identifier": "dev.alejandria.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Proyecto Alejandría",
+        "decorations": false,
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Proyecto Alejandría",
+    "shortDescription": "Tu segundo cerebro, local y privado",
+    "copyright": "MIT License",
+    "category": "Education",
+    "resources": {
+      "../../backend/main.py": "backend/main.py",
+      "../../backend/database.py": "backend/database.py",
+      "../../backend/clasificador.py": "backend/clasificador.py",
+      "../../backend/ollama_service.py": "backend/ollama_service.py",
+      "../../backend/ajustes.py": "backend/ajustes.py",
+      "../../backend/intercambio.py": "backend/intercambio.py",
+      "../../backend/vigilante.py": "backend/vigilante.py",
+      "../../backend/requirements.txt": "backend/requirements.txt"
+    },
+    "windows": {
+      "nsis": { "installMode": "currentUser", "languages": ["Spanish", "English"] }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

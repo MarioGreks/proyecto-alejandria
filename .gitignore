@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+*.tmp
+
+# Entornos, dependencias y compilados
+.venv/
+node_modules/
+dist/
+target/
+
+# Tus neuronas y ajustes (en un repositorio nuevo esta carpeta no se sube)
+backend/data/
+
+# Referencias del prototipo Pyodide (salen del historial de git; no se publican)
+frontend/public/_prototipo/
+# Runtime y paquetes de Pyodide: los baja frontend/scripts/bajar-pyodide.mjs
+frontend/public/pyodide/
+
+# Secretos: nunca se suben
+.env
+.env.*
+*.pem
+*.key
+*.pfx

@@ -1,0 +1,48 @@
+name: Publicar
+
+# Al crear una etiqueta v* (por ejemplo `git tag v0.1.0 && git push --tags`) construye el instalador y lo adjunta a una Release con su hash SHA-256.
+# SIN PROBAR en GitHub todavía: se ha probado el mismo proceso en local (npm run instalador). El instalador no está firmado (ver README, SmartScreen).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Compilar la app
+        working-directory: frontend
+        run: |
+          npm ci
+          # `tauri build` compila la app en release (y su beforeBuildCommand baja Pyodide) y de paso descarga NSIS, que usa installer/construir.mjs
+          npx tauri build --bundles nsis
+
+      - name: Construir el instalador propio
+        working-directory: frontend
+        run: node installer/construir.mjs
+
+      - name: Calcular el hash SHA-256
+        shell: pwsh
+        working-directory: frontend/src-tauri/target/release/bundle
+        run: |
+          $hash = (Get-FileHash Proyecto-Alejandria-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Proyecto-Alejandria-Setup.exe" | Out-File -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            frontend/src-tauri/target/release/bundle/Proyecto-Alejandria-Setup.exe
+            frontend/src-tauri/target/release/bundle/SHA256SUMS.txt

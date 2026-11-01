@@ -1,0 +1,43 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "pyodide": "node scripts/bajar-pyodide.mjs",
+    "predev": "npm run pyodide",
+    "dev": "vite",
+    "prebuild": "npm run pyodide",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "instalador": "tauri build --no-bundle && node installer/construir.mjs",
+    "test": "node --test src/utils/labSpec.test.mjs src/labs/adaptar.test.mjs src/utils/pilarAscii.test.mjs src/utils/prompts.test.mjs"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "@react-three/postprocessing": "^3.1.3",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@types/three": "^0.186.0",
+    "katex": "^0.16.47",
+    "pyodide": "0.29.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.10.1",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "three": "^0.186.1",
+    "three-stdlib": "^2.36.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}

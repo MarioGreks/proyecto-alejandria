@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="fondo" cx="50%" cy="34%" r="70%">
+      <stop offset="0" stop-color="#12304a"/>
+      <stop offset="1" stop-color="#050912"/>
+    </radialGradient>
+    <radialGradient id="luz" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffd166" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#fondo)"/>
+  <!-- La luz del faro se reparte en una red de neuronas -->
+  <circle cx="256" cy="168" r="120" fill="url(#luz)"/>
+  <g stroke="#00ffaa" stroke-width="7" stroke-linecap="round" opacity=".85">
+    <line x1="256" y1="168" x2="112" y2="120"/>
+    <line x1="256" y1="168" x2="404" y2="112"/>
+    <line x1="256" y1="168" x2="92" y2="238"/>
+    <line x1="256" y1="168" x2="424" y2="236"/>
+    <line x1="256" y1="168" x2="256" y2="52"/>
+    <line x1="112" y1="120" x2="256" y2="52"/>
+    <line x1="404" y1="112" x2="256" y2="52"/>
+    <line x1="112" y1="120" x2="92" y2="238"/>
+    <line x1="404" y1="112" x2="424" y2="236"/>
+  </g>
+  <g fill="#00ffaa">
+    <circle cx="112" cy="120" r="19"/>
+    <circle cx="404" cy="112" r="19"/>
+    <circle cx="92" cy="238" r="16"/>
+    <circle cx="424" cy="236" r="16"/>
+    <circle cx="256" cy="52" r="17"/>
+  </g>
+  <!-- Faro -->
+  <path d="M218 214h76l30 206H188z" fill="#dff7ee"/>
+  <path d="M211 262h90l-5 36h-80zM200 346h112l-5 36H205z" fill="#00ffaa" opacity=".9"/>
+  <rect x="172" y="420" width="168" height="34" rx="8" fill="#00ffaa"/>
+  <rect x="208" y="196" width="96" height="22" rx="6" fill="#00ffaa"/>
+  <rect x="226" y="146" width="60" height="50" rx="8" fill="#ffd166"/>
+  <path d="M256 112l46 38h-92z" fill="#00ffaa"/>
+  <circle cx="256" cy="170" r="12" fill="#fff6d6"/>
+</svg>
