@@ -101,6 +101,8 @@ Function un.HacerBorrado
   ${EndIf}
   ${If} $R9 == ""
     RMDir /r "$RutaApp\backend"
+    Delete "$RutaApp\LICENSE"
+    Delete "$RutaApp\THIRD-PARTY-NOTICES.md"
     Delete "$RutaApp\Desinstalar.exe"
     RMDir "$RutaApp"
     Delete "$CarpetaMenu\${APP}.lnk"

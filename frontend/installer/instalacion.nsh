@@ -23,6 +23,8 @@ Function InstalarApp
   File "${BACKEND}\vigilante.py"
   File "${BACKEND}\requirements.txt"
   SetOutPath "$RutaApp"
+  File "..\..\LICENSE"                       ; licencia del proyecto y avisos de terceros (se generan con `npm run avisos`), junto a la app
+  File "..\..\THIRD-PARTY-NOTICES.md"
   WriteUninstaller "$RutaApp\Desinstalar.exe"
 
   CreateDirectory "$CarpetaMenu"

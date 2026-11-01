@@ -4,13 +4,15 @@ import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } fro
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 
-interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; modelos: string[]; neuronas: number }
+interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number }
 
 
 export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void; onTutorial: () => void }) {
     const [e, setE] = useState<Estado | null>(null);
     const [mensaje, setMensaje] = useState('');
     const archivo = useRef<HTMLInputElement>(null);
+    const [avisos, setAvisos] = useState<string | null>(null);   // texto de THIRD-PARTY-NOTICES.md; se carga solo al pedirlo (va en un trozo aparte del paquete)
+    const verAvisos = () => import('../../../THIRD-PARTY-NOTICES.md?raw').then(m => setAvisos(m.default)).catch(() => setMensaje('Error: no se pudieron cargar las licencias de terceros.'));
 
     const cargar = () => fetch(`${API}/api/ajustes`).then(r => r.json()).then(setE).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
     useEffect(() => { cargar(); }, []);
@@ -45,9 +47,14 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
                             <select value={e.modelo} disabled={!e.ia_activa || e.modelos.length === 0} onChange={ev => guardar({ modelo: ev.target.value })}
                                 className="t-campo" style={{ padding: 5 }}>
                                 <option value="">Automático (el mejor instalado)</option>
-                                {e.modelos.map(m => <option key={m} value={m}>{m}</option>)}
+                                {e.modelos.map(m => <option key={m} value={m}>{m}{e.modelos_restringidos?.includes(m) ? ' (licencia restringida)' : ''}</option>)}
                             </select>
                         </label>
+                        {e.ia_activa && e.modelos_restringidos?.includes(e.modelo) && (
+                            <div style={{ marginTop: 8, color: 'var(--t-ambar)', fontSize: 12, lineHeight: 1.5 }}>
+                                [!] Este modelo tiene una licencia no comercial o con condiciones propias. Revísala antes de un uso comercial.
+                            </div>
+                        )}
                     </Seccion>
 
                     <Seccion titulo={`Tus datos (${e.neuronas} neuronas)`}>
@@ -66,10 +73,19 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
 
                     <Seccion titulo="Acerca de">
                         <div>Proyecto Alejandría v{e.version} · licencia MIT</div>
-                        <button className="t-btn" style={{ marginTop: 10 }} onClick={onTutorial}>Ver el tutorial otra vez</button>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                            <button className="t-btn" onClick={onTutorial}>Ver el tutorial otra vez</button>
+                            <button className="t-btn" onClick={verAvisos}>Licencias de terceros</button>
+                        </div>
                     </Seccion>
                 </>)}
             </div>
+            {avisos !== null && (
+                <Modal ancho={920} z={70}>
+                    <Cabecera titulo="Licencias de terceros" onCerrar={() => setAvisos(null)} />
+                    <pre style={{ margin: '14px 0 0', maxHeight: '68vh', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'var(--t-mono)', fontSize: 11.5, lineHeight: 1.45, color: 'var(--t-texto)', border: '1px solid var(--t-linea)', padding: 12 }}>{avisos}</pre>
+                </Modal>
+            )}
         </Modal>
     );
 }

@@ -57,6 +57,8 @@ El instalador se puede probar sin tocar tu sistema: `Proyecto-Alejandria-Setup.e
 
 [MIT](LICENSE)
 
+Los avisos de copyright y las licencias de las bibliotecas de terceros que se redistribuyen con la aplicación están en [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). El instalador lo copia junto a la app y se ve en Ajustes → «Licencias de terceros». Se regenera con `npm run avisos`.
+
 ### Modelos de IA y software de terceros
 
 Proyecto Alejandría **no incluye ningún modelo de IA**. El instalador los descarga una sola vez desde su origen; son **gratuitos y de pesos abiertos (sin coste)**, y cada uno tiene su propia licencia. La licencia MIT de este proyecto cubre solo su código.
@@ -69,7 +71,7 @@ Proyecto Alejandría **no incluye ningún modelo de IA**. El instalador los desc
 | [Ollama](https://ollama.com) | Ejecutar la IA en tu equipo | MIT |
 | [Pyodide](https://pyodide.org) | Ejecutar los laboratorios de Python | MPL-2.0 |
 
-Gratuito no siempre significa de código abierto en el sentido de la OSI: los Qwen 3B y 72B son de pesos abiertos y sin coste, pero con restricciones de uso. Si eliges otro modelo, revisa su licencia, sobre todo antes de un uso comercial.
+Gratuito no siempre significa de código abierto en el sentido de la OSI: los Qwen 3B y 72B son de pesos abiertos y sin coste, pero con restricciones de uso. La selección automática de modelo nunca elige Qwen 2.5 de 3B ni de 72B: solo se usan si los eliges tú en Ajustes, que además te avisa. Si eliges otro modelo, revisa su licencia, sobre todo antes de un uso comercial.
 
 ---
 
@@ -114,6 +116,8 @@ The installer can be tried without touching your system: `Proyecto-Alejandria-Se
 
 [MIT](LICENSE)
 
+Copyright notices and licenses of the third-party libraries redistributed with the application are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The installer copies it next to the app and it is shown in Settings → "Licencias de terceros". Regenerate it with `npm run avisos`.
+
 #### AI models and third-party software
 
 Proyecto Alejandría **does not ship any AI model**. The installer downloads them once from their source; they are **free of charge and open-weight**, and each has its own license. This project's MIT license covers its code only.
@@ -126,4 +130,4 @@ Proyecto Alejandría **does not ship any AI model**. The installer downloads the
 | [Ollama](https://ollama.com) | Running the AI on your machine | MIT |
 | [Pyodide](https://pyodide.org) | Running the Python labs | MPL-2.0 |
 
-Free of charge does not always mean open source in the OSI sense: Qwen 3B and 72B are open-weight and cost nothing, but have usage restrictions. If you pick another model, check its license, especially before commercial use.
+Free of charge does not always mean open source in the OSI sense: Qwen 3B and 72B are open-weight and cost nothing, but have usage restrictions. Automatic model selection never picks Qwen 2.5 3B or 72B: they are only used if you choose them in Settings, which also warns you. If you pick another model, check its license, especially before commercial use.

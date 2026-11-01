@@ -17,6 +17,9 @@ if (!existsSync(makensis)) {
     console.error(`No se encuentra ${makensis}.\nSe descarga solo la primera vez con \`npx tauri build --bundles nsis\` (NSIS 3.11 y nsis_tauri_utils de github.com/tauri-apps).`);
     process.exit(1);
 }
+for (const f of ['LICENSE', 'THIRD-PARTY-NOTICES.md']) {          // el instalador los copia junto a la app
+    if (!existsSync(join(AQUI, '..', '..', f))) { console.error(`Falta ${f} en la raíz del repositorio (los avisos se generan con \`npm run avisos\`).`); process.exit(1); }
+}
 mkdirSync(SALIDA, { recursive: true });
 // NSIS solo entiende UTF-8 (acentos) si el archivo empieza por BOM: se garantiza aquí por si un editor lo quitó.
 for (const f of readdirSync(AQUI).filter(n => /\.(nsi|nsh|ps1)$/.test(n))) {

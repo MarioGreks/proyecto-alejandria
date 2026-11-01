@@ -6,11 +6,20 @@ import subprocess
 import urllib.request
 import urllib.error
 import json
+import re
 from typing import List, Optional
 
 import ajustes
 
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+
+# Pesos con licencia no comercial o con condiciones propias: Qwen 2.5 de 3B (Qwen Research) y de 72B (Qwen License); el resto de tamaños es Apache-2.0.
+# Cubre variantes como qwen2.5-coder:3b o qwen2.5:3b-instruct-q4_K_M. Ver el README («Modelos de IA y software de terceros»).
+_LICENCIA_RESTRINGIDA = re.compile(r"(?:^|/)qwen2\.5[^:/]*:(?:3b|72b)(?![0-9a-z.])", re.IGNORECASE)
+
+def licencia_restrictiva(nombre: str) -> bool:
+    """¿Es un modelo con licencia no comercial o con restricciones? El modo automático no los elige; solo se usan si el usuario los elige en Ajustes."""
+    return bool(_LICENCIA_RESTRINGIDA.search(nombre or ""))
 
 def is_ollama_running(timeout: float = 2.0) -> bool:
     """Comprueba si el servidor de Ollama responde en 127.0.0.1:11434."""
@@ -111,9 +120,12 @@ def get_best_llm_model(preferencia: str = "phi3:mini") -> str:
     if not models:
         return preferencia
 
-    elegido = ajustes.leer()["modelo"]                # el que el usuario eligió en Ajustes, si sigue instalado
+    elegido = ajustes.leer()["modelo"]                # el que el usuario eligió en Ajustes, si sigue instalado (aunque tenga licencia restringida)
     if elegido in models:
         return elegido
+
+    # En automático nunca se elige un modelo de licencia restringida; si solo hay de esos, se devuelve la preferencia (la IA queda sin modelo hasta que se elija uno)
+    models = [m for m in models if not licencia_restrictiva(m)]
 
     # 1. Coincidencia exacta o parcial con la preferencia
     for m in models:
@@ -131,4 +143,4 @@ def get_best_llm_model(preferencia: str = "phi3:mini") -> str:
             return m
 
     # 4. Fallback al primer modelo disponible
-    return models[0]
+    return models[0] if models else preferencia

@@ -9,9 +9,9 @@ import ajustes
 import vigilante
 import intercambio
 from database import db_conn, Concepto, DATA_DIR
-from ollama_service import ensure_ollama_running, is_ollama_running, get_available_models
+from ollama_service import ensure_ollama_running, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.1.0"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.1.1"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -464,8 +464,10 @@ class AjustesRequest(BaseModel):
 @app.get("/api/ajustes")
 def leer_ajustes():
     ollama_ok = is_ollama_running()
+    modelos = get_available_models() if ollama_ok else []
     return {**ajustes.leer(), "version": APP_VERSION, "carpeta_datos": DATA_DIR, "ollama": ollama_ok,
-            "modelos": get_available_models() if ollama_ok else [], "neuronas": len(db_conn.get_universe_metadata())}
+            "modelos": modelos, "modelos_restringidos": [m for m in modelos if licencia_restrictiva(m)],
+            "neuronas": len(db_conn.get_universe_metadata())}
 
 @app.put("/api/ajustes")
 def guardar_ajustes(req: AjustesRequest):

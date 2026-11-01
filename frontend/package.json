@@ -1,10 +1,11 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "pyodide": "node scripts/bajar-pyodide.mjs",
+    "avisos": "node scripts/avisos.mjs",
     "predev": "npm run pyodide",
     "dev": "vite",
     "prebuild": "npm run pyodide",

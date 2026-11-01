@@ -482,6 +482,30 @@ class TestAjustes(unittest.TestCase):
             ajustes.guardar({"modelo": "desinstalado:1b"})
             self.assertEqual(ollama_service.get_best_llm_model(), "phi3:mini")
 
+    def test_licencia_restrictiva_solo_en_qwen25_de_3b_y_72b(self):
+        for m in ["qwen2.5:3b", "qwen2.5:72b", "qwen2.5:3b-instruct-q4_K_M", "qwen2.5-coder:3b", "qwen2.5vl:72b", "library/qwen2.5:3b", "QWEN2.5:3B"]:
+            self.assertTrue(ollama_service.licencia_restrictiva(m), m)
+        for m in ["qwen2.5:0.5b", "qwen2.5:1.5b", "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "qwen2.5-coder:32b", "qwen2.5:latest", "phi3:mini", "qwen3:30b", "llama3.2:3b", ""]:
+            self.assertFalse(ollama_service.licencia_restrictiva(m), m)
+
+    def test_el_modo_automatico_no_elige_modelos_de_licencia_restringida(self):
+        def elegido(instalados):
+            with patch.object(ollama_service, "get_available_models", return_value=instalados):
+                return ollama_service.get_best_llm_model()
+        self.assertEqual(elegido(["qwen2.5:3b", "qwen2.5:72b", "qwen2.5:1.5b"]), "qwen2.5:1.5b")
+        self.assertEqual(elegido(["qwen2.5:72b", "phi3:mini"]), "phi3:mini")
+        self.assertEqual(elegido(["qwen2.5:3b", "llama3.2:1b"]), "llama3.2:1b")          # el resto de modelos se sigue admitiendo como antes
+        self.assertEqual(elegido(["qwen2.5:3b", "qwen2.5-coder:3b"]), "phi3:mini")       # solo restringidos: no se usa ninguno, queda la preferencia
+        ajustes.guardar({"modelo": "qwen2.5:3b"})                                        # elegido a mano en Ajustes: sí se usa
+        self.assertEqual(elegido(["qwen2.5:3b", "phi3:mini"]), "qwen2.5:3b")
+
+    def test_ajustes_avisa_de_los_modelos_restringidos_instalados(self):
+        client = TestClient(main.app)
+        with patch.object(main, "is_ollama_running", return_value=True), \
+             patch.object(main, "get_available_models", return_value=["phi3:mini", "qwen2.5:3b", "qwen2.5:7b", "qwen2.5:72b"]):
+            r = client.get("/api/ajustes").json()
+        self.assertEqual(r["modelos_restringidos"], ["qwen2.5:3b", "qwen2.5:72b"])
+
     def test_endpoints_leen_y_guardan(self):
         client = TestClient(main.app)
         with patch.object(main, "is_ollama_running", return_value=False):
