@@ -57,6 +57,20 @@ El instalador se puede probar sin tocar tu sistema: `Proyecto-Alejandria-Setup.e
 
 [MIT](LICENSE)
 
+### Modelos de IA y software de terceros
+
+Proyecto Alejandría **no incluye ningún modelo de IA**. El instalador los descarga una sola vez desde su origen; son **gratuitos y de pesos abiertos (sin coste)**, y cada uno tiene su propia licencia. La licencia MIT de este proyecto cubre solo su código.
+
+| Qué | Para qué | Licencia |
+| --- | --- | --- |
+| `paraphrase-multilingual-MiniLM-L12-v2` (Hugging Face, con fastembed) | Clasificar apuntes | Apache-2.0 |
+| `phi3:mini` (Microsoft, con Ollama) | Razonar las sinapsis (por defecto) | MIT |
+| `qwen2.5` (Alibaba, con Ollama), alternativa | Razonar las sinapsis | Apache-2.0 (0.5B, 1.5B, 7B, 14B, 32B). **3B**: licencia Qwen Research, solo investigación o evaluación, **no comercial**. **72B**: licencia Qwen, con condiciones propias (pide licencia a quien supera los 100 millones de usuarios activos al mes) |
+| [Ollama](https://ollama.com) | Ejecutar la IA en tu equipo | MIT |
+| [Pyodide](https://pyodide.org) | Ejecutar los laboratorios de Python | MPL-2.0 |
+
+Gratuito no siempre significa de código abierto en el sentido de la OSI: los Qwen 3B y 72B son de pesos abiertos y sin coste, pero con restricciones de uso. Si eliges otro modelo, revisa su licencia, sobre todo antes de un uso comercial.
+
 ---
 
 ## English
@@ -99,3 +113,17 @@ The installer can be tried without touching your system: `Proyecto-Alejandria-Se
 ### License
 
 [MIT](LICENSE)
+
+#### AI models and third-party software
+
+Proyecto Alejandría **does not ship any AI model**. The installer downloads them once from their source; they are **free of charge and open-weight**, and each has its own license. This project's MIT license covers its code only.
+
+| What | Used for | License |
+| --- | --- | --- |
+| `paraphrase-multilingual-MiniLM-L12-v2` (Hugging Face, via fastembed) | Classifying notes | Apache-2.0 |
+| `phi3:mini` (Microsoft, via Ollama) | Reasoning about synapses (default) | MIT |
+| `qwen2.5` (Alibaba, via Ollama), alternative | Reasoning about synapses | Apache-2.0 (0.5B, 1.5B, 7B, 14B, 32B). **3B**: Qwen Research License, research or evaluation only, **non-commercial**. **72B**: Qwen License, with its own terms (a license is required above 100 million monthly active users) |
+| [Ollama](https://ollama.com) | Running the AI on your machine | MIT |
+| [Pyodide](https://pyodide.org) | Running the Python labs | MPL-2.0 |
+
+Free of charge does not always mean open source in the OSI sense: Qwen 3B and 72B are open-weight and cost nothing, but have usage restrictions. If you pick another model, check its license, especially before commercial use.
