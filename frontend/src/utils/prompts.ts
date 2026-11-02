@@ -1,3 +1,12 @@
+// Idioma de lo que escribe la IA. Hoy solo castellano; para añadir otro, una entrada aquí y su equivalente en backend/idioma.py.
+const IDIOMAS = {
+    es: `IDIOMA: escribe TODO el contenido (explicación, teoría, glosario, ejercicios, notas de las referencias, texto del laboratorio y etiquetas de los controles) en castellano de España: ortografía y vocabulario de España (p. ej. «ordenador», «fichero», «coste», «gráfica»), tuteo o tono académico impersonal, sin voseo ni giros latinoamericanos, y la terminología habitual de las universidades españolas. Los nombres propios, los títulos originales de las referencias, las fórmulas y los identificadores del código (variables y claves del JSON) se dejan como son.`,
+} as const;
+const IDIOMA_ACTUAL: keyof typeof IDIOMAS = 'es';
+
+// Revisión interna: mejora la calidad sin añadir nada visible a la respuesta (ni en el texto ni en el JSON).
+const VERIFICACION_OCULTA = `VERIFICACIÓN DOBLE OCULTA: antes de escribir la respuesta final, revísala DOS veces en silencio. Primera pasada, rigor: cada definición, fórmula, deducción, dato, fecha, autor y referencia es correcto; si no estás seguro de algo, quítalo o suavízalo en lugar de inventarlo. Segunda pasada, coherencia: la teoría, el glosario, los ejercicios y el laboratorio no se contradicen y usan la misma notación; cada ejercicio se resuelve de verdad con el resultado que das; el código del laboratorio se ejecuta sin errores y dibuja lo que la teoría describe. Corrige lo que falle y repite la revisión hasta no encontrar nada. Es un proceso interno: NO lo muestres ni lo menciones (ni listas de comprobación, ni «verificado», ni notas, ni campos extra en el JSON); la respuesta debe leerse como si hubiera salido correcta a la primera.`;
+
 export const PROMPT_FUENTES = `Actúa como un Catedrático Universitario e Investigador Postdoctoral experto en visualización de datos. Tu objetivo es procesar el material académico que te proporciono y estructurarlo de forma exhaustiva, rigurosa y con extrema profundidad en un formato JSON diseñado para "Alejandría", un simulador interactivo de conocimiento.
 
 Para el concepto matemático/analítico más crítico del texto, debes generar un único objeto JSON que siga EXACTAMENTE esta estructura, sin añadir texto fuera del JSON (ni saludos ni explicaciones extra):
@@ -57,7 +66,9 @@ Para el concepto matemático/analítico más crítico del texto, debes generar u
 3. En el código Python, el valor de las variables controladas debe asignarse utilizando EXACTAMENTE las variables del array \`controles\` envueltas en llaves, por ejemplo \`v_ini = {v_ini}\`. Nuestro sistema reemplazará estos tokens en tiempo de ejecución.
 4. El código Python debe generar gráficos avanzados con \`matplotlib\` (\`plt.show()\`). Ya no usamos output JSON crudo. Para que la gráfica responda con fluidez al mover los controles, usa solo: \`plot\`, \`scatter\`, \`bar\` (colores y anchos uniformes), \`fill_between\`, \`axvline\`/\`axhline\`/\`axvspan\`/\`axhspan\`, \`text\`/\`annotate\`, \`title\`/\`xlabel\`/\`ylabel\`/\`xlim\`/\`ylim\`/\`grid\`/\`legend\` y \`subplots\`. También puedes usar \`xticks\`/\`yticks\` (con o sin etiquetas), barras apiladas (\`bar(..., bottom=...)\`), \`fill_between(..., where=...)\` y escala logarítmica en base 10 (\`set_yscale('log')\`, \`semilogy\`, \`loglog\`) sin perder fluidez. Contornos, 3D, imágenes o \`rotation\` en los ticks también funcionan, pero se muestran como imagen estática (más lenta).
 5. ANTES DE RESPONDER: Utiliza tu propio intérprete de Python en segundo plano para verificar que la lógica del script es robusta y sin errores.
-6. Devuelve ÚNICAMENTE el bloque JSON.`;
+6. ${IDIOMAS[IDIOMA_ACTUAL]}
+7. ${VERIFICACION_OCULTA}
+8. Devuelve ÚNICAMENTE el bloque JSON.`;
 
 export const PROMPT_EXPLORACION = `Actúa como un Investigador Catedrático y tutor académico de nivel de Doctorado (PhD). 
 Quiero que me expliques a fondo y con extremo rigor el siguiente concepto: **[INSERTA EL CONCEPTO AQUÍ]**.
@@ -129,7 +140,9 @@ La Neurona JSON debe estar al final de tu respuesta, obligatoriamente envuelta e
 3. En el código Python, el valor de las variables controladas debe asignarse utilizando EXACTAMENTE las variables del array \`controles\` envueltas en llaves, por ejemplo \`param_1 = {param_1}\`.
 4. El código Python debe generar gráficos con \`matplotlib\` (\`plt.show()\`). Para que la gráfica responda con fluidez al mover los controles, usa solo: \`plot\`, \`scatter\`, \`bar\` (colores y anchos uniformes), \`fill_between\`, \`axvline\`/\`axhline\`/\`axvspan\`/\`axhspan\`, \`text\`/\`annotate\`, \`title\`/\`xlabel\`/\`ylabel\`/\`xlim\`/\`ylim\`/\`grid\`/\`legend\` y \`subplots\`. También puedes usar \`xticks\`/\`yticks\` (con o sin etiquetas), barras apiladas (\`bar(..., bottom=...)\`), \`fill_between(..., where=...)\` y escala logarítmica en base 10 (\`set_yscale('log')\`, \`semilogy\`, \`loglog\`) sin perder fluidez. Contornos, 3D, imágenes o \`rotation\` en los ticks también funcionan, pero se muestran como imagen estática (más lenta).
 5. ANTES DE RESPONDER: Utiliza tu propio intérprete de Python en segundo plano para verificar que tu script no genera errores y es robusto.
-6. SECUENCIA OBLIGATORIA: Tu respuesta DEBE contener AMBAS partes en este orden estricto. Primero escribe la PARTE 1 completa (la explicación magistral extensa en texto y LaTeX con sus fuentes verificadas, enlaces directos y la nota de extracción de cada una) y, solo al final, la PARTE 2 envuelta en su bloque \`\`\`json. Está TERMINANTEMENTE PROHIBIDO devolver únicamente el bloque JSON o saltarse la explicación magistral inicial.`;
+6. SECUENCIA OBLIGATORIA: Tu respuesta DEBE contener AMBAS partes en este orden estricto. Primero escribe la PARTE 1 completa (la explicación magistral extensa en texto y LaTeX con sus fuentes verificadas, enlaces directos y la nota de extracción de cada una) y, solo al final, la PARTE 2 envuelta en su bloque \`\`\`json. Está TERMINANTEMENTE PROHIBIDO devolver únicamente el bloque JSON o saltarse la explicación magistral inicial.
+7. ${IDIOMAS[IDIOMA_ACTUAL]}
+8. ${VERIFICACION_OCULTA} Esto vale para la PARTE 1 y para el JSON de la PARTE 2.`;
 
 
 // Añade, justo antes de las reglas, los clústeres que ya existen para que la IA reutilice sus nombres exactos.

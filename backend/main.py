@@ -1,3 +1,4 @@
+import re
 import threading
 from contextlib import asynccontextmanager
 from typing import Literal, Optional, Union
@@ -9,9 +10,9 @@ import ajustes
 import vigilante
 import intercambio
 from database import db_conn, Concepto, DATA_DIR
-from ollama_service import ensure_ollama_running, is_ollama_running, get_available_models, licencia_restrictiva
+from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.1.3"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.1.4"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# DNS rebinding: una web con un dominio que apunta a 127.0.0.1 sería "mismo origen" y leería los GET sin enviar Origin; el Host delata el dominio.
+HOST_LOCAL = re.compile(r"(127\.0\.0\.1|localhost|\[::1\])(:\d+)?")
+
 class BloquearOrigenesAjenos:
     """CORS solo impide LEER la respuesta; un POST "simple" (text/plain) se ejecutaría igual. Lo cortamos aquí.
     Middleware ASGI puro: el de @app.middleware("http") copia cada respuesta por streams y añadía ~20 ms con 100 KB."""
@@ -41,9 +45,13 @@ class BloquearOrigenesAjenos:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
-            origin = dict(scope["headers"]).get(b"origin")
+            cabeceras = dict(scope["headers"])
+            origin = cabeceras.get(b"origin")
             if origin is not None and origin.decode("latin-1") not in ALLOWED_ORIGINS:
                 await JSONResponse({"detail": "Origen no permitido"}, status_code=403)(scope, receive, send)
+                return
+            if not HOST_LOCAL.fullmatch(cabeceras.get(b"host", b"").decode("latin-1").lower()):
+                await JSONResponse({"detail": "Host no permitido"}, status_code=403)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
 
@@ -54,12 +62,7 @@ def startup_event():
     padre = os.environ.get("ALEJANDRIA_PADRE")      # la app que me lanzó: si muere sin avisar, me cierro (no quedar huérfano)
     if padre and padre.isdigit():
         vigilante.vigilar_padre(int(padre))
-    print("[Alejandria] Comprobando motor LLM interno (Ollama)...")
-    if ensure_ollama_running():
-        modelos = get_available_models()
-        print(f"[Alejandria] Motor LLM local listo. Modelos detectados: {modelos}")
-    else:
-        print("[Alejandria] AVISO: Ollama no se pudo arrancar automáticamente. Comprueba que 'ollama' esté instalado.")
+    print(f"[Alejandria] Ollama: {arrancar_en_segundo_plano()}")     # sin esperar: el backend responde al momento y Ollama se levanta detrás
 
 @app.get("/")
 def read_root():
@@ -465,13 +468,21 @@ class AjustesRequest(BaseModel):
 def leer_ajustes():
     ollama_ok = is_ollama_running()
     modelos = get_available_models() if ollama_ok else []
-    return {**ajustes.leer(), "version": APP_VERSION, "carpeta_datos": DATA_DIR, "ollama": ollama_ok,
+    return {**ajustes.leer(), "version": APP_VERSION, "carpeta_datos": DATA_DIR, "ollama": ollama_ok, "ollama_instalado": ollama_ok or get_ollama_path() is not None,
             "modelos": modelos, "modelos_restringidos": [m for m in modelos if licencia_restrictiva(m)],
             "neuronas": len(db_conn.get_universe_metadata())}
 
 @app.put("/api/ajustes")
 def guardar_ajustes(req: AjustesRequest):
-    return ajustes.guardar(req.model_dump(exclude_none=True))
+    guardados = ajustes.guardar(req.model_dump(exclude_none=True))
+    if req.ia_activa:
+        arrancar_en_segundo_plano()                      # al activar la IA local, Ollama se levanta solo si está instalado
+    return guardados
+
+@app.post("/api/ollama/arrancar")
+def arrancar_ollama():
+    """Levanta Ollama en segundo plano si está instalado y la IA local está activa. No espera: el estado real se lee en /api/ajustes."""
+    return {"estado": arrancar_en_segundo_plano()}
 
 @app.get("/api/exportar")
 def exportar_neuronas():

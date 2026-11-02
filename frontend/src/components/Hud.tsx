@@ -26,16 +26,28 @@ const barra: React.CSSProperties = {
 };
 
 /** Estado de la IA local para la barra inferior (se consulta a menudo: es barato y no depende del universo). */
+let arranqueIntentado = false;   // al abrir la app se intenta levantar Ollama una vez; si luego lo cierras tú a propósito, no se vuelve a abrir solo
+
 function useIA() {
     const [texto, setTexto] = useState('IA: ...');
     useEffect(() => {
         let vivo = true;
-        const leer = () => fetch(`${API}/api/ajustes`).then(r => r.json())
-            .then(e => vivo && setTexto(!e.ia_activa ? 'IA: apagada' : e.ollama ? `IA: ${e.modelo || 'auto'}` : 'IA: Ollama no responde'))
+        let espera: ReturnType<typeof setTimeout> | undefined;
+        let reintentando = false;     // mientras se espera a Ollama, la lectura periódica no pisa el aviso
+        const leer = (arrancando = 0) => fetch(`${API}/api/ajustes`).then(r => r.json())
+            .then(e => {
+                if (!vivo) return;
+                reintentando = false;
+                if (e.ia_activa && !e.ollama && e.ollama_instalado && (arrancando > 0 || !arranqueIntentado)) {
+                    if (!arranqueIntentado) { arranqueIntentado = true; fetch(`${API}/api/ollama/arrancar`, { method: 'POST' }).catch(() => {}); }
+                    if (arrancando < 10) { reintentando = true; setTexto('IA: arrancando Ollama...'); espera = setTimeout(() => leer(arrancando + 1), 3000); return; }   // hasta ~30 s
+                }
+                setTexto(!e.ia_activa ? 'IA: apagada' : e.ollama ? `IA: ${e.modelo || 'auto'}` : e.ollama_instalado ? 'IA: Ollama no responde' : 'IA: Ollama no instalado');
+            })
             .catch(() => vivo && setTexto('IA: sin servidor'));
         leer();
-        const t = setInterval(leer, 15000);
-        return () => { vivo = false; clearInterval(t); };
+        const t = setInterval(() => { if (!reintentando) leer(); }, 15000);
+        return () => { vivo = false; clearInterval(t); clearTimeout(espera); };
     }, []);
     return texto;
 }

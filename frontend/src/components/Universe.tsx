@@ -151,6 +151,45 @@ function generateDendriteTree(
 
 import KnowledgePanel from './KnowledgePanel';
 
+// Al acercarse mucho, cada neurona a la vista lleva su nombre, tenue (más claro cuanto más cerca), para saber cuál es cuál sin pasar el ratón por todas.
+const DIST_ROTULO_MAX = 30, DIST_ROTULO_MIN = 10, MAX_ROTULOS = 14;   // el universo mide ~50 de lado: con la cámara a 30 una neurona ya se ve de ~20 px
+
+const RotulosCercanos = ({ nodes, nombres, grupo, ocultar }: { nodes: THREE.Vector3[], nombres: string[], grupo: React.RefObject<THREE.Group | null>, ocultar: number | null }) => {
+    const { camera } = useThree();
+    const [visibles, setVisibles] = useState<{ i: number, a: number }[]>([]);
+    const ultimo = useRef(0);
+    const firma = useRef('');
+    const v = useMemo(() => new THREE.Vector3(), []);
+
+    useFrame(({ clock }) => {
+        const t = clock.getElapsedTime();
+        if (t - ultimo.current < 0.15 || !grupo.current) return;   // ~7 veces por segundo bastan; el CSS suaviza el resto
+        ultimo.current = t;
+        const cercanas: { i: number, d: number }[] = [];
+        for (let i = 0; i < nodes.length; i++) {
+            v.copy(nodes[i]).applyMatrix4(grupo.current.matrixWorld);   // el grupo gira: hay que comparar en coordenadas del mundo
+            const d = v.distanceTo(camera.position);
+            if (d > DIST_ROTULO_MAX) continue;
+            v.project(camera);
+            if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue;   // detrás de la cámara o fuera de la pantalla
+            cercanas.push({ i, d });
+        }
+        const elegidas = cercanas.sort((x, y) => x.d - y.d).slice(0, MAX_ROTULOS)
+            .map(({ i, d }) => ({ i, a: Math.round(Math.min(1, (DIST_ROTULO_MAX - d) / (DIST_ROTULO_MAX - DIST_ROTULO_MIN)) * 5) / 5 }))
+            .map(e => ({ ...e, a: Math.max(e.a, 0.2) }));   // dentro del alcance siempre se lee un poco; la mitad del rango, ya con claridad
+        const nueva = elegidas.map(e => `${e.i}:${e.a}`).join();
+        if (nueva !== firma.current) { firma.current = nueva; setVisibles(elegidas); }
+    });
+
+    return (<>
+        {visibles.filter(e => e.i !== ocultar && nombres[e.i]).map(({ i, a }) => (
+            <Html key={i} position={nodes[i]} center zIndexRange={[50, 0]} style={{ pointerEvents: 'none' }}>
+                <div className="rotulo-neurona" style={{ opacity: 0.2 + a * 0.5 }}>{nombres[i]}</div>
+            </Html>
+        ))}
+    </>);
+};
+
 const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onNodeClick: (id: string) => void, searchQuery: string, realNodes: any[], realLinks: any[], activeNodeId: string | null, onTargetFound: (pos: THREE.Vector3 | null) => void }) => {
     const baseColors = [
         new THREE.Color('#33ff00'), 
@@ -266,6 +305,7 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
 
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const groupRef = useRef<THREE.Group>(null);
+    const nombres = useMemo(() => { const porId = new Map(realNodes.map(n => [n.id, String(n.nombre ?? '')])); return nodeIds.map(id => porId.get(id) ?? ''); }, [realNodes, nodeIds]);
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
     useEffect(() => {
@@ -450,6 +490,8 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
                     );
                 })()
             )}
+
+            {totalNodes > 0 && <RotulosCercanos nodes={nodes} nombres={nombres} grupo={groupRef} ocultar={hoveredIdx} />}
 
             {totalNodes > 0 && clusterCenters.map((center, idx) => (
                 <Seguro key={idx}><Billboard position={[center.x, center.y + 3.5, center.z]} follow={true}>

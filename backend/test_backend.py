@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -133,7 +134,46 @@ class TestSinapsis(unittest.TestCase):
         res, prompts = self.evaluar({n: {"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO} for n in "BCDEFG"})
         self.assertEqual(len(res), clasificador.MAX_CONEXIONES)
         self.assertEqual(clasificador.MAX_CONEXIONES, 3)
-        self.assertEqual(len(prompts), 6)  # se juzgan todos los candidatos y se quedan los MEJORES, no los primeros que salgan
+        self.assertEqual(len([p for p in prompts if p.startswith("Eres un juez")]), 6)  # se juzgan todos los candidatos y se quedan los MEJORES, no los primeros que salgan
+
+    def _juzgar(self, correcto):
+        """_juzgar_par con un modelo que responde 'A_se_basa_en_B' al juez y `correcto` a la segunda revisión; devuelve (resultado, prompts)."""
+        prompts = []
+
+        def urlopen(req, timeout=None):
+            prompt = json.loads(req.data.decode())["prompt"]
+            prompts.append(prompt)
+            if prompt.startswith("Revisa con espíritu crítico"):
+                if isinstance(correcto, Exception):
+                    raise correcto
+                cuerpo = {} if correcto is None else {"correcto": correcto}
+            else:
+                cuerpo = {"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO}
+            resp = MagicMock(); resp.__enter__.return_value = resp
+            resp.read.return_value = json.dumps({"response": json.dumps(cuerpo)}).encode()
+            return resp
+
+        with patch.object(clasificador.urllib.request, "urlopen", side_effect=urlopen):
+            return _modelo()._juzgar_par("m", ("A", "ta", "ra"), ("B", "tb", "rb")), prompts
+
+    def test_el_juez_escribe_en_castellano(self):
+        _, prompts = self._juzgar(True)
+        self.assertIn("castellano de España", prompts[0])
+
+    def test_segunda_revision_oculta_descarta_el_veredicto_que_el_propio_modelo_no_confirma(self):
+        for no_confirma in (False, "false"):
+            with self.subTest(respuesta=no_confirma):
+                juicio, prompts = self._juzgar(no_confirma)
+                self.assertIsNone(juicio)
+                self.assertEqual(len(prompts), 2)                       # juicio + revisión
+                self.assertIn(self.MOTIVO, prompts[1])                  # la revisión ve el veredicto y el motivo
+                self.assertIn("A se basa en B", prompts[1])
+
+    def test_segunda_revision_confirmada_o_sin_respuesta_clara_conserva_el_veredicto(self):
+        for respuesta in (True, None, OSError("sin red")):            # solo un "correcto": false lo descarta
+            with self.subTest(respuesta=repr(respuesta)):
+                juicio, _ = self._juzgar(respuesta)
+                self.assertEqual(juicio, ("ab", self.MOTIVO))
 
     def test_relacionados_solo_vale_si_cada_texto_nombra_al_otro_pero_una_dependencia_clara_no_lo_necesita(self):
         # solo el texto de A nombra a "Wiener" (B no nombra nada de A): 'relacionados' se descarta y queda la propuesta de afinidad
@@ -220,7 +260,7 @@ class TestSinapsis(unittest.TestCase):
         self.assertTrue(s.leer()["activo"])    # queda un trabajo
         s.terminar()
         self.assertFalse(s.leer()["activo"])
-        self.assertEqual(TestClient(main.app).get("/api/sinapsis/estado").json()["activo"], False)
+        self.assertEqual(TestClient(main.app, base_url="http://127.0.0.1").get("/api/sinapsis/estado").json()["activo"], False)
 
 
 class TestEvaluarConexiones(unittest.TestCase):
@@ -234,12 +274,12 @@ class TestEvaluarConexiones(unittest.TestCase):
              patch.object(clasificador.urllib.request, "urlopen", return_value=respuesta) as llm:
             todas = _modelo().evaluar_conexiones("a", "A", "t", np.array([1., 0.]), base)
             self.assertEqual({a["destino_id"] for a in todas}, {"b", "c"})
-            self.assertEqual(llm.call_count, 2)
+            self.assertEqual(llm.call_count, 4)      # 2 parejas aceptadas: cada una se juzga y se revisa una segunda vez
 
             llm.reset_mock()
             nuevas = _modelo().evaluar_conexiones("a", "A", "t", np.array([1., 0.]), base, omitir={("a", "b")})
             self.assertEqual({a["destino_id"] for a in nuevas}, {"c"})
-            self.assertEqual(llm.call_count, 1)
+            self.assertEqual(llm.call_count, 2)      # la pareja ya decidida no gasta ninguna llamada
 
     def test_db_devuelve_las_parejas_conocidas_en_ambas_direcciones(self):
         db_conn.add_links([{"origen_id": "u", "destino_id": "v", "motivo": "m", "estado": "rechazada"}])
@@ -253,7 +293,7 @@ class TestGuardarLaboratorio(unittest.TestCase):
     def setUpClass(cls):
         os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
         cls.ruta = os.path.join(DATA_DIR, "raw", "lab1.json")
-        cls.client = TestClient(main.app)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
 
     def setUp(self):
         with open(self.ruta, "w", encoding="utf-8") as f:
@@ -315,7 +355,7 @@ class TestBorrarNeurona(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
-        cls.client = TestClient(main.app)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
 
     def nodo(self, nid):
         with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
@@ -369,7 +409,7 @@ class TestAristas(unittest.TestCase):
         for nid in ("a", "b"):
             with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
                 json.dump({"nombre": nid.upper(), "teoria": "t"}, f)
-        cls.client = TestClient(main.app)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
 
     def test_no_pisa_aristas_existentes_en_ninguna_direccion(self):
         db_conn.add_links([{"origen_id": "p", "destino_id": "q", "motivo": "m", "estado": "rechazada"}])
@@ -391,13 +431,22 @@ class TestAristas(unittest.TestCase):
 
     def test_arranque_ejecuta_el_hook_del_lifespan(self):
         with patch.object(main, "startup_event") as arranque:
-            with TestClient(main.app):
+            with TestClient(main.app, base_url="http://127.0.0.1"):
                 arranque.assert_called_once()
 
     def test_origen_ajeno_recibe_403_aunque_sea_text_plain(self):
         r = self.client.post("/api/arista", content='{"origen_id": "a", "destino_id": "b", "motivo": "m"}',
                              headers={"Origin": "https://evil.example", "Content-Type": "text/plain"})
         self.assertEqual(r.status_code, 403)
+
+    def test_host_ajeno_recibe_403_aunque_no_haya_origin(self):    # DNS rebinding: GET "mismo origen" desde un dominio que apunta a 127.0.0.1
+        for host in ("evil.example", "evil.example:8000", "127.0.0.1.evil.example", "localhost.evil.example:8000", ""):
+            r = self.client.get("/api/exportar", headers={"Host": host})
+            self.assertEqual(r.status_code, 403, host)
+
+    def test_hosts_locales_pasan(self):
+        for host in ("127.0.0.1:8000", "localhost:8000", "LOCALHOST:51234", "[::1]:8000", "127.0.0.1"):
+            self.assertEqual(self.client.get("/", headers={"Host": host}).status_code, 200, host)
 
 
 class TestJsonTolerante(unittest.TestCase):
@@ -425,7 +474,7 @@ class TestJsonTolerante(unittest.TestCase):
             main.cargar_json_tolerante('{"t": ')
 
     def test_la_ruta_de_inyeccion_acepta_latex_sin_duplicar(self):
-        client = TestClient(main.app)
+        client = TestClient(main.app, base_url="http://127.0.0.1")
         raw = r'{"id": "json_tol_x", "nombre": "N", "teoria": "Sea $\lambda$ y $\frac{1}{2}$", "cluster": "X"}'
         try:
             self.assertEqual(client.post("/api/node", json={"raw_json": raw}).status_code, 200)
@@ -500,14 +549,72 @@ class TestAjustes(unittest.TestCase):
         self.assertEqual(elegido(["qwen2.5:3b", "phi3:mini"]), "qwen2.5:3b")
 
     def test_ajustes_avisa_de_los_modelos_restringidos_instalados(self):
-        client = TestClient(main.app)
+        client = TestClient(main.app, base_url="http://127.0.0.1")
         with patch.object(main, "is_ollama_running", return_value=True), \
              patch.object(main, "get_available_models", return_value=["phi3:mini", "qwen2.5:3b", "qwen2.5:7b", "qwen2.5:72b"]):
             r = client.get("/api/ajustes").json()
         self.assertEqual(r["modelos_restringidos"], ["qwen2.5:3b", "qwen2.5:72b"])
 
+    def _responde(self, cuerpo=None, error=None):
+        resp = MagicMock(); resp.__enter__.return_value = resp
+        resp.status = 200
+        resp.read.return_value = json.dumps(cuerpo).encode()
+        return patch.object(ollama_service._SIN_PROXY, "open", side_effect=error, return_value=resp)
+
+    def test_ollama_solo_cuenta_como_activo_si_contesta_como_ollama(self):
+        with self._responde({"models": []}):
+            self.assertTrue(ollama_service.is_ollama_running())              # sin modelos descargados también está activo
+        with self._responde({"otra": "cosa"}):
+            self.assertFalse(ollama_service.is_ollama_running())             # un 200 de otro programa (o de un proxy) no basta
+        with self._responde({"models": "no es lista"}):
+            self.assertFalse(ollama_service.is_ollama_running())
+        with self._responde(error=OSError("apagado")):
+            self.assertFalse(ollama_service.is_ollama_running())
+
+    def test_la_consulta_a_ollama_ignora_el_proxy_del_sistema(self):
+        manejadores = [h for h in ollama_service._SIN_PROXY.handlers if isinstance(h, ollama_service.urllib.request.ProxyHandler)]
+        self.assertEqual(manejadores, [])      # el ProxyHandler vacío sustituye al de por defecto (que leería HTTP_PROXY y el registro de Windows)
+
+    def test_arrancar_en_segundo_plano_segun_el_estado(self):
+        os_ = ollama_service
+        ajustes.guardar({"ia_activa": False})
+        self.assertEqual(os_.arrancar_en_segundo_plano(), "ia_apagada")
+        ajustes.guardar({"ia_activa": True})
+        with patch.object(os_, "is_ollama_running", return_value=True):
+            self.assertEqual(os_.arrancar_en_segundo_plano(), "activo")
+        with patch.object(os_, "is_ollama_running", return_value=False), patch.object(os_, "get_ollama_path", return_value=None):
+            self.assertEqual(os_.arrancar_en_segundo_plano(), "no_instalado")
+        arrancado = threading.Event()
+        with patch.object(os_, "is_ollama_running", return_value=False), patch.object(os_, "get_ollama_path", return_value="ollama.exe"), \
+             patch.object(os_, "ensure_ollama_running", side_effect=lambda: arrancado.set()):
+            self.assertEqual(os_.arrancar_en_segundo_plano(), "arrancando")
+            self.assertTrue(arrancado.wait(3))                                # se arrancó de verdad, en otro hilo
+        self.assertTrue(os_._arrancando.acquire(timeout=3))                 # y el cerrojo se liberó
+        os_._arrancando.release()
+
+    def test_no_arranca_dos_veces_a_la_vez(self):
+        os_ = ollama_service
+        llamadas = []
+        with os_._arrancando, patch.object(os_, "is_ollama_running", return_value=False), patch.object(os_, "get_ollama_path", return_value="ollama.exe"), \
+             patch.object(os_, "ensure_ollama_running", side_effect=lambda: llamadas.append(1)):
+            self.assertEqual(os_.arrancar_en_segundo_plano(), "arrancando")   # ya había un arranque en curso
+        self.assertEqual(llamadas, [])
+
+    def test_endpoint_arrancar_y_ajustes_informan_de_si_ollama_esta_instalado(self):
+        client = TestClient(main.app, base_url="http://127.0.0.1")
+        with patch.object(main, "arrancar_en_segundo_plano", return_value="arrancando") as arrancar:
+            self.assertEqual(client.post("/api/ollama/arrancar").json(), {"estado": "arrancando"})
+            client.put("/api/ajustes", json={"ia_activa": True})              # al activar la IA local se levanta Ollama
+            self.assertEqual(arrancar.call_count, 2)
+            client.put("/api/ajustes", json={"ia_activa": False})
+            self.assertEqual(arrancar.call_count, 2)                          # al desactivarla, no
+        with patch.object(main, "is_ollama_running", return_value=False), patch.object(main, "get_ollama_path", return_value=None):
+            self.assertFalse(client.get("/api/ajustes").json()["ollama_instalado"])
+        with patch.object(main, "is_ollama_running", return_value=False), patch.object(main, "get_ollama_path", return_value="x"):
+            self.assertTrue(client.get("/api/ajustes").json()["ollama_instalado"])
+
     def test_endpoints_leen_y_guardan(self):
-        client = TestClient(main.app)
+        client = TestClient(main.app, base_url="http://127.0.0.1")
         with patch.object(main, "is_ollama_running", return_value=False):
             self.assertEqual(client.put("/api/ajustes", json={"ia_activa": False}).json()["ia_activa"], False)
             r = client.get("/api/ajustes").json()
@@ -519,7 +626,7 @@ class TestIntercambio(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
-        cls.client = TestClient(main.app)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
 
     def tearDown(self):
         for n in ("ix_a", "ix_b", "ix_c"):
@@ -571,6 +678,29 @@ class TestIntercambio(unittest.TestCase):
         self.assertEqual(self.client.post("/api/importar", json={"contenido": archivo}).json()["conexiones"], 1)
         estados = [l["estado"] for l in db_conn.get_links_metadata() if l["origen_id"] == "ix_b"]
         self.assertEqual(estados, ["pendiente"])   # una conexión rechazada de otra persona entra como pendiente para que la revises
+
+
+class TestEmpaquetado(unittest.TestCase):
+    def test_todo_modulo_del_backend_que_otro_importa_va_en_el_instalador_y_en_tauri(self):
+        """Los instaladores copian una lista fija de archivos: un módulo nuevo que se olvide ahí rompe el backend instalado (ImportError al arrancar)."""
+        import ast
+        import glob
+        raiz = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        modulos = {os.path.basename(f)[:-3] for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.py"))}
+        importados = set()
+        for nombre in modulos - {"test_backend"}:
+            arbol = ast.parse(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), nombre + ".py"), encoding="utf-8").read())
+            for nodo in ast.walk(arbol):
+                if isinstance(nodo, ast.Import):
+                    importados |= {a.name.split(".")[0] for a in nodo.names}
+                elif isinstance(nodo, ast.ImportFrom) and nodo.module:
+                    importados.add(nodo.module.split(".")[0])
+        necesarios = ({"main"} | (importados & modulos)) - {"test_backend"}
+        nsh = open(os.path.join(raiz, "frontend", "installer", "instalacion.nsh"), encoding="utf-8-sig").read()
+        tauri = open(os.path.join(raiz, "frontend", "src-tauri", "tauri.conf.json"), encoding="utf-8").read()
+        for m in sorted(necesarios):
+            self.assertIn(f'\{m}.py"', nsh, f"{m}.py falta en installer/instalacion.nsh")
+            self.assertIn(f'backend/{m}.py"', tauri, f"{m}.py falta en tauri.conf.json")
 
 
 if __name__ == "__main__":

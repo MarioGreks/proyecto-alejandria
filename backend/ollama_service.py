@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import json
 import re
+import threading
 from typing import List, Optional
 
 import ajustes
@@ -21,12 +22,14 @@ def licencia_restrictiva(nombre: str) -> bool:
     """¿Es un modelo con licencia no comercial o con restricciones? El modo automático no los elige; solo se usan si el usuario los elige en Ajustes."""
     return bool(_LICENCIA_RESTRINGIDA.search(nombre or ""))
 
+# Sin proxy del sistema: es una dirección local, y un proxy podría contestar por Ollama aunque esté apagado.
+_SIN_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 def is_ollama_running(timeout: float = 2.0) -> bool:
-    """Comprueba si el servidor de Ollama responde en 127.0.0.1:11434."""
+    """Comprueba si el servidor de Ollama responde en 127.0.0.1:11434. Exige la respuesta propia de Ollama (lista de modelos), no solo un 200 de cualquiera."""
     try:
-        req = urllib.request.Request(f"{OLLAMA_BASE_URL}/api/tags")
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return response.status == 200
+        with _SIN_PROXY.open(f"{OLLAMA_BASE_URL}/api/tags", timeout=timeout) as response:
+            return response.status == 200 and isinstance(json.loads(response.read().decode("utf-8")).get("models"), list)
     except Exception:
         return False
 
@@ -100,6 +103,28 @@ def ensure_ollama_running() -> bool:
         print(f"[Ollama Service] Error al intentar arrancar Ollama: {e}")
 
     return is_ollama_running(timeout=1.0)
+
+_arrancando = threading.Lock()
+
+def arrancar_en_segundo_plano() -> str:
+    """Arranca Ollama sin bloquear a quien llama (esperar a que responda tarda varios segundos). Devuelve el estado:
+    'ia_apagada' (el usuario la desactivó), 'activo' (ya responde), 'no_instalado', o 'arrancando' (se está arrancando; consulta is_ollama_running en unos segundos)."""
+    if not ajustes.leer()["ia_activa"]:
+        return "ia_apagada"
+    if is_ollama_running(timeout=0.5):
+        return "activo"
+    if not get_ollama_path():
+        return "no_instalado"
+    if not _arrancando.acquire(blocking=False):
+        return "arrancando"                              # otro hilo ya lo está arrancando
+
+    def tarea():
+        try:
+            ensure_ollama_running()
+        finally:
+            _arrancando.release()
+    threading.Thread(target=tarea, daemon=True).start()
+    return "arrancando"
 
 def get_available_models() -> List[str]:
     """Devuelve la lista de nombres de modelos descargados localmente en Ollama."""

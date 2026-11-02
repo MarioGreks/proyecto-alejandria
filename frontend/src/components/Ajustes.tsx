@@ -4,7 +4,7 @@ import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } fro
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 
-interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number }
+interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number }
 
 
 export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void; onTutorial: () => void }) {
@@ -14,8 +14,9 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
     const [avisos, setAvisos] = useState<string | null>(null);   // texto de THIRD-PARTY-NOTICES.md; se carga solo al pedirlo (va en un trozo aparte del paquete)
     const verAvisos = () => import('../../../THIRD-PARTY-NOTICES.md?raw').then(m => setAvisos(m.default)).catch(() => setMensaje('Error: no se pudieron cargar las licencias de terceros.'));
 
-    const cargar = () => fetch(`${API}/api/ajustes`).then(r => r.json()).then(setE).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
-    useEffect(() => { cargar(); }, []);
+    const cargar = () => fetch(`${API}/api/ajustes`).then(r => r.json()).then((x: Estado) => { setE(x); if (x.ollama) setMensaje(m => m === 'Arrancando Ollama...' ? '' : m); }).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
+    useEffect(() => { cargar(); const t = setInterval(cargar, 4000); return () => clearInterval(t); }, []);     // el estado de Ollama cambia fuera de la app: se refresca solo
+    const arrancarOllama = () => fetch(`${API}/api/ollama/arrancar`, { method: 'POST' }).then(() => setMensaje('Arrancando Ollama...')).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
 
     const guardar = async (cambios: Partial<Pick<Estado, 'ia_activa' | 'modelo'>>) => {
         const res = await fetch(`${API}/api/ajustes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cambios) });
@@ -40,7 +41,8 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
                             Usar la IA local para clasificar y buscar conexiones
                         </label>
                         <div style={{ margin: '8px 0', color: e.ollama ? 'var(--t-verde)' : '#ff9e64', fontSize: 12 }}>
-                            {e.ollama ? '● Ollama está en marcha' : '○ Ollama no responde (¿está instalado? sin él las conexiones se proponen solo por parecido de textos)'}
+                            {e.ollama ? '● Ollama está en marcha' : e.ollama_instalado ? '○ Ollama está parado (sin él las conexiones se proponen solo por parecido de textos)' : '○ Ollama no está instalado (sin él las conexiones se proponen solo por parecido de textos)'}
+                            {!e.ollama && e.ollama_instalado && e.ia_activa && <button className="t-btn" style={{ marginLeft: 10 }} onClick={arrancarOllama}>[ Arrancar Ollama ]</button>}
                         </div>
                         <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             Modelo:

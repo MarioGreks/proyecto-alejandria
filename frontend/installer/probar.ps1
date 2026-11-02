@@ -64,7 +64,7 @@ Capturar $h (Join-Path $Salida 'instalando_final.png')
 Siguiente $h; Start-Sleep -Seconds 3
 Capturar $h (Join-Path $Salida 'fin.png')
 Siguiente $h; Start-Sleep -Seconds 6                     # Finalizar (con «abrir al terminar» marcada, la app instalada debe arrancar)
-$abierta = Get-Process ProyectoAlejandria -ErrorAction SilentlyContinue
+$abierta = Get-Process ProyectoAlejandria -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$Base\*" }    # solo la que lanzó esta prueba: nunca la app que el usuario tenga abierta
 "la app se abrió al terminar: $([bool]$abierta)"
 if ($abierta) { $abierta | Stop-Process -Force }
 if (-not $p.HasExited) { [void][W.N]::PostMessage($h, 0x111, [IntPtr]2, [IntPtr]::Zero); Start-Sleep 1; if (-not $p.HasExited) { $p.Kill() } }

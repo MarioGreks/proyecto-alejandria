@@ -5,6 +5,7 @@ import numpy as np
 from typing import List, Dict, Optional, Tuple
 from fastembed import TextEmbedding
 import urllib.request
+from idioma import instruccion
 try:
     from ollama_service import ensure_ollama_running, get_best_llm_model
 except ImportError:
@@ -279,8 +280,27 @@ REGLAS:
 - "ninguna": solo pertenecen al mismo campo general (p. ej. los dos son de estadística) o se parecen de forma lejana.
 - Si un texto nombra al otro concepto para usarlo, aplicarlo o suponerlo, eso SÍ es una relación (no respondas "ninguna").
 
+{instruccion()} Eso incluye el campo "motivo".
 Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
 {{"relacion": "A_se_basa_en_B" o "B_se_basa_en_A" o "relacionados" o "ninguna", "motivo": "una frase concreta sobre el vínculo"}}"""
+        resp = self._consultar(modelo, prompt)
+        if resp is None:
+            return None
+        clave = _normalizar(str(resp.get("relacion", ""))).replace(" ", "_")
+        sentido = {"a_se_basa_en_b": "ab", "b_se_basa_en_a": "ba", "relacionados": "rel"}.get(clave)
+        if sentido is None and str(resp.get("depende", "")).lower() == "true":  # respuesta al estilo antiguo
+            sentido = "ab"
+        if not sentido:
+            return None
+        motivo = str(resp.get("motivo", ""))
+        if not self._confirmar(modelo, bloque('A', a), bloque('B', b), sentido, motivo):
+            print(f" -> [Descartada] {a[0]} ~ {b[0]}: la segunda revisión del modelo no confirma su veredicto")
+            return None
+        return sentido, motivo
+
+    @staticmethod
+    def _consultar(modelo: str, prompt: str) -> Optional[Dict]:
+        """Una consulta JSON al LLM local. None si su respuesta no es JSON; lanza si falla la conexión."""
         data = {"model": modelo, "prompt": prompt, "stream": False, "format": "json", "keep_alive": "5m"}
         req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=json.dumps(data).encode('utf-8'))
         req.add_header('Content-Type', 'application/json')
@@ -290,11 +310,31 @@ Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
             resp = json.loads(resultado.get("response", "{}"))
         except json.JSONDecodeError:
             return None
-        clave = _normalizar(str(resp.get("relacion", ""))).replace(" ", "_")
-        sentido = {"a_se_basa_en_b": "ab", "b_se_basa_en_a": "ba", "relacionados": "rel"}.get(clave)
-        if sentido is None and str(resp.get("depende", "")).lower() == "true":  # respuesta al estilo antiguo
-            sentido = "ab"
-        return (sentido, str(resp.get("motivo", ""))) if sentido else None
+        return resp if isinstance(resp, dict) else None
+
+    def _confirmar(self, modelo: str, bloque_a: str, bloque_b: str, sentido: str, motivo: str) -> bool:
+        """Segunda pasada, invisible para el usuario: el modelo revisa su propio veredicto con otra pregunta (¿lo sostienen los textos?, ¿el sentido es el
+        correcto?). Solo un "correcto": false lo descarta; si no contesta con claridad o falla la consulta se da por bueno, para no perder una conexión por un fallo de formato."""
+        veredicto = {"ab": "A se basa en B (A necesita, usa o deriva de B)", "ba": "B se basa en A (B necesita, usa o deriva de A)",
+                     "rel": "A y B están relacionados (comparten una herramienta o un modelo concreto) sin que uno sea requisito del otro"}[sentido]
+        prompt = f"""Revisa con espíritu crítico este veredicto de otro juez, que podría estar equivocado.
+
+{bloque_a}
+
+{bloque_b}
+
+Veredicto: {veredicto}.
+Motivo dado: "{motivo}"
+
+Comprueba dos cosas: (1) que el motivo se sostiene con los textos y no es una generalidad ni una invención; (2) que el sentido del veredicto es el correcto.
+Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
+        try:
+            resp = self._consultar(modelo, prompt)
+        except Exception as e:
+            print(f"[Conexiones] No se pudo hacer la segunda revisión ({e}); se da por buena.")
+            return True
+        correcto = (resp or {}).get("correcto", True)
+        return str(correcto).strip().lower() != "false"
 
     def evaluar_conexiones(self, nuevo_id: str, nuevo_nombre: str, nuevo_resumen: str, vector_nuevo: np.ndarray, base_de_datos: List[Dict],
                            omitir: Optional[set] = None, nuevo_glosario=None, progreso=None) -> List[Dict]:
