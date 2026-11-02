@@ -122,6 +122,32 @@ function Ejecutar([string]$exe, [string[]]$argumentos, [scriptblock]$alAvanzar, 
     if ($p.ExitCode -ne 0) { throw ("$que falló (código $($p.ExitCode)); mira $registro." + (ExplicarCodigo $p.ExitCode)) }
 }
 
+# El Python del motor solo se fía de los certificados que trae (certifi). Un antivirus o un proxy que inspecciona HTTPS firma con su propia raíz, que Windows sí conoce:
+# sin ella la descarga del modelo falla a ratos con CERTIFICATE_VERIFY_FAILED. Devuelve un .pem con los de certifi más los de Windows, o $null si no se pudo.
+function CertificadosConWindows([string]$python, [string]$destino) {
+    try {
+        $certifi = (& $python -I -c 'import certifi; print(certifi.where())') | Select-Object -First 1
+        if (-not $certifi -or -not (Test-Path $certifi)) { return $null }
+        $sb = New-Object Text.StringBuilder
+        [void]$sb.AppendLine((Get-Content $certifi -Raw))
+        $n = 0
+        foreach ($almacen in 'Cert:\CurrentUser\Root', 'Cert:\LocalMachine\Root') {
+            foreach ($c in (Get-ChildItem $almacen -ErrorAction SilentlyContinue)) {
+                [void]$sb.AppendLine('-----BEGIN CERTIFICATE-----')
+                [void]$sb.AppendLine([Convert]::ToBase64String($c.RawData, 'InsertLineBreaks'))
+                [void]$sb.AppendLine('-----END CERTIFICATE-----')
+                $n++
+            }
+        }
+        [IO.File]::WriteAllText($destino, $sb.ToString(), [Text.Encoding]::ASCII)
+        Anotar "Certificados de Windows añadidos a los de Python: $n"
+        return $destino
+    } catch {
+        Anotar "AVISO: no se pudieron reunir los certificados de Windows ($($_.Exception.Message))"
+        return $null
+    }
+}
+
 # Descarga con curl.exe (viene con Windows 10/11) midiendo el archivo parcial frente al tamaño total que anuncia el servidor.
 function Bajar([string]$url, [string]$destino, [string]$fase, [string]$texto, [string]$rango = '') {
     $cabeceras = & curl.exe -sIL $url
@@ -234,6 +260,8 @@ try {
         $guion = Join-Path $Motor 'precargar_modelo.py'
         Set-Content -Path $guion -Encoding UTF8 -Value "from fastembed import TextEmbedding`nTextEmbedding(model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
         $antes = Tamano $modelos
+        $certificados = CertificadosConWindows $pythonExe (Join-Path $Motor 'certificados.pem')
+        if ($certificados) { $env:SSL_CERT_FILE = $certificados; $env:REQUESTS_CA_BUNDLE = $certificados }     # solo durante esta descarga
         for ($intento = 1; $intento -le 3; $intento++) {      # HuggingFace falla a veces por red (certificados, cortes): fastembed reanuda lo ya bajado
             try {
                 Ejecutar $pythonExe @("`"$guion`"") {
@@ -249,6 +277,7 @@ try {
             }
         }
         Remove-Item $guion -Force -ErrorAction SilentlyContinue
+        Remove-Item Env:SSL_CERT_FILE, Env:REQUESTS_CA_BUNDLE -ErrorAction SilentlyContinue
         $avance.clasif = 100
     }
 
