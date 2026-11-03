@@ -539,15 +539,24 @@ class TestAjustes(unittest.TestCase):
         self.addCleanup(p.stop)
 
     def test_sin_archivo_o_con_basura_valen_los_valores_por_defecto(self):
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": ""})
+        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True})
         with open(self.ruta, "w") as f:
             f.write("{no es json")
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": ""})
+        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True})
 
     def test_guardar_ignora_claves_desconocidas_y_tipos_incorrectos(self):
         ajustes.guardar({"ia_activa": False, "modelo": "qwen2.5:3b", "otra": 1})
         ajustes.guardar({"ia_activa": "no", "modelo": 5})
-        self.assertEqual(ajustes.leer(), {"ia_activa": False, "modelo": "qwen2.5:3b"})
+        self.assertEqual(ajustes.leer(), {"ia_activa": False, "modelo": "qwen2.5:3b", "buscar_actualizaciones": True})
+
+    def test_la_busqueda_de_actualizaciones_se_puede_apagar_y_se_guarda(self):
+        self.assertTrue(ajustes.leer()["buscar_actualizaciones"])             # por defecto avisa de versiones nuevas
+        ajustes.guardar({"buscar_actualizaciones": False})
+        self.assertFalse(ajustes.leer()["buscar_actualizaciones"])
+        ajustes.guardar({"buscar_actualizaciones": "no"})                     # un tipo incorrecto no cambia nada
+        self.assertFalse(ajustes.leer()["buscar_actualizaciones"])
+        client = TestClient(main.app, base_url="http://127.0.0.1")
+        self.assertTrue(client.put("/api/ajustes", json={"buscar_actualizaciones": True}).json()["buscar_actualizaciones"])
 
     def test_con_la_ia_desactivada_no_se_arranca_ni_se_usa_ollama(self):
         ajustes.guardar({"ia_activa": False})

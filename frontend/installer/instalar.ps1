@@ -13,13 +13,23 @@ param(
     [string]$Modelos = '',
     [int]$Ollama = 0,
     [string]$Modelo = '',
-    [int]$Prueba = 0                            # 1: de Ollama solo se bajan 50 MB (sin instalar ni tocar variables de entorno); 2: igual, aunque Ollama ya esté instalado
+    [int]$Prueba = 0,                           # 1: de Ollama solo se bajan 50 MB (sin instalar ni tocar variables de entorno); 2: igual, aunque Ollama ya esté instalado
+    [int]$Actualizar = 0,                       # 1: es una actualización: lo ya instalado se salta y instalacion.json se completa sin pisar lo que había
+    [int]$Esquema = 0,                          # estructura de rutas de esta versión (se guarda en instalacion.json)
+    [string]$Nuevas = ''                        # «clave=ruta;clave=ruta»: carpetas nuevas elegidas en una actualización
 )
 if ($Parametros) {
     foreach ($l in Get-Content $Parametros -Encoding Unicode) {
         if ($l -match '^([A-Za-z]+)=(.*)$') { Set-Variable -Name $Matches[1] -Value $Matches[2].Trim() -Scope Script }
     }
-    $Ollama = [int]$Ollama; $Prueba = [int]$Prueba
+    $Ollama = [int]$Ollama; $Prueba = [int]$Prueba; $Actualizar = [int]$Actualizar; $Esquema = [int]$Esquema
+}
+if ($Actualizar -and $Config -and (Test-Path $Config)) {        # al actualizar mandan las carpetas que ya se eligieron (el asistente solo conoce las de siempre si falta el registro)
+    try {
+        $previo = Get-Content $Config -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($previo.motor) { $Motor = [string]$previo.motor }
+        if ($previo.datos) { $Datos = [string]$previo.datos }
+    } catch { }
 }
 foreach ($obligatorio in 'Motor', 'Backend', 'Estado', 'Cancelar') { if (-not (Get-Variable $obligatorio -ValueOnly)) { Write-Error "Falta el parámetro $obligatorio"; exit 2 } }
 $ErrorActionPreference = 'Stop'
@@ -344,7 +354,15 @@ try {
     # ---------------------------------------------------------------- lo elegido, para que la app lo lea
     if ($Config) {
         New-Item -ItemType Directory -Force (Split-Path $Config) | Out-Null
-        [ordered]@{ motor = $Motor; datos = $Datos; modelos_ollama = $Modelos } | ConvertTo-Json | Set-Content -Path $Config -Encoding UTF8
+        $cfg = [ordered]@{}
+        if ($Actualizar -and (Test-Path $Config)) {          # al actualizar se conserva lo que ya había (p. ej. la carpeta de modelos de Ollama)
+            try { foreach ($p in (Get-Content $Config -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties) { $cfg[$p.Name] = $p.Value } } catch { Anotar "AVISO: no se pudo leer $Config ($($_.Exception.Message)); se reescribe" }
+        }
+        $cfg['motor'] = $Motor; $cfg['datos'] = $Datos
+        if (-not $Actualizar -or -not $cfg.Contains('modelos_ollama')) { $cfg['modelos_ollama'] = $Modelos }
+        if ($Esquema -gt 0) { $cfg['esquema'] = $Esquema }
+        foreach ($par in ($Nuevas -split ';')) { if ($par -match '^([^=]+)=(.+)$') { $cfg[$Matches[1]] = $Matches[2] } }
+        $cfg | ConvertTo-Json | Set-Content -Path $Config -Encoding UTF8
     }
     Anotar 'instalación terminada'
     Marcar 'instalacion.ok' 'ok'

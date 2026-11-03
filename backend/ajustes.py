@@ -1,4 +1,4 @@
-"""Ajustes del usuario (data/ajustes.json): si se usa la IA local y con qué modelo de Ollama."""
+"""Ajustes del usuario (data/ajustes.json): si se usa la IA local, con qué modelo de Ollama y si la app busca versiones nuevas al abrirse."""
 import json
 import os
 import threading
@@ -6,7 +6,7 @@ import threading
 from database import DATA_DIR
 
 RUTA = os.path.join(DATA_DIR, "ajustes.json")
-DEFECTO = {"ia_activa": True, "modelo": ""}   # modelo "" = elegir automáticamente el mejor instalado
+DEFECTO = {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True}   # modelo "" = elegir automáticamente el mejor instalado
 _lock = threading.Lock()
 
 

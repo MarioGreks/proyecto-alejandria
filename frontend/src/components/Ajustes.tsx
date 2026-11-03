@@ -4,7 +4,7 @@ import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } fro
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 
-interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number }
+interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number; buscar_actualizaciones: boolean }
 
 
 export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void; onTutorial: () => void }) {
@@ -18,7 +18,7 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
     useEffect(() => { cargar(); const t = setInterval(cargar, 4000); return () => clearInterval(t); }, []);     // el estado de Ollama cambia fuera de la app: se refresca solo
     const arrancarOllama = () => fetch(`${API}/api/ollama/arrancar`, { method: 'POST' }).then(() => setMensaje('Arrancando Ollama...')).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
 
-    const guardar = async (cambios: Partial<Pick<Estado, 'ia_activa' | 'modelo'>>) => {
+    const guardar = async (cambios: Partial<Pick<Estado, 'ia_activa' | 'modelo' | 'buscar_actualizaciones'>>) => {
         const res = await fetch(`${API}/api/ajustes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cambios) });
         if (res.ok) cargar(); else setMensaje('Error: no se pudo guardar el ajuste.');
     };
@@ -57,6 +57,16 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
                                 [!] Este modelo tiene una licencia no comercial o con condiciones propias. Revísala antes de un uso comercial.
                             </div>
                         )}
+                    </Seccion>
+
+                    <Seccion titulo={`Actualizaciones (versión ${e.version})`}>
+                        <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+                            <input type="checkbox" className="t-check" checked={e.buscar_actualizaciones} onChange={ev => guardar({ buscar_actualizaciones: ev.target.checked })} />
+                            Avisarme de las versiones nuevas al abrir la app
+                        </label>
+                        <div style={{ fontSize: 12, color: '#7aa', marginTop: 8 }}>
+                            Es lo único que la app consulta por internet por su cuenta: pregunta a github.com si hay una versión nueva y no envía nada tuyo. Solo instala lo que esté firmado por el proyecto, y solo si tú pulsas Actualizar.
+                        </div>
                     </Seccion>
 
                     <Seccion titulo={`Tus datos (${e.neuronas} neuronas)`}>

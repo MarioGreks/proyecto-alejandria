@@ -12,7 +12,7 @@ import intercambio
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.1.6"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.2.0"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -462,6 +462,7 @@ def delete_node(node_id: str):
 
 class AjustesRequest(BaseModel):
     ia_activa: Optional[bool] = None
+    buscar_actualizaciones: Optional[bool] = None
     modelo: Optional[str] = Field(None, max_length=100)
 
 @app.get("/api/ajustes")

@@ -30,6 +30,10 @@ Var Tmp
 Var BasePrueba      ; con /PRUEBA=<carpeta>: todo se hace dentro de esa carpeta y de una clave de registro de prueba
 Var PruebaNum       ; 0 normal, 1 prueba, 2 prueba que además descarga Ollama aunque ya esté instalado (/OLLAMA-FORZAR)
 Var ClaveDesinst
+Var Actualizando    ; 1 si se ejecuta en modo actualización (/UPDATE del actualizador de la app, o /ACTUALIZAR): sin preguntas, sobre lo ya instalado
+Var EsquemaInst     ; estructura de rutas con la que se instaló (sin dato = 1)
+Var EsquemaActual   ; la de este instalador (ESQUEMA); si es mayor, en una actualización se piden solo las carpetas nuevas
+Var NuevasRutas     ; «clave=ruta;clave=ruta» de lo elegido en esas carpetas nuevas, para guardarlo en instalacion.json
 Var CarpetaMenu
 Var CarpetaEscritorio
 Var RutaConfig

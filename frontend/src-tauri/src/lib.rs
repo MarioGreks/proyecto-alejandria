@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
+use tauri_plugin_updater::UpdaterExt;
 
 const UV_VERSION: &str = "0.13.6";
 const UV_SHA256: &str = "a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f";
@@ -282,12 +283,73 @@ async fn arrancar_backend(app: AppHandle, estado: State<'_, Estado>) -> Result<u
     .map_err(|e| e.to_string())?
 }
 
+#[derive(Clone, Serialize)]
+struct Novedad {
+    version: String,
+    notas: String,
+}
+
+#[derive(Clone, Serialize)]
+struct Progreso {
+    recibido: u64,
+    total: Option<u64>,
+}
+
+/// El actualizador (tauri-plugin-updater): la dirección y la clave PÚBLICA salen de tauri.conf.json, y solo se instala lo que esté firmado con la clave privada
+/// del proyecto. `ALEJANDRIA_ACTUALIZACIONES` solo se admite para probar en local (https://127.0.0.1 o localhost, con certificado propio): la firma se sigue comprobando igual.
+/// `hijo`: el backend lanzado por esta app; el plugin termina el proceso con `exit(0)` (sin pasar por RunEvent::Exit), así que se cierra antes.
+fn actualizador(app: &AppHandle, hijo: Option<Arc<Mutex<Option<Child>>>>) -> Result<tauri_plugin_updater::Updater, String> {
+    let mut b = app.updater_builder().restart_after_install(false); // el instalador reabre la app él mismo
+    if let Some(hijo) = hijo {
+        b = b.on_before_exit(move || {
+            if let Some(mut h) = hijo.lock().unwrap().take() {
+                let _ = h.kill();
+            }
+        });
+    }
+    if let Ok(url) = std::env::var("ALEJANDRIA_ACTUALIZACIONES") {
+        if url.starts_with("https://127.0.0.1") || url.starts_with("https://localhost") {
+            b = b
+                .endpoints(vec![url.parse().map_err(|e| format!("Dirección de prueba no válida: {e}"))?])
+                .map_err(|e| e.to_string())?
+                .configure_client(|c| c.danger_accept_invalid_certs(true));
+        }
+    }
+    b.build().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+/// ¿Hay una versión más nueva y firmada? Devuelve su número y sus novedades; `None` si ya está al día.
+async fn buscar_actualizacion(app: AppHandle) -> Result<Option<Novedad>, String> {
+    let actualizacion = actualizador(&app, None)?.check().await.map_err(|e| e.to_string())?;
+    Ok(actualizacion.map(|u| Novedad { version: u.version.clone(), notas: u.body.clone().unwrap_or_default() }))
+}
+
+#[tauri::command]
+/// Descarga la versión nueva (comprobando su firma), cierra la app y lanza el instalador en modo actualización; el instalador la vuelve a abrir.
+async fn instalar_actualizacion(app: AppHandle, estado: State<'_, Estado>) -> Result<(), String> {
+    let Some(u) = actualizador(&app, Some(estado.hijo.clone()))?.check().await.map_err(|e| e.to_string())? else {
+        return Err("Ya no hay ninguna actualización disponible.".into());
+    };
+    let (avisos, mut recibido) = (app.clone(), 0u64);
+    u.download_and_install(
+        move |trozo, total| {
+            recibido += trozo as u64;
+            let _ = avisos.emit("actualizacion-progreso", Progreso { recibido, total });
+        },
+        || {},
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Estado::default())
-        .invoke_handler(tauri::generate_handler![arrancar_backend])
+        .invoke_handler(tauri::generate_handler![arrancar_backend, buscar_actualizacion, instalar_actualizacion])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
     app.run(|app, evento| {

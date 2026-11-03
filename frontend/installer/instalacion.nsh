@@ -48,6 +48,7 @@ Function InstalarApp
   WriteRegStr HKCU "$ClaveDesinst" "DatosDir" "$RutaDatos"
   WriteRegStr HKCU "$ClaveDesinst" "ConfigFile" "$RutaConfig"
   WriteRegDWORD HKCU "$ClaveDesinst" "EstimatedSize" 600000
+  WriteRegDWORD HKCU "$ClaveDesinst" "Esquema" $EsquemaActual     ; estructura de rutas de esta instalación (ver actualizar.nsh)
 FunctionEnd
 
 ; Parámetros para instalar.ps1 en un archivo clave=valor (UTF-16): la línea de órdenes de NSIS no admite más de 1024 caracteres.
@@ -75,6 +76,9 @@ Function LanzarPowerShell
   FileWriteUTF16LE $0 "Ollama=$OllamaSi$\r$\n"
   FileWriteUTF16LE $0 "Modelo=$ModeloNombre$\r$\n"
   FileWriteUTF16LE $0 "Prueba=$PruebaNum$\r$\n"
+  FileWriteUTF16LE $0 "Actualizar=$Actualizando$\r$\n"
+  FileWriteUTF16LE $0 "Esquema=$EsquemaActual$\r$\n"
+  FileWriteUTF16LE $0 "Nuevas=$NuevasRutas$\r$\n"
   FileClose $0
   Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\instalar.ps1" -Parametros "$PLUGINSDIR\parametros.txt"'
   StrCpy $PsLanzado 1

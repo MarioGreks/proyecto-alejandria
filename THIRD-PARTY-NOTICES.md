@@ -7,7 +7,7 @@ Proyecto Alejandría es software MIT (ver [LICENSE](LICENSE)). Este archivo reco
 ## Resumen
 
 - JavaScript empaquetado en la app (npm, producción y sus dependencias): **212** paquetes.
-- Rust compilado en la app (Tauri y dependencias, Windows): **250** crates.
+- Rust compilado en la app (Tauri y dependencias, Windows): **291** crates.
 - Pyodide y las ruedas de Python que lleva la app para los laboratorios: Pyodide 0.29.5 y **14** ruedas.
 - Ninguna de ellas declara GPL, LGPL, AGPL, SSPL ni licencia no comercial en sus metadatos.
 - Los modelos de IA (phi3:mini, qwen2.5, el modelo de clasificación) y Ollama **no se incluyen**: se descargan desde su origen; sus licencias están en la sección «Modelos de IA y software de terceros» del [README](README.md).
@@ -38,9 +38,9 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | @reduxjs/toolkit | 2.13.0 | MIT | Copyright (c) 2018 Mark Erikson | [L3](#l3) |
 | @standard-schema/spec | 1.1.0 | MIT | Copyright (c) 2024 Colin McDonnell | [L3](#l3) |
 | @standard-schema/utils | 0.3.0 | MIT | Copyright (c) 2024 Fabian Hiller | [L3](#l3) |
-| @tauri-apps/api | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3), [L33](#l33) |
-| @tauri-apps/plugin-opener | 2.7.0 | MIT OR Apache-2.0 |  | [L21](#l21) |
-| @tweenjs/tween.js | 23.1.3 | MIT | Copyright (c) 2010-2012 Tween.js authors. | [L30](#l30) |
+| @tauri-apps/api | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3), [L34](#l34) |
+| @tauri-apps/plugin-opener | 2.7.0 | MIT OR Apache-2.0 |  | [L17](#l17) |
+| @tweenjs/tween.js | 23.1.3 | MIT | Copyright (c) 2010-2012 Tween.js authors. | [L32](#l32) |
 | @types/d3-array | 3.2.2 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
 | @types/d3-color | 3.1.3 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
 | @types/d3-ease | 3.0.2 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
@@ -67,13 +67,13 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | @types/unist | 2.0.11 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
 | @types/use-sync-external-store | 0.0.6 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
 | @types/webxr | 0.5.24 | MIT | Copyright (c) Microsoft Corporation. | [L7](#l7) |
-| @ungap/structured-clone | 1.4.0 | ISC | Copyright (c) 2021, Andrea Giammarchi, @WebReflection · copyright notice and this permission notice appear in all copies. | [L35](#l35) |
+| @ungap/structured-clone | 1.4.0 | ISC | Copyright (c) 2021, Andrea Giammarchi, @WebReflection · copyright notice and this permission notice appear in all copies. | [L36](#l36) |
 | @use-gesture/core | 10.3.1 | MIT | Copyright (c) 2018-present Paul Henschel <drcmda@gmail.com> | [L1](#l1) |
 | @use-gesture/react | 10.3.1 | MIT | Copyright (c) 2018-present Paul Henschel <drcmda@gmail.com> | [L1](#l1) |
 | bail | 2.0.2 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| base64-js | 1.5.1 | MIT | Copyright (c) 2014 Jameson Little | [L5](#l5) |
+| base64-js | 1.5.1 | MIT | Copyright (c) 2014 Jameson Little | [L6](#l6) |
 | bidi-js | 1.1.0 | MIT | Copyright (c) 2021 Jason Johnston | [L3](#l3) |
-| buffer | 6.0.3 | MIT | Copyright (c) Feross Aboukhadijeh, and other contributors. | [L5](#l5) |
+| buffer | 6.0.3 | MIT | Copyright (c) Feross Aboukhadijeh, and other contributors. | [L6](#l6) |
 | camera-controls | 3.1.2 | MIT | Copyright (c) 2017 @yomotsu | [L3](#l3) |
 | ccount | 2.0.1 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | character-entities | 2.0.2 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
@@ -83,11 +83,11 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | clsx | 2.1.1 | MIT | Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com) | [L3](#l3) |
 | comma-separated-tokens | 2.0.3 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | commander | 8.3.0 | MIT | Copyright (c) 2011 TJ Holowaychuk <tj@vision-media.ca> | [L4](#l4) |
-| cross-env | 7.0.3 | MIT | Copyright (c) 2017 Kent C. Dodds | [L5](#l5) |
-| cross-spawn | 7.0.6 | MIT | Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio> | [L5](#l5) |
+| cross-env | 7.0.3 | MIT | Copyright (c) 2017 Kent C. Dodds | [L6](#l6) |
+| cross-spawn | 7.0.6 | MIT | Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio> | [L6](#l6) |
 | d3-array | 3.2.4 | ISC | Copyright 2010-2023 Mike Bostock | [L10](#l10) |
 | d3-color | 3.1.0 | ISC | Copyright 2010-2022 Mike Bostock | [L10](#l10) |
-| d3-ease | 3.0.1 | BSD-3-Clause | Copyright 2010-2021 Mike Bostock · Copyright 2001 Robert Penner | [L37](#l37) |
+| d3-ease | 3.0.1 | BSD-3-Clause | Copyright 2010-2021 Mike Bostock · Copyright 2001 Robert Penner | [L38](#l38) |
 | d3-format | 3.1.2 | ISC | Copyright 2010-2026 Mike Bostock | [L10](#l10) |
 | d3-interpolate | 3.0.1 | ISC | Copyright 2010-2021 Mike Bostock | [L10](#l10) |
 | d3-path | 3.1.0 | ISC | Copyright 2015-2022 Mike Bostock | [L10](#l10) |
@@ -97,21 +97,21 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | d3-time-format | 4.1.0 | ISC | Copyright 2010-2021 Mike Bostock | [L10](#l10) |
 | d3-timer | 3.0.1 | ISC | Copyright 2010-2021 Mike Bostock | [L10](#l10) |
 | debug | 4.4.3 | MIT | Copyright (c) 2014-2017 TJ Holowaychuk <tj@vision-media.ca> · Copyright (c) 2018-2021 Josh Junon | [L4](#l4) |
-| decimal.js-light | 2.5.1 | MIT | Copyright (c) 2020 Michael Mclaughlin | [L36](#l36) |
+| decimal.js-light | 2.5.1 | MIT | Copyright (c) 2020 Michael Mclaughlin | [L37](#l37) |
 | decode-named-character-reference | 1.3.0 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| dequal | 2.0.3 | MIT | Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com) | [L5](#l5) |
+| dequal | 2.0.3 | MIT | Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com) | [L6](#l6) |
 | detect-gpu | 5.0.70 | MIT | Copyright (c) 2020 Tim van Scherpenzeel | [L3](#l3) |
 | devlop | 1.1.0 | MIT | Copyright (c) 2023 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | draco3d | 1.5.7 | Apache-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L2](#l2) |
-| entities | 6.0.1 | BSD-2-Clause | Copyright (c) Felix Böhm | [L38](#l38) |
+| entities | 6.0.1 | BSD-2-Clause | Copyright (c) Felix Böhm | [L39](#l39) |
 | es-toolkit | 1.52.0 | MIT | Copyright (c) 2024 Viva Republica, Inc. | [L3](#l3) |
 | estree-util-is-identifier-name | 3.0.0 | MIT | Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| eventemitter3 | 5.0.4 | MIT | Copyright (c) 2014 Arnout Kazemier | [L5](#l5) |
-| extend | 3.0.2 | MIT | Copyright (c) 2014 Stefan Thomas | [L5](#l5) |
+| eventemitter3 | 5.0.4 | MIT | Copyright (c) 2014 Arnout Kazemier | [L6](#l6) |
+| extend | 3.0.2 | MIT | Copyright (c) 2014 Stefan Thomas | [L6](#l6) |
 | fflate | 0.8.3 | MIT | Copyright (c) 2026 Arjun Barrett | [L3](#l3) |
 | fflate | 0.6.11 | MIT | Copyright (c) 2020 Arjun Barrett | [L3](#l3) |
 | glsl-noise | 0.0.0 | MIT | Copyright (C) 2011 by Ashima Arts (Simplex noise) · Copyright (C) 2011 by Stefan Gustavson (Classic noise) | [L1](#l1) |
-| hast-util-from-dom | 5.0.1 | ISC | Copyright (c) Keith McKnight <keith@mcknig.ht> | [L39](#l39) |
+| hast-util-from-dom | 5.0.1 | ISC | Copyright (c) Keith McKnight <keith@mcknig.ht> | [L40](#l40) |
 | hast-util-from-html | 2.0.3 | MIT | Copyright (c) 2022 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | hast-util-from-html-isomorphic | 2.0.0 | MIT | Copyright (c) 2023 Remco Haszing <remcohaszing@gmail.com> | [L4](#l4) |
 | hast-util-from-parse5 | 8.0.3 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
@@ -121,9 +121,9 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | hast-util-to-text | 4.0.2 | MIT | Copyright (c) 2019 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | hast-util-whitespace | 3.0.0 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | hastscript | 9.0.1 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| hls.js | 1.7.3 | Apache-2.0 | Copyright (c) 2017 Dailymotion (http://www.dailymotion.com) · Copyright (c) 2013-2015 Brightcove | [L29](#l29) |
+| hls.js | 1.7.3 | Apache-2.0 | Copyright (c) 2017 Dailymotion (http://www.dailymotion.com) · Copyright (c) 2013-2015 Brightcove | [L31](#l31) |
 | html-url-attributes | 3.0.1 | MIT | Copyright (c) Titus Wormer | [L15](#l15) |
-| ieee754 | 1.2.1 | BSD-3-Clause | Copyright 2008 Fair Oaks Labs, Inc. | [L32](#l32) |
+| ieee754 | 1.2.1 | BSD-3-Clause | Copyright 2008 Fair Oaks Labs, Inc. | [L22](#l22) |
 | immediate | 3.0.6 | MIT | Copyright (c) 2012 Barnesandnoble.com, llc, Donavon West, Domenic Denicola, Brian Cavalier | [L1](#l1) |
 | immer | 11.1.21 | MIT | Copyright (c) 2017 Michel Weststrate | [L3](#l3) |
 | inline-style-parser | 0.2.7 | MIT | Copyright (c) 2012 TJ Holowaychuk <tj@vision-media.ca> | [L4](#l4) |
@@ -134,10 +134,10 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | is-hexadecimal | 2.0.1 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | is-plain-obj | 4.1.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com) | [L3](#l3) |
 | is-promise | 2.2.2 | MIT | Copyright (c) 2014 Forbes Lindesay | [L1](#l1) |
-| isexe | 2.0.0 | ISC | Copyright (c) Isaac Z. Schlueter and Contributors · copyright notice and this permission notice appear in all copies. | [L19](#l19) |
+| isexe | 2.0.0 | ISC | Copyright (c) Isaac Z. Schlueter and Contributors · copyright notice and this permission notice appear in all copies. | [L21](#l21) |
 | its-fine | 2.1.1 | MIT | Copyright (c) 2022-2025 Poimandres | [L3](#l3) |
-| katex | 0.16.47 | MIT | Copyright (c) 2013-2020 Khan Academy and other contributors | [L5](#l5) |
-| lie | 3.3.0 | MIT |  | [L28](#l28) |
+| katex | 0.16.47 | MIT | Copyright (c) 2013-2020 Khan Academy and other contributors | [L6](#l6) |
+| lie | 3.3.0 | MIT |  | [L30](#l30) |
 | longest-streak | 3.1.0 | MIT | Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com> | [L4](#l4) |
 | maath | 0.10.8 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | mdast-util-from-markdown | 2.1.0 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
@@ -174,29 +174,29 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | micromark-util-subtokenize | 2.1.0 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | micromark-util-symbol | 2.0.1 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | micromark-util-types | 2.0.3 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| ms | 2.1.3 | MIT | Copyright (c) 2020 Vercel, Inc. | [L5](#l5) |
-| n8ao | 2.0.1 | ISC |  | [L20](#l20) |
+| ms | 2.1.3 | MIT | Copyright (c) 2020 Vercel, Inc. | [L6](#l6) |
+| n8ao | 2.0.1 | ISC |  | [L23](#l23) |
 | parse-entities | 4.0.2 | MIT | Copyright (c) Titus Wormer <mailto:tituswormer@gmail.com> | [L4](#l4) |
 | parse5 | 7.3.0 | MIT | Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin) | [L1](#l1) |
 | path-key | 3.1.1 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) | [L3](#l3) |
-| potpack | 1.0.2 | ISC | Copyright (c) 2018, Mapbox | [L31](#l31) |
+| potpack | 1.0.2 | ISC | Copyright (c) 2018, Mapbox | [L33](#l33) |
 | promise-worker-transferable | 1.0.4 | Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2) |
 | property-information | 7.2.0 | MIT | Copyright (c) Titus Wormer <mailto:tituswormer@gmail.com> | [L4](#l4) |
-| pyodide | 0.29.5 | MPL-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L18](#l18) |
+| pyodide | 0.29.5 | MPL-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L19](#l19) |
 | react | 19.3.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | [L3](#l3) |
 | react-dom | 19.3.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | [L3](#l3) |
-| react-markdown | 10.1.0 | MIT | Copyright (c) Espen Hovlandsdal | [L5](#l5) |
-| react-redux | 9.3.0 | MIT | Copyright (c) 2015-present Dan Abramov | [L5](#l5) |
+| react-markdown | 10.1.0 | MIT | Copyright (c) Espen Hovlandsdal | [L6](#l6) |
+| react-redux | 9.3.0 | MIT | Copyright (c) 2015-present Dan Abramov | [L6](#l6) |
 | react-use-measure | 2.1.7 | MIT | Copyright (c) 2019-2025 Poimandres | [L3](#l3) |
-| recharts | 3.10.1 | MIT | Copyright (c) 2015-present recharts | [L5](#l5) |
-| redux | 5.0.1 | MIT | Copyright (c) 2015-present Dan Abramov | [L5](#l5) |
-| redux-thunk | 3.1.0 | MIT | Copyright (c) 2015-present Dan Abramov | [L5](#l5) |
+| recharts | 3.10.1 | MIT | Copyright (c) 2015-present recharts | [L6](#l6) |
+| redux | 5.0.1 | MIT | Copyright (c) 2015-present Dan Abramov | [L6](#l6) |
+| redux-thunk | 3.1.0 | MIT | Copyright (c) 2015-present Dan Abramov | [L6](#l6) |
 | rehype-katex | 7.0.1 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | remark-math | 6.0.0 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | remark-parse | 11.0.0 | MIT | Copyright (c) 2014 Titus Wormer <tituswormer@gmail.com> | [L15](#l15) |
 | remark-rehype | 11.1.2 | MIT | Copyright (c) Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| require-from-string | 2.0.2 | MIT | Copyright (c) Vsevolod Strukchinsky <floatdrop@gmail.com> (github.com/floatdrop) | [L5](#l5) |
-| reselect | 5.2.0 | MIT | Copyright (c) 2015-2018 Reselect Contributors | [L5](#l5) |
+| require-from-string | 2.0.2 | MIT | Copyright (c) Vsevolod Strukchinsky <floatdrop@gmail.com> (github.com/floatdrop) | [L6](#l6) |
+| reselect | 5.2.0 | MIT | Copyright (c) 2015-2018 Reselect Contributors | [L6](#l6) |
 | scheduler | 0.28.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | [L3](#l3) |
 | shebang-command | 2.0.0 | MIT | Copyright (c) Kevin Mårtensson <kevinmartensson@gmail.com> (github.com/kevva) | [L3](#l3) |
 | shebang-regex | 3.0.0 | MIT | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com) | [L3](#l3) |
@@ -204,8 +204,8 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | stats-gl | 2.4.2 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | stats.js | 0.17.0 | MIT | Copyright (c) 2009-2016 stats.js authors | [L16](#l16) |
 | stringify-entities | 4.0.4 | MIT | Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com> | [L4](#l4) |
-| style-to-js | 1.1.21 | MIT | Copyright (c) 2020 Menglin "Mark" Xu <mark@remarkablemark.org> | [L5](#l5) |
-| style-to-object | 1.0.14 | MIT | Copyright (c) 2017 Menglin "Mark" Xu <mark@remarkablemark.org> | [L5](#l5) |
+| style-to-js | 1.1.21 | MIT | Copyright (c) 2020 Menglin "Mark" Xu <mark@remarkablemark.org> | [L6](#l6) |
+| style-to-object | 1.0.14 | MIT | Copyright (c) 2017 Menglin "Mark" Xu <mark@remarkablemark.org> | [L6](#l6) |
 | suspend-react | 0.1.3 | MIT | Copyright (c) 2021 Paul Henschel | [L3](#l3) |
 | three | 0.170.0 | MIT | Copyright © 2010-2024 three.js authors | [L16](#l16) |
 | three | 0.186.1 | MIT | Copyright © 2010-2026 three.js authors | [L16](#l16) |
@@ -220,7 +220,7 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | tunnel-rat | 0.1.2 | MIT | Copyright (c) 2022 Poimandres | [L3](#l3) |
 | unified | 11.0.5 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L15](#l15) |
 | unist-util-find-after | 5.0.0 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
-| unist-util-is | 6.0.1 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L34](#l34) |
+| unist-util-is | 6.0.1 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L35](#l35) |
 | unist-util-position | 5.0.0 | MIT | Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | unist-util-remove-position | 5.0.0 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | unist-util-stringify-position | 4.0.0 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
@@ -235,8 +235,8 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | web-namespaces | 2.0.1 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
 | webgl-constants | 1.1.1 | sin campo de licencia | Copyright (c) 2019 Tim van Scherpenzeel | [L3](#l3) |
 | webgl-sdf-generator | 1.1.1 | MIT | Copyright (c) 2021 Jason Johnston | [L3](#l3) |
-| which | 2.0.2 | ISC | Copyright (c) Isaac Z. Schlueter and Contributors · copyright notice and this permission notice appear in all copies. | [L19](#l19) |
-| ws | 8.22.1 | MIT | Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com> · Copyright (c) 2013 Arnout Kazemier and contributors · Copyright (c) 2016 Luigi Pinca and contributors | [L22](#l22) |
+| which | 2.0.2 | ISC | Copyright (c) Isaac Z. Schlueter and Contributors · copyright notice and this permission notice appear in all copies. | [L21](#l21) |
+| ws | 8.22.1 | MIT | Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com> · Copyright (c) 2013 Arnout Kazemier and contributors · Copyright (c) 2016 Luigi Pinca and contributors | [L24](#l24) |
 | zustand | 4.5.7 | MIT | Copyright (c) 2019 Paul Henschel | [L3](#l3) |
 | zustand | 5.0.15 | MIT | Copyright (c) 2019 Paul Henschel | [L3](#l3) |
 | zwitch | 2.0.4 | MIT | Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> | [L4](#l4) |
@@ -245,40 +245,41 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 
 | Paquete | Versión | Licencia | Copyright | Texto |
 | --- | --- | --- | --- | --- |
-| adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 | Copyright (C) Jonas Schievink <jonasschievink@gmail.com> · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L40](#l40), [L23](#l23), [L1](#l1) |
-| aho-corasick | 1.1.5 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
-| alloc-no-stdlib | 3.0.0 | BSD-3-Clause | Copyright (c) 2016 Dropbox, Inc. | [L17](#l17) |
-| alloc-stdlib | 0.3.0 | BSD-3-Clause | _sin archivo de licencia en el paquete (texto estándar)_ | [L17](#l17) |
-| anyhow | 1.0.104 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 | Copyright (C) Jonas Schievink <jonasschievink@gmail.com> · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L41](#l41), [L25](#l25), [L1](#l1) |
+| aho-corasick | 1.1.5 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| alloc-no-stdlib | 3.0.0 | BSD-3-Clause | Copyright (c) 2016 Dropbox, Inc. | [L18](#l18) |
+| alloc-stdlib | 0.3.0 | BSD-3-Clause | _sin archivo de licencia en el paquete (texto estándar)_ | [L18](#l18) |
+| anyhow | 1.0.104 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| atomic-waker | 1.1.2 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1), [L42](#l42) |
 | autocfg | 1.5.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| base64 | 0.22.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L5](#l5) |
-| base64 | 0.23.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L5](#l5) |
+| base64 | 0.22.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L6](#l6) |
+| base64 | 0.23.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L6](#l6) |
 | bit-set | 0.8.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | bit-vec | 0.8.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | bitflags | 1.3.2 | MIT/Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | bitflags | 2.13.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | block-buffer | 0.10.4 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| brotli | 9.0.0 | BSD-3-Clause AND MIT | Copyright (c) 2016 Dropbox, Inc. · Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors. | [L17](#l17), [L1](#l1) |
-| brotli-decompressor | 6.0.1 | BSD-3-Clause/MIT | Copyright (c) 2016 Dropbox, Inc. | [L17](#l17) |
+| brotli | 9.0.0 | BSD-3-Clause AND MIT | Copyright (c) 2016 Dropbox, Inc. · Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors. | [L18](#l18), [L1](#l1) |
+| brotli-decompressor | 6.0.1 | BSD-3-Clause/MIT | Copyright (c) 2016 Dropbox, Inc. | [L18](#l18) |
 | bs58 | 0.5.1 | MIT/Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
-| byteorder | 1.5.0 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
+| byteorder | 1.5.0 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
 | bytes | 1.12.1 | MIT | Copyright (c) 2018 Carl Lerche | [L1](#l1) |
 | camino | 1.2.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | cargo_metadata | 0.19.2 | MIT |  | [L1](#l1) |
-| cargo_toml | 1.0.1 | Apache-2.0 OR MIT | © Kornel Lesiński · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L41](#l41) |
-| cargo-platform | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L23](#l23), [L1](#l1) |
+| cargo_toml | 1.0.1 | Apache-2.0 OR MIT | © Kornel Lesiński · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L43](#l43) |
+| cargo-platform | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L25](#l25), [L1](#l1) |
 | cc | 1.6.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | cfb | 0.14.0 | MIT | Copyright (c) 2017 Matthew D. Steele | [L3](#l3) |
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| chrono | 0.4.45 | MIT OR Apache-2.0 | Copyright (c) 2014, Kang Seonghoon. · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L42](#l42) |
+| chrono | 0.4.45 | MIT OR Apache-2.0 | Copyright (c) 2014, Kang Seonghoon. · copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, | [L44](#l44) |
 | cookie | 0.18.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | crc32fast | 1.5.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L3](#l3) |
-| crossbeam-channel | 0.5.17 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L5](#l5), [L43](#l43) |
-| crossbeam-utils | 0.8.23 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L5](#l5) |
+| crossbeam-channel | 0.5.17 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L6](#l6), [L45](#l45) |
+| crossbeam-utils | 0.8.23 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L6](#l6) |
 | crypto-common | 0.1.7 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| cssparser | 0.37.0 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L18](#l18) |
-| cssparser-macros | 0.7.1 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L18](#l18) |
+| cssparser | 0.37.0 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L19](#l19) |
+| cssparser-macros | 0.7.1 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L19](#l19) |
 | ctor | 1.0.13 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | darling | 0.24.1 | MIT | Copyright (c) 2017 Ted Driggs | [L3](#l3) |
 | darling_core | 0.24.1 | MIT | Copyright (c) 2017 Ted Driggs | [L3](#l3) |
@@ -287,31 +288,39 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | defmt-macros | 1.1.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | defmt-parser | 1.0.0 | MIT OR Apache-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | deranged | 0.5.8 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| derive_more | 2.1.1 | MIT | Copyright (c) 2016 Jelte Fennema | [L5](#l5) |
-| derive_more-impl | 2.1.1 | MIT | Copyright (c) 2016 Jelte Fennema | [L5](#l5) |
+| derive_more | 2.1.1 | MIT | Copyright (c) 2016 Jelte Fennema | [L6](#l6) |
+| derive_more-impl | 2.1.1 | MIT | Copyright (c) 2016 Jelte Fennema | [L6](#l6) |
 | digest | 0.10.7 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| dirs | 7.0.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L24](#l24), [L1](#l1) |
-| dirs-sys | 0.5.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L24](#l24), [L1](#l1) |
+| dirs | 7.0.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L26](#l26), [L1](#l1) |
+| dirs-sys | 0.5.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L26](#l26), [L1](#l1) |
 | displaydoc | 0.2.7 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| dom_query | 0.28.0 | MIT | Copyright (c) 2023 Mykola Humanov | [L44](#l44) |
-| dpi | 0.1.2 | Apache-2.0 AND MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L45](#l45) |
-| dtoa | 1.0.11 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| dtoa-short | 0.3.5 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L18](#l18) |
-| dunce | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 |  | [L20](#l20) |
-| dyn-clone | 1.0.20 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| embed-resource | 3.0.11 | MIT | Copyright (c) 2017 nabijaczleweli | [L5](#l5) |
+| dom_query | 0.28.0 | MIT | Copyright (c) 2023 Mykola Humanov | [L46](#l46) |
+| dpi | 0.1.2 | Apache-2.0 AND MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L47](#l47) |
+| dtoa | 1.0.11 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| dtoa-short | 0.3.5 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L19](#l19) |
+| dunce | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 |  | [L23](#l23) |
+| dyn-clone | 1.0.20 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| embed-resource | 3.0.11 | MIT | Copyright (c) 2017 nabijaczleweli | [L6](#l6) |
 | equivalent | 1.0.2 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| erased-serde | 0.4.10 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| erased-serde | 0.4.10 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | fastrand | 2.5.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| fdeflate | 0.3.7 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
+| fdeflate | 0.3.7 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
 | find-msvc-tools | 0.1.14 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | flate2 | 1.1.10 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | fnv | 1.0.7 | Apache-2.0 / MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | foldhash | 0.2.0 | Zlib | Copyright (c) 2024 Orson Peters | [L13](#l13) |
 | form_urlencoded | 1.2.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| generic-array | 0.14.7 | MIT | Copyright (c) 2015 Bartłomiej Kamiński | [L5](#l5) |
-| getrandom | 0.3.4 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L25](#l25), [L1](#l1) |
-| getrandom | 0.4.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L25](#l25), [L1](#l1) |
+| futures-channel | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-core | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-io | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-macro | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-sink | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-task | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| futures-util | 0.3.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| generic-array | 0.14.7 | MIT | Copyright (c) 2015 Bartłomiej Kamiński | [L6](#l6) |
+| getrandom | 0.2.17 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L20](#l20), [L1](#l1) |
+| getrandom | 0.3.4 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L20](#l20), [L1](#l1) |
+| getrandom | 0.4.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L20](#l20), [L1](#l1) |
 | glob | 0.3.4 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | hashbrown | 0.12.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | hashbrown | 0.17.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
@@ -319,6 +328,12 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | hex | 0.4.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | html5ever | 0.39.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | http | 1.5.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| http-body | 1.1.0 | MIT | Copyright (c) 2019-2026 Sean McArthur & Hyper Contributors | [L1](#l1) |
+| http-body-util | 0.1.5 | MIT | Copyright (c) 2019-2026 Sean McArthur & Hyper Contributors | [L1](#l1) |
+| httparse | 1.10.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| hyper | 1.11.1 | MIT | Copyright (c) 2014-2026 Sean McArthur | [L1](#l1) |
+| hyper-rustls | 0.27.10 | Apache-2.0 OR ISC OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L27](#l27), [L1](#l1) |
+| hyper-util | 0.1.21 | MIT | Copyright (c) 2023-2025 Sean McArthur | [L1](#l1) |
 | ico | 0.5.0 | MIT | Copyright (c) 2018 Matthew D. Steele | [L3](#l3) |
 | icu_collections | 2.3.0 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | icu_locale_core | 2.3.0 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
@@ -333,31 +348,33 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | indexmap | 1.9.3 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | indexmap | 2.14.2 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | infer | 0.22.0 | MIT | Copyright (c) 2019 Bojan | [L3](#l3) |
-| itoa | 1.0.18 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| jiff | 0.2.37 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
-| jiff-core | 0.1.1 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
-| jiff-tzdb | 0.1.8 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
-| jiff-tzdb-platform | 0.1.3 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
+| ipnet | 2.12.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
+| itoa | 1.0.18 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| jiff | 0.2.37 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| jiff-core | 0.1.1 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| jiff-tzdb | 0.1.8 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| jiff-tzdb-platform | 0.1.3 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
 | json-patch | 4.2.0 | MIT/Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L3](#l3) |
 | jsonptr | 0.7.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
 | keyboard-types | 0.8.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| libc | 0.2.190 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| libc | 0.2.190 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | litemap | 0.8.3 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | log | 0.4.34 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | markup5ever | 0.39.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| memchr | 2.8.3 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
+| memchr | 2.8.3 | Unlicense OR MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
 | mime | 0.3.17 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 | Copyright 2013-2014 RAD Game Tools and Valve Software · Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC · Copyright (c) 2017 Frommi | [L3](#l3), [L6](#l6), [L13](#l13) |
-| miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | Copyright 2013-2014 RAD Game Tools and Valve Software · Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC · Copyright (c) 2017 Frommi | [L3](#l3), [L6](#l6), [L13](#l13) |
+| minisign-verify | 0.3.0 | MIT | Copyright (c) 2019-2025 Frank Denis · Copyright (c) 2006-2009 Graydon Hoare · Copyright (c) 2009-2013 Mozilla Foundation | [L48](#l48) |
+| miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 | Copyright 2013-2014 RAD Game Tools and Valve Software · Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC · Copyright (c) 2017 Frommi | [L3](#l3), [L5](#l5), [L13](#l13) |
+| miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | Copyright 2013-2014 RAD Game Tools and Valve Software · Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC · Copyright (c) 2017 Frommi | [L3](#l3), [L5](#l5), [L13](#l13) |
 | mio | 1.2.4 | MIT | Copyright (c) 2014 Carl Lerche and other MIO contributors | [L1](#l1) |
-| muda | 0.20.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L46](#l46) |
+| muda | 0.20.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L49](#l49) |
 | new_debug_unreachable | 1.0.6 | MIT | Copyright (c) 2015 Jonathan Reem | [L1](#l1) |
-| num-conv | 0.2.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| num-conv | 0.2.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | num-traits | 0.2.19 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| open | 5.4.4 | MIT | Copyright © `2015` `Sebastian Thiel` | [L47](#l47) |
-| option-ext | 0.2.0 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L48](#l48) |
+| open | 5.4.4 | MIT | Copyright © `2015` `Sebastian Thiel` | [L50](#l50) |
+| option-ext | 0.2.0 | MPL-2.0 | (c) under Patent Claims infringed by Covered Software in the absence of | [L51](#l51) |
 | parking_lot | 0.12.5 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | parking_lot_core | 0.9.12 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | percent-encoding | 2.3.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
@@ -366,106 +383,127 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | phf_generator | 0.13.1 | MIT | Copyright (c) 2014-2022 Steven Fackler, Yuki Okushi · COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER | [L14](#l14) |
 | phf_macros | 0.13.1 | MIT | Copyright (c) 2014-2022 Steven Fackler, Yuki Okushi · COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER | [L14](#l14) |
 | phf_shared | 0.13.1 | MIT | Copyright (c) 2014-2022 Steven Fackler, Yuki Okushi · COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER | [L14](#l14) |
-| pin-project-lite | 0.2.17 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| pin-project-lite | 0.2.17 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | plist | 1.10.1 | MIT | Copyright (c) 2015 Edward Barnard | [L1](#l1) |
 | png | 0.17.16 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | png | 0.18.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | potential_utf | 0.1.6 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | powerfmt | 0.2.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | precomputed-hash | 0.1.1 | MIT | Copyright (c) 2017 Emilio Cobos Álvarez | [L3](#l3) |
-| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| quick-xml | 0.42.0 | MIT | Copyright (c) 2016 Johann Tuffe | [L5](#l5) |
-| quote | 1.0.47 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3), [L13](#l13) |
-| ref-cast | 1.0.27 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| quick-xml | 0.42.0 | MIT | Copyright (c) 2016 Johann Tuffe | [L6](#l6) |
+| quote | 1.0.47 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3), [L13](#l13) |
+| ref-cast | 1.0.27 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | regex | 1.13.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| reqwest | 0.13.5 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| ring | 0.17.14 | Apache-2.0 AND ISC | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L52](#l52), [L53](#l53), [L54](#l54) |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| rustc-hash | 2.1.3 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| same-file | 1.0.6 | Unlicense/MIT | Copyright (c) 2017 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
+| rustc-hash | 2.1.3 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L27](#l27), [L1](#l1) |
+| rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| rustls-platform-verifier | 0.7.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
+| rustls-webpki | 0.103.16 | ISC | Copyright 2015 Brian Smith. · copyright notice and this permission notice appear in all copies. | [L55](#l55) |
+| same-file | 1.0.6 | Unlicense/MIT | Copyright (c) 2017 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
 | schemars | 0.8.22 | MIT | Copyright (c) 2019 Graham Esau | [L3](#l3) |
 | schemars | 0.9.0 | MIT | Copyright (c) 2019 Graham Esau | [L3](#l3) |
 | schemars | 1.2.2 | MIT | Copyright (c) 2019 Graham Esau | [L3](#l3) |
 | schemars_derive | 0.8.22 | MIT | Copyright (c) 2019 Graham Esau | [L3](#l3) |
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| selectors | 0.38.0 | MPL-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L18](#l18) |
-| semver | 1.0.28 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde_core | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde_derive | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde_derive_internals | 0.29.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde_json | 1.0.151 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| serde_repr | 0.1.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| selectors | 0.38.0 | MPL-2.0 | _sin archivo de licencia en el paquete (texto estándar)_ | [L19](#l19) |
+| semver | 1.0.28 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde_core | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde_derive | 1.0.229 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde_derive_internals | 0.29.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde_json | 1.0.151 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| serde_repr | 0.1.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | serde_spanned | 1.1.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | serde_with | 3.24.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | serde_with_macros | 3.24.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| serde-untagged | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| serde-untagged | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | serialize-to-javascript | 0.1.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
 | serialize-to-javascript-impl | 0.1.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
 | servo_arc | 0.4.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | sha2 | 0.10.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| shlex | 2.0.1 | MIT OR Apache-2.0 | Copyright 2015 Nicholas Allegra (comex). · Copyright (c) 2015 Nicholas Allegra (comex). | [L49](#l49), [L5](#l5) |
+| shlex | 2.0.1 | MIT OR Apache-2.0 | Copyright 2015 Nicholas Allegra (comex). · Copyright (c) 2015 Nicholas Allegra (comex). | [L56](#l56), [L6](#l6) |
 | simd-adler32 | 0.3.10 | MIT | Copyright (c) [2021] [Marvin Countryman] | [L3](#l3) |
-| siphasher | 1.0.4 | MIT OR Apache-2.0 | Copyright 2012-2016 The Rust Project Developers. · Copyright 2016-2026 Frank Denis. · copyright notice that is included in or attached to the work | [L50](#l50), [L2](#l2), [L1](#l1) |
+| siphasher | 1.0.4 | MIT OR Apache-2.0 | Copyright 2012-2016 The Rust Project Developers. · Copyright 2016-2026 Frank Denis. · copyright notice that is included in or attached to the work | [L57](#l57), [L2](#l2), [L1](#l1) |
+| slab | 0.4.12 | MIT | Copyright (c) 2019 Carl Lerche | [L1](#l1) |
 | smallvec | 1.16.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | socket2 | 0.6.5 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | softbuffer | 0.4.8 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | string_cache | 0.9.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | string_cache_codegen | 0.6.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| strsim | 0.11.1 | MIT | Copyright (c) 2015 Danny Guo · Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> · Copyright (c) 2018 Akash Kurdekar | [L5](#l5) |
-| syn | 2.0.119 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| syn | 3.0.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| strsim | 0.11.1 | MIT | Copyright (c) 2015 Danny Guo · Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com> · Copyright (c) 2018 Akash Kurdekar | [L6](#l6) |
+| subtle | 2.6.1 | BSD-3-Clause | Copyright (c) 2016-2017 Isis Agora Lovecruft, Henry de Valence. All rights reserved. · Copyright (c) 2016-2024 Isis Agora Lovecruft. All rights reserved. | [L22](#l22) |
+| syn | 2.0.119 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| syn | 3.0.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| sync_wrapper | 1.0.2 | Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5) |
 | synstructure | 0.14.0 | MIT | Copyright 2016 Nika Layzell | [L1](#l1) |
-| tao | 0.37.1 | Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L51](#l51) |
-| tauri | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-build | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-codegen | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-macros | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
+| tao | 0.37.1 | Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L58](#l58) |
+| tauri | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-build | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-codegen | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-macros | 2.7.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
 | tauri-plugin | 2.7.1 | Apache-2.0 OR MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L2](#l2) |
-| tauri-plugin-opener | 2.7.0 | Apache-2.0 OR MIT |  | [L21](#l21) |
-| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-utils | 2.10.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L3](#l3) |
-| tauri-winres | 0.3.6 | MIT | Copyright (c) 2023 - Present Tauri Apps Contributors · Copyright (c) 2016 Max Resch | [L5](#l5) |
+| tauri-plugin-opener | 2.7.0 | Apache-2.0 OR MIT |  | [L17](#l17) |
+| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT |  | [L17](#l17) |
+| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-utils | 2.10.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L3](#l3) |
+| tauri-winres | 0.3.6 | MIT | Copyright (c) 2023 - Present Tauri Apps Contributors · Copyright (c) 2016 Max Resch | [L6](#l6) |
+| tempfile | 3.27.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | tendril | 0.5.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
-| thiserror | 2.0.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| thiserror-impl | 2.0.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| time | 0.3.55 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| time-core | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| time-macros | 0.2.32 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
+| thiserror | 2.0.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| thiserror-impl | 2.0.21 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| time | 0.3.55 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| time-core | 0.1.9 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| time-macros | 0.2.32 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
 | tinystr | 0.8.4 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1), [L13](#l13) |
 | tokio | 1.53.2 | MIT | Copyright (c) Tokio Contributors | [L3](#l3) |
+| tokio-rustls | 0.26.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| tokio-util | 0.7.19 | MIT | Copyright (c) Tokio Contributors | [L3](#l3) |
 | toml | 1.1.6+spec-1.1.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | toml_datetime | 1.1.1+spec-1.1.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | toml_parser | 1.1.3+spec-1.1.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
 | toml_writer | 1.1.2+spec-1.1.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L9](#l9), [L1](#l1) |
+| tower | 0.5.3 | MIT | Copyright (c) 2019 Tower Contributors | [L1](#l1) |
+| tower-http | 0.6.11 | MIT | Copyright (c) 2019-2021 Tower Contributors | [L1](#l1) |
+| tower-layer | 0.3.3 | MIT | Copyright (c) 2019 Tower Contributors | [L1](#l1) |
+| tower-service | 0.3.3 | MIT | Copyright (c) 2019 Tower Contributors | [L1](#l1) |
 | tracing | 0.1.44 | MIT | Copyright (c) 2019 Tokio Contributors | [L1](#l1) |
 | tracing-attributes | 0.1.31 | MIT | Copyright (c) 2019 Tokio Contributors | [L1](#l1) |
 | tracing-core | 0.1.36 | MIT | Copyright (c) 2019 Tokio Contributors | [L1](#l1) |
-| tray-icon | 0.25.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L52](#l52) |
-| typeid | 1.0.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1) |
-| typenum | 1.20.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L53](#l53), [L2](#l2), [L5](#l5) |
-| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L6](#l6), [L1](#l1), [L54](#l54) |
+| tray-icon | 0.25.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L59](#l59) |
+| try-lock | 0.2.5 | MIT | Copyright (c) 2018-2023 Sean McArthur · Copyright (c) 2016 Alex Crichton | [L1](#l1) |
+| typed-path | 0.13.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| typeid | 1.0.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1) |
+| typenum | 1.20.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L60](#l60), [L2](#l2), [L6](#l6) |
+| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L5](#l5), [L1](#l1), [L61](#l61) |
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
+| untrusted | 0.9.0 | ISC |  | [L62](#l62) |
 | url | 2.5.8 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | urlpattern | 0.6.0 | MIT | Copyright (c) 2021 the Deno authors | [L3](#l3) |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | uuid | 1.27.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | version_check | 0.9.5 | MIT/Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L14](#l14) |
-| vswhom | 0.1.0 | MIT | Copyright (c) 2019 nabijaczleweli | [L5](#l5) |
-| vswhom-sys | 0.1.3 | MIT | Copyright (c) 2019 nabijaczleweli | [L5](#l5) |
-| walkdir | 2.5.0 | Unlicense/MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
+| vswhom | 0.1.0 | MIT | Copyright (c) 2019 nabijaczleweli | [L6](#l6) |
+| vswhom-sys | 0.1.3 | MIT | Copyright (c) 2019 nabijaczleweli | [L6](#l6) |
+| walkdir | 2.5.0 | Unlicense/MIT | Copyright (c) 2015 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| want | 0.3.2 | MIT | Copyright (c) 2018-2019 Sean McArthur | [L1](#l1) |
 | web_atoms | 0.2.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | web-time | 1.1.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3) |
 | webview2-com | 0.39.1 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | webview2-com-macros | 0.8.1 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
 | webview2-com-sys | 0.39.1 | MIT | _sin archivo de licencia en el paquete (texto estándar)_ | [L1](#l1) |
-| winapi-util | 0.1.11 | Unlicense OR MIT | Copyright (c) 2017 Andrew Gallant | [L11](#l11), [L5](#l5), [L12](#l12) |
-| window-vibrancy | 0.8.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L55](#l55) |
+| winapi-util | 0.1.11 | Unlicense OR MIT | Copyright (c) 2017 Andrew Gallant | [L11](#l11), [L6](#l6), [L12](#l12) |
+| window-vibrancy | 0.8.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L63](#l63) |
 | windows | 0.62.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows_x86_64_msvc | 0.52.6 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-collections | 0.3.2 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
@@ -475,6 +513,7 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | windows-interface | 0.59.3 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-link | 0.2.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-numerics | 0.3.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
+| windows-registry | 0.6.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-result | 0.4.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
 | windows-sys | 0.59.0 | MIT OR Apache-2.0 | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L7](#l7) |
@@ -485,14 +524,16 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 | winnow | 1.0.4 | MIT |  | [L1](#l1) |
 | winreg | 0.55.0 | MIT | Copyright (c) 2015 Igor Shaula | [L1](#l1) |
 | writeable | 0.6.4 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
-| wry | 0.57.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L56](#l56) |
+| wry | 0.57.0 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L3](#l3), [L64](#l64) |
 | yoke | 0.8.3 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | yoke-derive | 0.8.4 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | zerofrom | 0.1.8 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | zerofrom-derive | 0.1.8 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
+| zeroize | 1.9.1 | Apache-2.0 OR MIT | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L2](#l2), [L1](#l1) |
 | zerotrie | 0.2.5 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | zerovec | 0.11.8 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
 | zerovec-derive | 0.11.6 | Unicode-3.0 | COPYRIGHT AND PERMISSION NOTICE · Copyright © 2020-2024 Unicode, Inc. | [L8](#l8) |
+| zip | 9.3.0 | MIT | Copyright (c) 2014 Mathijs van de Nes | [L6](#l6) |
 | zlib-rs | 0.6.8 | Zlib | (C) 2024 Trifecta Tech Foundation | [L13](#l13) |
 | zmij | 1.0.23 | MIT |  | [L1](#l1) |
 
@@ -500,20 +541,20 @@ Otras dependencias con MPL-2.0 (también sin modificar; su código fuente está 
 
 | Paquete | Versión | Licencia | Copyright | Texto |
 | --- | --- | --- | --- | --- |
-| contourpy | 1.3.1 | BSD License | Copyright (c) 2021-2024, ContourPy Developers. | [L57](#l57) |
-| cycler | 0.12.1 | BSD License | Copyright (c) 2015, matplotlib project | [L58](#l58) |
+| contourpy | 1.3.1 | BSD License | Copyright (c) 2021-2024, ContourPy Developers. | [L65](#l65) |
+| cycler | 0.12.1 | BSD License | Copyright (c) 2015, matplotlib project | [L66](#l66) |
 | fonttools | 4.56.0 | MIT License | Copyright (c) 2017 Just van Rossum | [L3](#l3) |
-| kiwisolver | 1.4.8 | BSD License | Copyright (c) 2013-2024, Nucleic Development Team | [L59](#l59) |
-| matplotlib | 3.8.4 | Python Software Foundation License | Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is · Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved. · Copyright (c) 2001-2010 by the STI Pub Companies, consisting of the American | [L60](#l60), [L26](#l26), [L61](#l61), [L62](#l62), [L63](#l63), [L64](#l64), [L65](#l65), [L66](#l66), [L67](#l67), [L68](#l68), [L69](#l69), [L70](#l70), [L71](#l71) |
-| numpy | 2.2.5 | BSD License | Copyright (C) 2010 - 2019 ridiculous_fish, <libdivide@ridiculousfish.com> · Copyright (C) 2016 - 2019 Kim Walisch, <kim.walisch@gmail.com> · Copyright (c) 2005-2024, NumPy Developers. | [L72](#l72), [L73](#l73), [L74](#l74), [L75](#l75) |
-| packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L76](#l76), [L6](#l6), [L77](#l77) |
-| pandas | 2.3.3 | BSD License | Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development T… · Copyright (c) 2011-2023, Open source contributors. | [L27](#l27) |
-| pillow | 11.3.0 | MIT-CMU | Copyright © 1997-2011 by Secret Labs AB · Copyright © 1995-2011 by Fredrik Lundh and contributors · Copyright © 2010 by Jeffrey A. Clark and contributors | [L78](#l78) |
+| kiwisolver | 1.4.8 | BSD License | Copyright (c) 2013-2024, Nucleic Development Team | [L67](#l67) |
+| matplotlib | 3.8.4 | Python Software Foundation License | Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is · Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved. · Copyright (c) 2001-2010 by the STI Pub Companies, consisting of the American | [L68](#l68), [L28](#l28), [L69](#l69), [L70](#l70), [L71](#l71), [L72](#l72), [L73](#l73), [L74](#l74), [L75](#l75), [L76](#l76), [L77](#l77), [L78](#l78), [L79](#l79) |
+| numpy | 2.2.5 | BSD License | Copyright (C) 2010 - 2019 ridiculous_fish, <libdivide@ridiculousfish.com> · Copyright (C) 2016 - 2019 Kim Walisch, <kim.walisch@gmail.com> · Copyright (c) 2005-2024, NumPy Developers. | [L80](#l80), [L81](#l81), [L82](#l82), [L83](#l83) |
+| packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | copyright notice that is included in or attached to the work · copyright license to reproduce, prepare Derivative Works of, · (c) You must retain, in the Source form of any Derivative Works | [L84](#l84), [L5](#l5), [L85](#l85) |
+| pandas | 2.3.3 | BSD License | Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development T… · Copyright (c) 2011-2023, Open source contributors. | [L29](#l29) |
+| pillow | 11.3.0 | MIT-CMU | Copyright © 1997-2011 by Secret Labs AB · Copyright © 1995-2011 by Fredrik Lundh and contributors · Copyright © 2010 by Jeffrey A. Clark and contributors | [L86](#l86) |
 | pyparsing | 3.2.1 | MIT License |  | [L1](#l1) |
-| python-dateutil | 2.9.0.post0 | BSD License | Copyright 2017- Paul Ganssle <paul@ganssle.io> · Copyright 2017- dateutil contributors (see AUTHORS file) · Copyright (c) 2003-2011 - Gustavo Niemeyer <gustavo@niemeyer.net> | [L79](#l79) |
+| python-dateutil | 2.9.0.post0 | BSD License | Copyright 2017- Paul Ganssle <paul@ganssle.io> · Copyright 2017- dateutil contributors (see AUTHORS file) · Copyright (c) 2003-2011 - Gustavo Niemeyer <gustavo@niemeyer.net> | [L87](#l87) |
 | pytz | 2025.2 | MIT License | Copyright (c) 2003-2019 Stuart Bishop <stuart@stuartbishop.net> | [L1](#l1) |
-| scipy | 1.14.1 | BSD License | Copyright (c) 2018, Quansight-Labs · Copyright (C) 2010-2019 Max-Planck-Society · Copyright (c) 1996-2008 Rice University. | [L27](#l27), [L80](#l80), [L81](#l81), [L82](#l82), [L83](#l83) |
-| six | 1.17.0 | MIT License | Copyright (c) 2010-2024 Benjamin Peterson · COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER | [L22](#l22) |
+| scipy | 1.14.1 | BSD License | Copyright (c) 2018, Quansight-Labs · Copyright (C) 2010-2019 Max-Planck-Society · Copyright (c) 1996-2008 Rice University. | [L29](#l29), [L88](#l88), [L89](#l89), [L90](#l90), [L91](#l91) |
+| six | 1.17.0 | MIT License | Copyright (c) 2010-2024 Benjamin Peterson · COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER | [L24](#l24) |
 
 ## Fuentes incluidas
 
@@ -582,7 +623,7 @@ Cada texto distinto aparece una vez. Los titulares del copyright de cada paquete
 
 ### L1
 
-MIT OR Apache-2.0 / MIT / Apache-2.0 OR MIT · 133 archivos
+MIT OR Apache-2.0 / MIT / Apache-2.0 OR MIT · 163 archivos
 
 ```text
 Copyright (c) 2014 Forbes Lindesay
@@ -608,7 +649,7 @@ THE SOFTWARE.
 
 ### L2
 
-MIT OR Apache-2.0 / Apache-2.0 OR MIT / MIT/Apache-2.0 · 101 archivos
+MIT OR Apache-2.0 / Apache-2.0 OR MIT / MIT/Apache-2.0 · 119 archivos
 
 ```text
 Apache License
@@ -816,7 +857,7 @@ Apache License
 
 ### L3
 
-MIT / Apache-2.0 OR MIT / MIT OR Apache-2.0 · 81 archivos
+MIT / Apache-2.0 OR MIT / MIT OR Apache-2.0 · 83 archivos
 
 ```text
 MIT License
@@ -873,34 +914,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### L5
 
-MIT / Unlicense OR MIT / MIT OR Apache-2.0 · 43 archivos
-
-```text
-The MIT License (MIT)
-Copyright (c) 2017 Kent C. Dodds
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### L6
-
-MIT OR Apache-2.0 / Apache-2.0 OR MIT / MIT OR Zlib OR Apache-2.0 · 43 archivos
+MIT OR Apache-2.0 / Apache-2.0 OR MIT / MIT OR Zlib OR Apache-2.0 · 45 archivos
 
 ```text
 Apache License
@@ -1081,9 +1095,36 @@ Apache License
    END OF TERMS AND CONDITIONS
 ```
 
+### L6
+
+MIT / Unlicense OR MIT / MIT OR Apache-2.0 · 44 archivos
+
+```text
+The MIT License (MIT)
+Copyright (c) 2017 Kent C. Dodds
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### L7
 
-MIT / MIT OR Apache-2.0 · 42 archivos
+MIT / MIT OR Apache-2.0 · 43 archivos
 
 ```text
 MIT License
@@ -1164,7 +1205,7 @@ ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines Corporation a
 
 ### L9
 
-MIT OR Apache-2.0 / Apache-2.0 OR MIT / Apache-2.0 AND MIT · 12 archivos
+MIT OR Apache-2.0 / Apache-2.0 OR MIT / Apache-2.0 AND MIT · 13 archivos
 
 ```text
 Apache License
@@ -1542,6 +1583,33 @@ THE SOFTWARE.
 
 ### L17
 
+Apache-2.0 OR MIT / MIT OR Apache-2.0 · 3 archivos
+
+```text
+SPDXVersion: SPDX-2.1
+DataLicense: CC0-1.0
+PackageName: tauri
+DataFormat: SPDXRef-1
+PackageSupplier: Organization: The Tauri Programme in the Commons Conservancy
+PackageHomePage: https://tauri.app
+PackageLicenseDeclared: Apache-2.0
+PackageLicenseDeclared: MIT
+PackageCopyrightText: 2019-2022, The Tauri Programme in the Commons Conservancy
+PackageSummary: <text>Tauri is a rust project that enables developers to make secure
+and small desktop applications using a web frontend.
+                </text>
+PackageComment: <text>The package includes the following libraries; see
+Relationship information.
+                </text>
+Created: 2019-05-20T09:00:00Z
+PackageDownloadLocation: git://github.com/tauri-apps/tauri
+PackageDownloadLocation: git+https://github.com/tauri-apps/tauri.git
+PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
+Creator: Person: Daniel Thompson-Yvetot
+```
+
+### L18
+
 BSD-3-Clause / BSD-3-Clause AND MIT / BSD-3-Clause/MIT · 3 archivos
 
 ```text
@@ -1559,7 +1627,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L18
+### L19
 
 MPL-2.0 · 3 archivos
 
@@ -1939,7 +2007,215 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   defined by the Mozilla Public License, v. 2.0.
 ```
 
-### L19
+### L20
+
+MIT OR Apache-2.0 · 3 archivos
+
+```text
+Apache License
+                        Version 2.0, January 2004
+                     https://www.apache.org/licenses/
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1. Definitions.
+
+   "License" shall mean the terms and conditions for use, reproduction,
+   and distribution as defined by Sections 1 through 9 of this document.
+
+   "Licensor" shall mean the copyright owner or entity authorized by
+   the copyright owner that is granting the License.
+
+   "Legal Entity" shall mean the union of the acting entity and all
+   other entities that control, are controlled by, or are under common
+   control with that entity. For the purposes of this definition,
+   "control" means (i) the power, direct or indirect, to cause the
+   direction or management of such entity, whether by contract or
+   otherwise, or (ii) ownership of fifty percent (50%) or more of the
+   outstanding shares, or (iii) beneficial ownership of such entity.
+
+   "You" (or "Your") shall mean an individual or Legal Entity
+   exercising permissions granted by this License.
+
+   "Source" form shall mean the preferred form for making modifications,
+   including but not limited to software source code, documentation
+   source, and configuration files.
+
+   "Object" form shall mean any form resulting from mechanical
+   transformation or translation of a Source form, including but
+   not limited to compiled object code, generated documentation,
+   and conversions to other media types.
+
+   "Work" shall mean the work of authorship, whether in Source or
+   Object form, made available under the License, as indicated by a
+   copyright notice that is included in or attached to the work
+   (an example is provided in the Appendix below).
+
+   "Derivative Works" shall mean any work, whether in Source or Object
+   form, that is based on (or derived from) the Work and for which the
+   editorial revisions, annotations, elaborations, or other modifications
+   represent, as a whole, an original work of authorship. For the purposes
+   of this License, Derivative Works shall not include works that remain
+   separable from, or merely link (or bind by name) to the interfaces of,
+   the Work and Derivative Works thereof.
+
+   "Contribution" shall mean any work of authorship, including
+   the original version of the Work and any modifications or additions
+   to that Work or Derivative Works thereof, that is intentionally
+   submitted to Licensor for inclusion in the Work by the copyright owner
+   or by an individual or Legal Entity authorized to submit on behalf of
+   the copyright owner. For the purposes of this definition, "submitted"
+   means any form of electronic, verbal, or written communication sent
+   to the Licensor or its representatives, including but not limited to
+   communication on electronic mailing lists, source code control systems,
+   and issue tracking systems that are managed by, or on behalf of, the
+   Licensor for the purpose of discussing and improving the Work, but
+   excluding communication that is conspicuously marked or otherwise
+   designated in writing by the copyright owner as "Not a Contribution."
+
+   "Contributor" shall mean Licensor and any individual or Legal Entity
+   on behalf of whom a Contribution has been received by Licensor and
+   subsequently incorporated within the Work.
+
+2. Grant of Copyright License. Subject to the terms and conditions of
+   this License, each Contributor hereby grants to You a perpetual,
+   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+   copyright license to reproduce, prepare Derivative Works of,
+   publicly display, publicly perform, sublicense, and distribute the
+   Work and such Derivative Works in Source or Object form.
+
+3. Grant of Patent License. Subject to the terms and conditions of
+   this License, each Contributor hereby grants to You a perpetual,
+   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+   (except as stated in this section) patent license to make, have made,
+   use, offer to sell, sell, import, and otherwise transfer the Work,
+   where such license applies only to those patent claims licensable
+   by such Contributor that are necessarily infringed by their
+   Contribution(s) alone or by combination of their Contribution(s)
+   with the Work to which such Contribution(s) was submitted. If You
+   institute patent litigation against any entity (including a
+   cross-claim or counterclaim in a lawsuit) alleging that the Work
+   or a Contribution incorporated within the Work constitutes direct
+   or contributory patent infringement, then any patent licenses
+   granted to You under this License for that Work shall terminate
+   as of the date such litigation is filed.
+
+4. Redistribution. You may reproduce and distribute copies of the
+   Work or Derivative Works thereof in any medium, with or without
+   modifications, and in Source or Object form, provided that You
+   meet the following conditions:
+
+   (a) You must give any other recipients of the Work or
+       Derivative Works a copy of this License; and
+
+   (b) You must cause any modified files to carry prominent notices
+       stating that You changed the files; and
+
+   (c) You must retain, in the Source form of any Derivative Works
+       that You distribute, all copyright, patent, trademark, and
+       attribution notices from the Source form of the Work,
+       excluding those notices that do not pertain to any part of
+       the Derivative Works; and
+
+   (d) If the Work includes a "NOTICE" text file as part of its
+       distribution, then any Derivative Works that You distribute must
+       include a readable copy of the attribution notices contained
+       within such NOTICE file, excluding those notices that do not
+       pertain to any part of the Derivative Works, in at least one
+       of the following places: within a NOTICE text file distributed
+       as part of the Derivative Works; within the Source form or
+       documentation, if provided along with the Derivative Works; or,
+       within a display generated by the Derivative Works, if and
+       wherever such third-party notices normally appear. The contents
+       of the NOTICE file are for informational purposes only and
+       do not modify the License. You may add Your own attribution
+       notices within Derivative Works that You distribute, alongside
+       or as an addendum to the NOTICE text from the Work, provided
+       that such additional attribution notices cannot be construed
+       as modifying the License.
+
+   You may add Your own copyright statement to Your modifications and
+   may provide additional or different license terms and conditions
+   for use, reproduction, or distribution of Your modifications, or
+   for any such Derivative Works as a whole, provided Your use,
+   reproduction, and distribution of the Work otherwise complies with
+   the conditions stated in this License.
+
+5. Submission of Contributions. Unless You explicitly state otherwise,
+   any Contribution intentionally submitted for inclusion in the Work
+   by You to the Licensor shall be under the terms and conditions of
+   this License, without any additional terms or conditions.
+   Notwithstanding the above, nothing herein shall supersede or modify
+   the terms of any separate license agreement you may have executed
+   with Licensor regarding such Contributions.
+
+6. Trademarks. This License does not grant permission to use the trade
+   names, trademarks, service marks, or product names of the Licensor,
+   except as required for reasonable and customary use in describing the
+   origin of the Work and reproducing the content of the NOTICE file.
+
+7. Disclaimer of Warranty. Unless required by applicable law or
+   agreed to in writing, Licensor provides the Work (and each
+   Contributor provides its Contributions) on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+   implied, including, without limitation, any warranties or conditions
+   of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+   PARTICULAR PURPOSE. You are solely responsible for determining the
+   appropriateness of using or redistributing the Work and assume any
+   risks associated with Your exercise of permissions under this License.
+
+8. Limitation of Liability. In no event and under no legal theory,
+   whether in tort (including negligence), contract, or otherwise,
+   unless required by applicable law (such as deliberate and grossly
+   negligent acts) or agreed to in writing, shall any Contributor be
+   liable to You for damages, including any direct, indirect, special,
+   incidental, or consequential damages of any character arising as a
+   result of this License or out of the use or inability to use the
+   Work (including but not limited to damages for loss of goodwill,
+   work stoppage, computer failure or malfunction, or any and all
+   other commercial damages or losses), even if such Contributor
+   has been advised of the possibility of such damages.
+
+9. Accepting Warranty or Additional Liability. While redistributing
+   the Work or Derivative Works thereof, You may choose to offer,
+   and charge a fee for, acceptance of support, warranty, indemnity,
+   or other liability obligations and/or rights consistent with this
+   License. However, in accepting such obligations, You may act only
+   on Your own behalf and on Your sole responsibility, not on behalf
+   of any other Contributor, and only if You agree to indemnify,
+   defend, and hold each Contributor harmless for any liability
+   incurred by, or claims asserted against, such Contributor by reason
+   of your accepting any such warranty or additional liability.
+
+END OF TERMS AND CONDITIONS
+
+APPENDIX: How to apply the Apache License to your work.
+
+   To apply the Apache License to your work, attach the following
+   boilerplate notice, with the fields enclosed by brackets "[]"
+   replaced with your own identifying information. (Don't include
+   the brackets!)  The text should be enclosed in the appropriate
+   comment syntax for the file format. We also recommend that a
+   file or class name and description of purpose be included on the
+   same "printed page" as the copyright notice for easier
+   identification within third-party archives.
+
+Copyright [yyyy] [name of copyright owner]
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+### L21
 
 ISC · 2 archivos
 
@@ -1961,7 +2237,25 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### L20
+### L22
+
+BSD-3-Clause · 2 archivos
+
+```text
+Copyright 2008 Fair Oaks Labs, Inc.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### L23
 
 ISC / CC0-1.0 OR MIT-0 OR Apache-2.0 · 2 archivos
 
@@ -2089,34 +2383,7 @@ express Statement of Purpose.
     this CC0 or use of the Work.
 ```
 
-### L21
-
-MIT OR Apache-2.0 / Apache-2.0 OR MIT · 2 archivos
-
-```text
-SPDXVersion: SPDX-2.1
-DataLicense: CC0-1.0
-PackageName: tauri
-DataFormat: SPDXRef-1
-PackageSupplier: Organization: The Tauri Programme in the Commons Conservancy
-PackageHomePage: https://tauri.app
-PackageLicenseDeclared: Apache-2.0
-PackageLicenseDeclared: MIT
-PackageCopyrightText: 2019-2022, The Tauri Programme in the Commons Conservancy
-PackageSummary: <text>Tauri is a rust project that enables developers to make secure
-and small desktop applications using a web frontend.
-                </text>
-PackageComment: <text>The package includes the following libraries; see
-Relationship information.
-                </text>
-Created: 2019-05-20T09:00:00Z
-PackageDownloadLocation: git://github.com/tauri-apps/tauri
-PackageDownloadLocation: git+https://github.com/tauri-apps/tauri.git
-PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
-Creator: Person: Daniel Thompson-Yvetot
-```
-
-### L22
+### L24
 
 MIT / MIT License · 2 archivos
 
@@ -2143,7 +2410,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### L23
+### L25
 
 0BSD OR MIT OR Apache-2.0 / MIT OR Apache-2.0 · 2 archivos
 
@@ -2351,7 +2618,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### L24
+### L26
 
 MIT OR Apache-2.0 · 2 archivos
 
@@ -2532,215 +2799,29 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
    of your accepting any such warranty or additional liability.
 ```
 
-### L25
+### L27
 
-MIT OR Apache-2.0 · 2 archivos
+Apache-2.0 OR ISC OR MIT · 2 archivos
 
 ```text
-Apache License
-                        Version 2.0, January 2004
-                     https://www.apache.org/licenses/
+ISC License (ISC)
+Copyright (c) 2016, Joseph Birr-Pixton <jpixton@gmail.com>
 
-TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+Permission to use, copy, modify, and/or distribute this software for
+any purpose with or without fee is hereby granted, provided that the
+above copyright notice and this permission notice appear in all copies.
 
-1. Definitions.
-
-   "License" shall mean the terms and conditions for use, reproduction,
-   and distribution as defined by Sections 1 through 9 of this document.
-
-   "Licensor" shall mean the copyright owner or entity authorized by
-   the copyright owner that is granting the License.
-
-   "Legal Entity" shall mean the union of the acting entity and all
-   other entities that control, are controlled by, or are under common
-   control with that entity. For the purposes of this definition,
-   "control" means (i) the power, direct or indirect, to cause the
-   direction or management of such entity, whether by contract or
-   otherwise, or (ii) ownership of fifty percent (50%) or more of the
-   outstanding shares, or (iii) beneficial ownership of such entity.
-
-   "You" (or "Your") shall mean an individual or Legal Entity
-   exercising permissions granted by this License.
-
-   "Source" form shall mean the preferred form for making modifications,
-   including but not limited to software source code, documentation
-   source, and configuration files.
-
-   "Object" form shall mean any form resulting from mechanical
-   transformation or translation of a Source form, including but
-   not limited to compiled object code, generated documentation,
-   and conversions to other media types.
-
-   "Work" shall mean the work of authorship, whether in Source or
-   Object form, made available under the License, as indicated by a
-   copyright notice that is included in or attached to the work
-   (an example is provided in the Appendix below).
-
-   "Derivative Works" shall mean any work, whether in Source or Object
-   form, that is based on (or derived from) the Work and for which the
-   editorial revisions, annotations, elaborations, or other modifications
-   represent, as a whole, an original work of authorship. For the purposes
-   of this License, Derivative Works shall not include works that remain
-   separable from, or merely link (or bind by name) to the interfaces of,
-   the Work and Derivative Works thereof.
-
-   "Contribution" shall mean any work of authorship, including
-   the original version of the Work and any modifications or additions
-   to that Work or Derivative Works thereof, that is intentionally
-   submitted to Licensor for inclusion in the Work by the copyright owner
-   or by an individual or Legal Entity authorized to submit on behalf of
-   the copyright owner. For the purposes of this definition, "submitted"
-   means any form of electronic, verbal, or written communication sent
-   to the Licensor or its representatives, including but not limited to
-   communication on electronic mailing lists, source code control systems,
-   and issue tracking systems that are managed by, or on behalf of, the
-   Licensor for the purpose of discussing and improving the Work, but
-   excluding communication that is conspicuously marked or otherwise
-   designated in writing by the copyright owner as "Not a Contribution."
-
-   "Contributor" shall mean Licensor and any individual or Legal Entity
-   on behalf of whom a Contribution has been received by Licensor and
-   subsequently incorporated within the Work.
-
-2. Grant of Copyright License. Subject to the terms and conditions of
-   this License, each Contributor hereby grants to You a perpetual,
-   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-   copyright license to reproduce, prepare Derivative Works of,
-   publicly display, publicly perform, sublicense, and distribute the
-   Work and such Derivative Works in Source or Object form.
-
-3. Grant of Patent License. Subject to the terms and conditions of
-   this License, each Contributor hereby grants to You a perpetual,
-   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-   (except as stated in this section) patent license to make, have made,
-   use, offer to sell, sell, import, and otherwise transfer the Work,
-   where such license applies only to those patent claims licensable
-   by such Contributor that are necessarily infringed by their
-   Contribution(s) alone or by combination of their Contribution(s)
-   with the Work to which such Contribution(s) was submitted. If You
-   institute patent litigation against any entity (including a
-   cross-claim or counterclaim in a lawsuit) alleging that the Work
-   or a Contribution incorporated within the Work constitutes direct
-   or contributory patent infringement, then any patent licenses
-   granted to You under this License for that Work shall terminate
-   as of the date such litigation is filed.
-
-4. Redistribution. You may reproduce and distribute copies of the
-   Work or Derivative Works thereof in any medium, with or without
-   modifications, and in Source or Object form, provided that You
-   meet the following conditions:
-
-   (a) You must give any other recipients of the Work or
-       Derivative Works a copy of this License; and
-
-   (b) You must cause any modified files to carry prominent notices
-       stating that You changed the files; and
-
-   (c) You must retain, in the Source form of any Derivative Works
-       that You distribute, all copyright, patent, trademark, and
-       attribution notices from the Source form of the Work,
-       excluding those notices that do not pertain to any part of
-       the Derivative Works; and
-
-   (d) If the Work includes a "NOTICE" text file as part of its
-       distribution, then any Derivative Works that You distribute must
-       include a readable copy of the attribution notices contained
-       within such NOTICE file, excluding those notices that do not
-       pertain to any part of the Derivative Works, in at least one
-       of the following places: within a NOTICE text file distributed
-       as part of the Derivative Works; within the Source form or
-       documentation, if provided along with the Derivative Works; or,
-       within a display generated by the Derivative Works, if and
-       wherever such third-party notices normally appear. The contents
-       of the NOTICE file are for informational purposes only and
-       do not modify the License. You may add Your own attribution
-       notices within Derivative Works that You distribute, alongside
-       or as an addendum to the NOTICE text from the Work, provided
-       that such additional attribution notices cannot be construed
-       as modifying the License.
-
-   You may add Your own copyright statement to Your modifications and
-   may provide additional or different license terms and conditions
-   for use, reproduction, or distribution of Your modifications, or
-   for any such Derivative Works as a whole, provided Your use,
-   reproduction, and distribution of the Work otherwise complies with
-   the conditions stated in this License.
-
-5. Submission of Contributions. Unless You explicitly state otherwise,
-   any Contribution intentionally submitted for inclusion in the Work
-   by You to the Licensor shall be under the terms and conditions of
-   this License, without any additional terms or conditions.
-   Notwithstanding the above, nothing herein shall supersede or modify
-   the terms of any separate license agreement you may have executed
-   with Licensor regarding such Contributions.
-
-6. Trademarks. This License does not grant permission to use the trade
-   names, trademarks, service marks, or product names of the Licensor,
-   except as required for reasonable and customary use in describing the
-   origin of the Work and reproducing the content of the NOTICE file.
-
-7. Disclaimer of Warranty. Unless required by applicable law or
-   agreed to in writing, Licensor provides the Work (and each
-   Contributor provides its Contributions) on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-   implied, including, without limitation, any warranties or conditions
-   of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-   PARTICULAR PURPOSE. You are solely responsible for determining the
-   appropriateness of using or redistributing the Work and assume any
-   risks associated with Your exercise of permissions under this License.
-
-8. Limitation of Liability. In no event and under no legal theory,
-   whether in tort (including negligence), contract, or otherwise,
-   unless required by applicable law (such as deliberate and grossly
-   negligent acts) or agreed to in writing, shall any Contributor be
-   liable to You for damages, including any direct, indirect, special,
-   incidental, or consequential damages of any character arising as a
-   result of this License or out of the use or inability to use the
-   Work (including but not limited to damages for loss of goodwill,
-   work stoppage, computer failure or malfunction, or any and all
-   other commercial damages or losses), even if such Contributor
-   has been advised of the possibility of such damages.
-
-9. Accepting Warranty or Additional Liability. While redistributing
-   the Work or Derivative Works thereof, You may choose to offer,
-   and charge a fee for, acceptance of support, warranty, indemnity,
-   or other liability obligations and/or rights consistent with this
-   License. However, in accepting such obligations, You may act only
-   on Your own behalf and on Your sole responsibility, not on behalf
-   of any other Contributor, and only if You agree to indemnify,
-   defend, and hold each Contributor harmless for any liability
-   incurred by, or claims asserted against, such Contributor by reason
-   of your accepting any such warranty or additional liability.
-
-END OF TERMS AND CONDITIONS
-
-APPENDIX: How to apply the Apache License to your work.
-
-   To apply the Apache License to your work, attach the following
-   boilerplate notice, with the fields enclosed by brackets "[]"
-   replaced with your own identifying information. (Don't include
-   the brackets!)  The text should be enclosed in the appropriate
-   comment syntax for the file format. We also recommend that a
-   file or class name and description of purpose be included on the
-   same "printed page" as the copyright notice for easier
-   identification within third-party archives.
-
-Copyright [yyyy] [name of copyright owner]
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
 ```
 
-### L26
+### L28
 
 Python Software Foundation License · 2 archivos
 
@@ -2871,7 +2952,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### L27
+### L29
 
 BSD License · 2 archivos
 
@@ -2909,7 +2990,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L28
+### L30
 
 MIT · 1 archivo
 
@@ -2923,7 +3004,7 @@ The above copyright notice and this permission notice shall be included in all c
 **THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.**
 ```
 
-### L29
+### L31
 
 Apache-2.0 · 1 archivo
 
@@ -2957,7 +3038,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### L30
+### L32
 
 MIT · 1 archivo
 
@@ -2987,7 +3068,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### L31
+### L33
 
 ISC · 1 archivo
 
@@ -3009,25 +3090,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
-### L32
-
-BSD-3-Clause · 1 archivo
-
-```text
-Copyright 2008 Fair Oaks Labs, Inc.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-```
-
-### L33
+### L34
 
 Apache-2.0 OR MIT · 1 archivo
 
@@ -3054,7 +3117,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L34
+### L35
 
 MIT · 1 archivo
 
@@ -3083,7 +3146,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### L35
+### L36
 
 ISC · 1 archivo
 
@@ -3105,7 +3168,7 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### L36
+### L37
 
 MIT · 1 archivo
 
@@ -3134,7 +3197,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### L37
+### L38
 
 BSD-3-Clause · 1 archivo
 
@@ -3169,7 +3232,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L38
+### L39
 
 BSD-2-Clause · 1 archivo
 
@@ -3187,7 +3250,7 @@ THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRE
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L39
+### L40
 
 ISC · 1 archivo
 
@@ -3209,7 +3272,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
-### L40
+### L41
 
 0BSD OR MIT OR Apache-2.0 · 1 archivo
 
@@ -3228,7 +3291,59 @@ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### L41
+### L42
+
+Apache-2.0 OR MIT · 1 archivo
+
+```text
+===============================================================================
+
+Copyright (c) 2016 Alex Crichton
+Copyright (c) 2017 The Tokio Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+===============================================================================
+
+Copyright (c) 2016 Alex Crichton
+Copyright (c) 2017 The Tokio Authors
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### L43
 
 Apache-2.0 OR MIT · 1 archivo
 
@@ -3437,7 +3552,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### L42
+### L44
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -3681,7 +3796,7 @@ limitations under the License.
 ~~~~
 ```
 
-### L43
+### L45
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -4280,7 +4395,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### L44
+### L46
 
 MIT · 1 archivo
 
@@ -4314,7 +4429,7 @@ derived from the "nipper" project (https://github.com/importcjj/nipper),
 developed by Chen Jiaju, licensed under the MIT License and the Apache License 2.0 (dual licensed).
 ```
 
-### L45
+### L47
 
 Apache-2.0 AND MIT · 1 archivo
 
@@ -4372,7 +4487,73 @@ have been licensed under extremely permissive terms.
 ------------------------------------------------------------------------------
 ```
 
-### L46
+### L48
+
+MIT · 1 archivo
+
+```text
+Copyright (c) 2019-2025 Frank Denis
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+--
+
+Code in the src/crypto folder is derived from the rust-crypto project:
+https://github.com/DaGenix/rust-crypto
+
+Original ISC license follows:
+
+Copyright (c) 2006-2009 Graydon Hoare
+Copyright (c) 2009-2013 Mozilla Foundation
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### L49
 
 Apache-2.0 OR MIT · 1 archivo
 
@@ -4398,7 +4579,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/muda.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L47
+### L50
 
 MIT · 1 archivo
 
@@ -4430,7 +4611,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### L48
+### L51
 
 MPL-2.0 · 1 archivo
 
@@ -4810,7 +4991,345 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   defined by the Mozilla Public License, v. 2.0.
 ```
 
-### L49
+### L52
+
+Apache-2.0 AND ISC · 1 archivo
+
+```text
+*ring* uses an "ISC" license, like BoringSSL used to use, for new code
+files. See LICENSE-other-bits for the text of that license.
+
+See LICENSE-BoringSSL for code that was sourced from BoringSSL under the
+Apache 2.0 license. Some code that was sourced from BoringSSL under the ISC
+license. In each case, the license info is at the top of the file.
+
+See src/polyfill/once_cell/LICENSE-APACHE and src/polyfill/once_cell/LICENSE-MIT
+for the license to code that was sourced from the once_cell project.
+```
+
+### L53
+
+Apache-2.0 AND ISC · 1 archivo
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+Licenses for support code
+-------------------------
+
+Parts of the TLS test suite are under the Go license. This code is not included
+in BoringSSL (i.e. libcrypto and libssl) when compiled, however, so
+distributing code linked against BoringSSL does not trigger this license:
+
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+BoringSSL uses the Chromium test infrastructure to run a continuous build,
+trybots etc. The scripts which manage this, and the script for generating build
+metadata, are under the Chromium license. Distributing code linked against
+BoringSSL does not trigger this license.
+
+Copyright 2015 The Chromium Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### L54
+
+Apache-2.0 AND ISC · 1 archivo
+
+```text
+Copyright 2015-2025 Brian Smith.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+### L55
+
+ISC · 1 archivo
+
+```text
+Except as otherwise noted, this project is licensed under the following
+(ISC-style) terms:
+
+Copyright 2015 Brian Smith.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+The files under third-party/chromium are licensed as described in
+third-party/chromium/LICENSE.
+```
+
+### L56
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -4830,7 +5349,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### L50
+### L57
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -4844,7 +5363,7 @@ http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 option.
 ```
 
-### L51
+### L58
 
 Apache-2.0 · 1 archivo
 
@@ -4869,7 +5388,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tao.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L52
+### L59
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -4895,7 +5414,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tray-icon.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L53
+### L60
 
 MIT OR Apache-2.0 · 1 archivo
 
@@ -4903,7 +5422,7 @@ MIT OR Apache-2.0 · 1 archivo
 MIT OR Apache-2.0
 ```
 
-### L54
+### L61
 
 (MIT OR Apache-2.0) AND Unicode-3.0 · 1 archivo
 
@@ -4949,7 +5468,27 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ```
 
-### L55
+### L62
+
+ISC · 1 archivo
+
+```text
+// Copyright 2015-2016 Brian Smith.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR
+// ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+// ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+// OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+### L63
 
 Apache-2.0 OR MIT · 1 archivo
 
@@ -4975,7 +5514,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/window-vibrancy.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L56
+### L64
 
 Apache-2.0 OR MIT · 1 archivo
 
@@ -5002,7 +5541,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/wry.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### L57
+### L65
 
 BSD License · 1 archivo
 
@@ -5038,7 +5577,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L58
+### L66
 
 BSD License · 1 archivo
 
@@ -5072,7 +5611,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L59
+### L67
 
 BSD License · 1 archivo
 
@@ -5150,7 +5689,7 @@ to indicate the copyright and license terms:
 #------------------------------------------------------------------------------
 ```
 
-### L60
+### L68
 
 Python Software Foundation License · 1 archivo
 
@@ -5256,7 +5795,7 @@ from Tavmjong Bah. For further information, contact: tavmjong @ free
 $Id: LICENSE 2133 2007-11-28 02:46:28Z lechimp $
 ```
 
-### L61
+### L69
 
 Python Software Foundation License · 1 archivo
 
@@ -5362,7 +5901,7 @@ Licensee agrees to be bound by the terms and conditions of this License
 Agreement.
 ```
 
-### L62
+### L70
 
 Python Software Foundation License · 1 archivo
 
@@ -5609,7 +6148,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### L63
+### L71
 
 Python Software Foundation License · 1 archivo
 
@@ -5654,7 +6193,7 @@ BaKoMa Fonts Licence
       or	malyshev@mail.ihep.ru
 ```
 
-### L64
+### L72
 
 Python Software Foundation License · 1 archivo
 
@@ -5706,7 +6245,7 @@ DISCLAIMER
 THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### L65
+### L73
 
 Python Software Foundation License · 1 archivo
 
@@ -5726,7 +6265,7 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 ```
 
-### L66
+### L74
 
 Python Software Foundation License · 1 archivo
 
@@ -5749,7 +6288,7 @@ Type 1 fonts.
 BITSTREAM CHARTER is a registered trademark of Bitstream Inc.
 ```
 
-### L67
+### L75
 
 Python Software Foundation License · 1 archivo
 
@@ -5864,7 +6403,7 @@ For more information, please see
 http://creativecommons.org/publicdomain/zero/1.0/.
 ```
 
-### L68
+### L76
 
 Python Software Foundation License · 1 archivo
 
@@ -5910,7 +6449,7 @@ modified, and redistributed under the following conditions:
    they desire.
 ```
 
-### L69
+### L77
 
 Python Software Foundation License · 1 archivo
 
@@ -5945,7 +6484,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 """
 ```
 
-### L70
+### L78
 
 Python Software Foundation License · 1 archivo
 
@@ -5972,7 +6511,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### L71
+### L79
 
 Python Software Foundation License · 1 archivo
 
@@ -6026,7 +6565,7 @@ the X11R4 release, copyright M.I.T. -- the complete copyright notice
 may be found in the (unused) file Gist/host.c.
 ```
 
-### L72
+### L80
 
 BSD License · 1 archivo
 
@@ -6054,7 +6593,7 @@ zlib License
   3. This notice may not be removed or altered from any source distribution.
 ```
 
-### L73
+### L81
 
 BSD License · 1 archivo
 
@@ -6085,7 +6624,7 @@ BSD License · 1 archivo
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L74
+### L82
 
 BSD License · 1 archivo
 
@@ -6162,7 +6701,7 @@ often the algorithm's designer. Component licenses are located with
 the component code.
 ```
 
-### L75
+### L83
 
 BSD License · 1 archivo
 
@@ -6199,7 +6738,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L76
+### L84
 
 Apache-2.0 OR BSD-2-Clause · 1 archivo
 
@@ -6209,7 +6748,7 @@ found in LICENSE.APACHE or LICENSE.BSD. Contributions to this software is made
 under the terms of *both* these licenses.
 ```
 
-### L77
+### L85
 
 Apache-2.0 OR BSD-2-Clause · 1 archivo
 
@@ -6239,7 +6778,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L78
+### L86
 
 MIT-CMU · 1 archivo
 
@@ -6276,7 +6815,7 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### L79
+### L87
 
 BSD License · 1 archivo
 
@@ -6337,7 +6876,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The above BSD License Applies to all code, even that also covered by Apache 2.0.
 ```
 
-### L80
+### L88
 
 BSD License · 1 archivo
 
@@ -6369,7 +6908,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L81
+### L89
 
 BSD License · 1 archivo
 
@@ -6420,7 +6959,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### L82
+### L90
 
 BSD License · 1 archivo
 
@@ -6465,7 +7004,7 @@ and redistributed under the following conditions:
    they desire.
 ```
 
-### L83
+### L91
 
 BSD License · 1 archivo
 

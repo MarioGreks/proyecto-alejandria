@@ -22,6 +22,9 @@ Function AnimarPilar
 FunctionEnd
 
 Function PgBienvenida
+  ${If} $Actualizando = 1
+    Abort                                  ; al actualizar no se pregunta nada de esto
+  ${EndIf}
   !insertmacro NuevaPagina "PROYECTO ALEJANDRÍA"
   ${NSD_CreateLabel} 30 80 220 410 ""
   Pop $PilarCtl
@@ -115,6 +118,9 @@ FunctionEnd
 !insertmacro DefExaminar ExaminarModelos $EdModelos "Carpeta de los modelos de Ollama" "Modelos" 0
 
 Function PgRutas
+  ${If} $Actualizando = 1
+    Abort                                  ; al actualizar no se pregunta nada de esto
+  ${EndIf}
   !insertmacro NuevaPagina "¿DÓNDE LO INSTALAMOS?"
   StrCpy $UnaCarpeta 0
   !insertmacro Texto $0 30 78 640 18 "Con [ Examinar ] eliges una carpeta y cada parte se guarda en su subcarpeta." ${C_SUAVE} $Mono
@@ -241,6 +247,9 @@ Function AlternarEscritorio
 FunctionEnd
 
 Function PgComponentes
+  ${If} $Actualizando = 1
+    Abort                                  ; al actualizar no se pregunta nada de esto
+  ${EndIf}
   ; ¿Ya hay Ollama? (carpeta habitual del instalador de Ollama, o en el PATH)
   StrCpy $OllamaYa 0
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\Ollama\ollama.exe"
@@ -303,6 +312,9 @@ Function FormatearMB
 FunctionEnd
 
 Function PgResumen
+  ${If} $Actualizando = 1
+    Abort                                  ; al actualizar no se pregunta nada de esto
+  ${EndIf}
   !insertmacro NuevaPagina "RESUMEN"
   !insertmacro Texto $0 30 80 640 18 "Revisa lo que se va a hacer y pulsa Instalar." ${C_SUAVE} $Mono
   !insertmacro Texto $0 30 120 130 18 "Aplicación" ${C_VERDE} $Mono
@@ -478,6 +490,11 @@ Function AvanzarInstalacion
   IntOp $Girando $Girando + 1
   ${If} $AppCopiada = 0
     StrCpy $AppCopiada 1
+    ${If} $Actualizando = 1
+      ${NSD_SetText} $LblLog "Cerrando la aplicación..."
+      System::Call 'user32::UpdateWindow(i $LblLog)'
+      Call CerrarAppEnMarcha
+    ${EndIf}
     ${NSD_SetText} $LblLog "Copiando la aplicación..."
     System::Call 'user32::UpdateWindow(i $LblLog)'
     Call InstalarApp
@@ -500,6 +517,12 @@ Function AvanzarInstalacion
   ${If} $EstadoPs == "ok"
     StrCpy $Hecho 1
     ${NSD_SetText} $LblLog "Todo listo."
+    ${If} $Actualizando = 1
+      Call LanzarAppActualizada
+      SetErrorLevel 0                      ; código de salida 0 aunque se cierre como si se cancelara
+      SendMessage $HWNDPARENT ${WM_COMMAND} 2 0
+      Return
+    ${EndIf}
     ShowWindow $BtnSigInst ${SW_SHOW}
     Return
   ${EndIf}
@@ -525,7 +548,11 @@ Function AvanzarInstalacion
 FunctionEnd
 
 Function PgInstalar
-  !insertmacro NuevaPagina "INSTALANDO"
+  ${If} $Actualizando = 1
+    !insertmacro NuevaPagina "ACTUALIZANDO"
+  ${Else}
+    !insertmacro NuevaPagina "INSTALANDO"
+  ${EndIf}
   StrCpy $AppCopiada 0
   StrCpy $PsLanzado 0
   StrCpy $ErrorFatal ""
@@ -582,6 +609,9 @@ Function AlternarAbrir
 FunctionEnd
 
 Function PgFin
+  ${If} $Actualizando = 1
+    Abort                                  ; al actualizar no se pregunta nada de esto
+  ${EndIf}
   !insertmacro NuevaPagina "LISTO"
   !insertmacro Texto $0 30 90 640 22 "${APP} está instalado." ${C_VERDE} $Mono
   !insertmacro Texto $0 30 130 130 18 "Instalado en" ${C_VERDE} $Mono

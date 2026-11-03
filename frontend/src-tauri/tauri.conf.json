@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Proyecto Alejandría",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "identifier": "dev.alejandria.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -52,5 +52,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk3Q0UyQUVDMEEzQjNCRkYKUldUL096c0s3Q3JPbDNweGZURUR4L3BxV1ZTNUVaZXhmdXp3Z1lGM0RQdTFkVm9mTW1mUjdsN3MK",
+      "endpoints": ["https://github.com/MarioGreks/proyecto-alejandria/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

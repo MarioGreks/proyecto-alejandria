@@ -17,6 +17,8 @@ Tu segundo cerebro, local y privado. Cada concepto que aprendes es una **neurona
 
 **Requisitos:** Windows 10 o 11 de 64 bits y el *Microsoft Visual C++ Redistributable* actual (versión 14.40 o posterior de `msvcp140.dll`; [descargas oficiales](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)). Casi todos los equipos lo tienen, pero uno antiguo hace que el motor de IA se caiga al cargar; el instalador lo comprueba antes de descargar nada y te lo dice.
 
+**Actualizaciones:** desde la 0.2.0 la app avisa al abrir cuando hay una versión nueva. Al pulsar [ Actualizar ] descarga el instalador, comprueba su firma digital con la clave pública que lleva dentro (solo se instala lo firmado por el proyecto), se cierra, se actualiza sola y se vuelve a abrir; tus neuronas no se tocan. Solo si una versión cambiara las carpetas que usa, te pregunta por las nuevas. Las versiones anteriores a la 0.2.0 se instalan a mano una vez.
+
 **Si algo falla:** el registro está en `instalacion.log`, en la carpeta del motor (por defecto `%LOCALAPPDATA%\dev.alejandria.app\motor`), y el del servidor en `backend.log`. Un error con el código `-1073741819` (0xC0000005) casi siempre es un Visual C++ antiguo: repáralo en *Configuración → Aplicaciones → Microsoft Visual C++ v14 Redistributable → Modificar → Reparar* (o instala el actual) y reinicia. Si el instalador se detiene, vuelve a ejecutarlo: retoma lo que falte.
 
 <p align="center">
@@ -36,7 +38,7 @@ Tu segundo cerebro, local y privado. Cada concepto que aprendes es una **neurona
 
 ## Privacidad
 
-Nada sale de tu equipo: la IA corre en local, el backend solo escucha en `127.0.0.1` y rechaza peticiones de otros orígenes, la app aplica una política de contenido (CSP) estricta y el código de los laboratorios se ejecuta aislado en WebAssembly y pide tu aprobación antes de correr. La única red que se usa es para descargar (una vez) uv, Python, las librerías, el modelo de clasificación y, si lo eliges, Ollama y su modelo.
+Nada sale de tu equipo: la IA corre en local, el backend solo escucha en `127.0.0.1` y rechaza peticiones de otros orígenes, la app aplica una política de contenido (CSP) estricta y el código de los laboratorios se ejecuta aislado en WebAssembly y pide tu aprobación antes de correr. La única red que se usa es para descargar (una vez) uv, Python, las librerías, el modelo de clasificación y, si lo eliges, Ollama y su modelo. Además, al abrir, la app pregunta a github.com si hay una versión nueva (no envía nada tuyo); se puede apagar en Ajustes.
 
 ## Desarrollo
 
@@ -94,6 +96,8 @@ Your second brain, local and private. Every concept you learn is a **neuron** in
 
 **Requirements:** 64-bit Windows 10 or 11 and the current *Microsoft Visual C++ Redistributable* (`msvcp140.dll` version 14.40 or later; [official downloads](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)). Most machines have it, but an old one makes the AI engine crash on load; the installer checks it before downloading anything and tells you.
 
+**Updates:** since 0.2.0 the app tells you on launch when a newer version exists. Clicking [ Actualizar ] downloads the installer, checks its digital signature against the public key built into the app (only what the project signed gets installed), closes, updates itself and reopens; your neurons are untouched. Only if a version changes the folders it uses will it ask you about the new ones. Versions before 0.2.0 must be installed by hand once.
+
 **If something fails:** the log is `instalacion.log` in the engine folder (by default `%LOCALAPPDATA%\dev.alejandria.app\motor`), and the server's is `backend.log`. An error with code `-1073741819` (0xC0000005) is almost always an old Visual C++: repair it in *Settings → Apps → Microsoft Visual C++ v14 Redistributable → Modify → Repair* (or install the current one) and restart. If the installer stops, run it again: it resumes what is missing.
 
 ### Features
@@ -106,7 +110,7 @@ Your second brain, local and private. Every concept you learn is a **neuron** in
 
 ### Privacy
 
-Nothing leaves your machine: the AI runs locally, the backend only listens on `127.0.0.1` and rejects requests from other origins, the app enforces a strict Content Security Policy, and lab code runs sandboxed in WebAssembly and asks for your approval before running. The network is only used to download (once) uv, Python, the libraries, the classification model and, if you choose it, Ollama and its model.
+Nothing leaves your machine: the AI runs locally, the backend only listens on `127.0.0.1` and rejects requests from other origins, the app enforces a strict Content Security Policy, and lab code runs sandboxed in WebAssembly and asks for your approval before running. The network is only used to download (once) uv, Python, the libraries, the classification model and, if you choose it, Ollama and its model. Also, on launch, the app asks github.com whether a newer version exists (it sends nothing of yours); you can turn that off in Settings.
 
 ### Development
 
