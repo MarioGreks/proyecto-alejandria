@@ -58,53 +58,55 @@ def get_ollama_path() -> Optional[str]:
 
     return None
 
-def ensure_ollama_running() -> bool:
+ESPERA_ARRANQUE = 60.0   # segundos; en un portátil lento Ollama tarda más de 10 s en responder la primera vez (con 8 s, las sinapsis salían «sin modelo local»)
+
+# Quien arranca Ollama lo hace con el cerrojo: otro hilo que lo necesite a la vez espera a que responda, en vez de lanzar un segundo `ollama serve`.
+_arrancando = threading.Lock()
+
+def ensure_ollama_running(espera: float = ESPERA_ARRANQUE) -> bool:
     """
     Verifica si Ollama está en ejecución. Si no lo está, lo arranca
-    en segundo plano de forma totalmente transparente y espera a que responda.
+    en segundo plano de forma totalmente transparente y espera (hasta `espera` s) a que responda.
     """
     if not ajustes.leer()["ia_activa"]:
         return False                                  # el usuario desactivó la IA local: no se arranca ni se usa Ollama
     if is_ollama_running(timeout=1.0):
         return True
 
-    print("[Ollama Service] Servidor Ollama no detectado en 127.0.0.1:11434.")
     ollama_bin = get_ollama_path()
-    
     if not ollama_bin:
         print("[Ollama Service] AVISO: No se encontró el ejecutable 'ollama.exe'. Por favor asegúrate de tenerlo instalado.")
         return False
 
-    print(f"[Ollama Service] Arrancando automáticamente Ollama desde '{ollama_bin}'...")
-    try:
-        creationflags = 0
-        if os.name == "nt":
-            # CREATE_NO_WINDOW (0x08000000) evita que se abra una ventana negra de consola
-            creationflags = 0x08000000
-            if hasattr(subprocess, "DETACHED_PROCESS"):
-                creationflags |= subprocess.DETACHED_PROCESS
+    with _arrancando:
+        if is_ollama_running(timeout=1.0):
+            return True                               # lo levantó otro hilo mientras esperábamos el cerrojo
+        print(f"[Ollama Service] Servidor Ollama no detectado en 127.0.0.1:11434. Arrancándolo desde '{ollama_bin}'...")
+        try:
+            creationflags = 0
+            if os.name == "nt":
+                # CREATE_NO_WINDOW (0x08000000) evita que se abra una ventana negra de consola
+                creationflags = 0x08000000
+                if hasattr(subprocess, "DETACHED_PROCESS"):
+                    creationflags |= subprocess.DETACHED_PROCESS
 
-        subprocess.Popen(
-            [ollama_bin, "serve"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-            creationflags=creationflags
-        )
+            subprocess.Popen(
+                [ollama_bin, "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                creationflags=creationflags
+            )
 
-        # Esperar hasta 8 segundos comprobando cada 0.5s
-        for _ in range(16):
-            time.sleep(0.5)
-            if is_ollama_running(timeout=1.0):
-                print("[Ollama Service] Servidor Ollama conectado y listo.")
-                return True
-
-    except Exception as e:
-        print(f"[Ollama Service] Error al intentar arrancar Ollama: {e}")
-
-    return is_ollama_running(timeout=1.0)
-
-_arrancando = threading.Lock()
+            limite = time.monotonic() + espera
+            while time.monotonic() < limite:
+                time.sleep(0.5)
+                if is_ollama_running(timeout=1.0):
+                    print("[Ollama Service] Servidor Ollama conectado y listo.")
+                    return True
+        except Exception as e:
+            print(f"[Ollama Service] Error al intentar arrancar Ollama: {e}")
+        return is_ollama_running(timeout=1.0)
 
 def arrancar_en_segundo_plano() -> str:
     """Arranca Ollama sin bloquear a quien llama (esperar a que responda tarda varios segundos). Devuelve el estado:
@@ -115,15 +117,8 @@ def arrancar_en_segundo_plano() -> str:
         return "activo"
     if not get_ollama_path():
         return "no_instalado"
-    if not _arrancando.acquire(blocking=False):
-        return "arrancando"                              # otro hilo ya lo está arrancando
-
-    def tarea():
-        try:
-            ensure_ollama_running()
-        finally:
-            _arrancando.release()
-    threading.Thread(target=tarea, daemon=True).start()
+    if not _arrancando.locked():                         # si ya hay un arranque en curso no hace falta otro hilo
+        threading.Thread(target=ensure_ollama_running, daemon=True).start()
     return "arrancando"
 
 def get_available_models() -> List[str]:

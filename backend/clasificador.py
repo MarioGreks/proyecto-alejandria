@@ -293,9 +293,13 @@ Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
         if not sentido:
             return None
         motivo = str(resp.get("motivo", ""))
-        if not self._confirmar(modelo, bloque('A', a), bloque('B', b), sentido, motivo):
-            print(f" -> [Descartada] {a[0]} ~ {b[0]}: la segunda revisión del modelo no confirma su veredicto")
-            return None
+        if not self._confirmar(modelo, bloque('A', a), bloque('B', b), sentido, motivo, evidencia):
+            # La revisión solo puede QUITAR la dirección, nunca el vínculo: lo que suele fallar es el sentido (binomial ~ Poisson salía «A se basa en B») y
+            # un modelo pequeño rechazaba parejas evidentes. «Relacionados» ya exige, en evaluar_conexiones, que cada texto nombre al otro concepto,
+            # así que un vínculo inventado sigue sin pasar.
+            if sentido != "rel":
+                print(f" -> [Revisada] {a[0]} ~ {b[0]}: la segunda revisión duda de la dirección; se propone solo como relacionados")
+            sentido = "rel"
         return sentido, motivo
 
     @staticmethod
@@ -304,7 +308,7 @@ Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
         data = {"model": modelo, "prompt": prompt, "stream": False, "format": "json", "keep_alive": "5m"}
         req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=json.dumps(data).encode('utf-8'))
         req.add_header('Content-Type', 'application/json')
-        with urllib.request.urlopen(req, timeout=45) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:   # la primera consulta incluye cargar el modelo en memoria (en una CPU lenta, decenas de segundos)
             resultado = json.loads(response.read().decode('utf-8'))
         try:
             resp = json.loads(resultado.get("response", "{}"))
@@ -312,21 +316,21 @@ Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
             return None
         return resp if isinstance(resp, dict) else None
 
-    def _confirmar(self, modelo: str, bloque_a: str, bloque_b: str, sentido: str, motivo: str) -> bool:
-        """Segunda pasada, invisible para el usuario: el modelo revisa su propio veredicto con otra pregunta (¿lo sostienen los textos?, ¿el sentido es el
-        correcto?). Solo un "correcto": false lo descarta; si no contesta con claridad o falla la consulta se da por bueno, para no perder una conexión por un fallo de formato."""
-        veredicto = {"ab": "A se basa en B (A necesita, usa o deriva de B)", "ba": "B se basa en A (B necesita, usa o deriva de A)",
-                     "rel": "A y B están relacionados (comparten una herramienta o un modelo concreto) sin que uno sea requisito del otro"}[sentido]
-        prompt = f"""Revisa con espíritu crítico este veredicto de otro juez, que podría estar equivocado.
+    def _confirmar(self, modelo: str, bloque_a: str, bloque_b: str, sentido: str, motivo: str, evidencia: str = "") -> bool:
+        """Segunda pasada, invisible para el usuario: el modelo revisa su propio veredicto con otra pregunta. Solo un "correcto": false lo descarta; si no
+        contesta con claridad o falla la consulta se da por bueno, para no perder una conexión por un fallo de formato.
+        La pregunta es deliberadamente permisiva (false solo si es claramente erróneo) y lleva las mismas frases-pista que el juez: con una versión más
+        severa y sin pistas, phi3:mini rechazaba el 100 % de una pareja evidente (binomial ~ Poisson) en las pruebas."""
+        veredicto = {"ab": "A se basa en B", "ba": "B se basa en A", "rel": "A y B están relacionados"}[sentido]
+        prompt = f"""Otro juez ha concluido esto sobre dos conceptos académicos. Dime si su conclusión es razonable a la vista de los textos.
 
 {bloque_a}
 
 {bloque_b}
+{evidencia}
+Conclusión del juez: {veredicto}. Motivo: "{motivo}"
 
-Veredicto: {veredicto}.
-Motivo dado: "{motivo}"
-
-Comprueba dos cosas: (1) que el motivo se sostiene con los textos y no es una generalidad ni una invención; (2) que el sentido del veredicto es el correcto.
+Responde false SOLO si la conclusión es claramente errónea (los conceptos no tienen nada que ver, o el motivo es inventado o vacío). Si es razonable o discutible, responde true.
 Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
         try:
             resp = self._consultar(modelo, prompt)

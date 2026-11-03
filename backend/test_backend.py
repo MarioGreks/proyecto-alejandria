@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -136,19 +137,19 @@ class TestSinapsis(unittest.TestCase):
         self.assertEqual(clasificador.MAX_CONEXIONES, 3)
         self.assertEqual(len([p for p in prompts if p.startswith("Eres un juez")]), 6)  # se juzgan todos los candidatos y se quedan los MEJORES, no los primeros que salgan
 
-    def _juzgar(self, correcto):
-        """_juzgar_par con un modelo que responde 'A_se_basa_en_B' al juez y `correcto` a la segunda revisión; devuelve (resultado, prompts)."""
+    def _juzgar(self, correcto, relacion="A_se_basa_en_B"):
+        """_juzgar_par con un modelo que responde `relacion` al juez y `correcto` a la segunda revisión; devuelve (resultado, prompts)."""
         prompts = []
 
         def urlopen(req, timeout=None):
             prompt = json.loads(req.data.decode())["prompt"]
             prompts.append(prompt)
-            if prompt.startswith("Revisa con espíritu crítico"):
+            if prompt.startswith("Otro juez ha concluido"):
                 if isinstance(correcto, Exception):
                     raise correcto
                 cuerpo = {} if correcto is None else {"correcto": correcto}
             else:
-                cuerpo = {"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO}
+                cuerpo = {"relacion": relacion, "motivo": self.MOTIVO}
             resp = MagicMock(); resp.__enter__.return_value = resp
             resp.read.return_value = json.dumps({"response": json.dumps(cuerpo)}).encode()
             return resp
@@ -160,14 +161,43 @@ class TestSinapsis(unittest.TestCase):
         _, prompts = self._juzgar(True)
         self.assertIn("castellano de España", prompts[0])
 
-    def test_segunda_revision_oculta_descarta_el_veredicto_que_el_propio_modelo_no_confirma(self):
+    def test_segunda_revision_que_duda_de_la_direccion_baja_el_veredicto_a_relacionados(self):
         for no_confirma in (False, "false"):
             with self.subTest(respuesta=no_confirma):
                 juicio, prompts = self._juzgar(no_confirma)
-                self.assertIsNone(juicio)
+                self.assertEqual(juicio, ("rel", self.MOTIVO))          # no se pierde el vínculo (binomial ~ Poisson), solo se le quita la dirección
                 self.assertEqual(len(prompts), 2)                       # juicio + revisión
                 self.assertIn(self.MOTIVO, prompts[1])                  # la revisión ve el veredicto y el motivo
                 self.assertIn("A se basa en B", prompts[1])
+
+    def test_la_segunda_revision_nunca_quita_el_vinculo_solo_la_direccion(self):
+        juicio, _ = self._juzgar(False, relacion="relacionados")
+        self.assertEqual(juicio, ("rel", self.MOTIVO))                  # ya era «relacionados» (exige pistas en ambos textos): se conserva
+
+    def test_una_direccion_dudosa_sin_pistas_en_ambos_textos_no_se_guarda(self):
+        base = [{"id": "w", "nombre": "Proceso de Wiener", "embedding": [1., 0.], "glosario": [], "teoria": "Intro histórica sin nada más."}]
+        def urlopen(req, timeout=None):
+            prompt = json.loads(req.data.decode())["prompt"]
+            cuerpo = {"correcto": False} if prompt.startswith("Otro juez ha concluido") else {"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO}
+            resp = MagicMock(); resp.__enter__.return_value = resp
+            resp.read.return_value = json.dumps({"response": json.dumps(cuerpo)}).encode()
+            return resp
+        with patch.object(clasificador, "ensure_ollama_running"), patch.object(clasificador, "get_best_llm_model", return_value="m"),              patch.object(clasificador.urllib.request, "urlopen", side_effect=urlopen):
+            res = _modelo().evaluar_conexiones("n", "Opciones", "Aquí se usa el proceso de Wiener como base.", np.array([1., 0.]), base, nuevo_glosario=[])
+        self.assertIn("no vio una dependencia clara", res[0]["motivo"])    # bajó a «relacionados», y B no nombra a A: solo queda la propuesta de afinidad
+
+    def test_la_segunda_revision_ve_las_mismas_pistas_y_solo_rechaza_lo_claramente_erroneo(self):
+        prompts = []
+
+        def urlopen(req, timeout=None):
+            prompts.append(json.loads(req.data.decode())["prompt"])
+            resp = MagicMock(); resp.__enter__.return_value = resp
+            resp.read.return_value = json.dumps({"response": json.dumps({"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO} if len(prompts) == 1 else {"correcto": True})}).encode()
+            return resp
+        with patch.object(clasificador.urllib.request, "urlopen", side_effect=urlopen):
+            _modelo()._juzgar_par("m", ("A", "ta", "ra"), ("B", "tb", "rb"), ("frase de A que nombra a B", ""))
+        self.assertIn("frase de A que nombra a B", prompts[1])           # la revisión no juzga a ciegas
+        self.assertIn("SOLO si la conclusión es claramente errónea", prompts[1])
 
     def test_segunda_revision_confirmada_o_sin_respuesta_clara_conserva_el_veredicto(self):
         for respuesta in (True, None, OSError("sin red")):            # solo un "correcto": false lo descarta
@@ -591,6 +621,32 @@ class TestAjustes(unittest.TestCase):
             self.assertTrue(arrancado.wait(3))                                # se arrancó de verdad, en otro hilo
         self.assertTrue(os_._arrancando.acquire(timeout=3))                 # y el cerrojo se liberó
         os_._arrancando.release()
+
+    def test_quien_necesita_ollama_mientras_otro_lo_arranca_espera_en_vez_de_lanzar_otro(self):
+        os_ = ollama_service
+        listo = threading.Event()
+        lanzado = []
+        sostiene = threading.Event()
+
+        def otro_hilo():                                    # simula el arranque en segundo plano: tiene el cerrojo y Ollama aparece a los 0,4 s
+            with os_._arrancando:
+                sostiene.set()
+                time.sleep(0.4)
+                listo.set()
+        threading.Thread(target=otro_hilo).start()
+        sostiene.wait(2)
+        with patch.object(os_, "is_ollama_running", side_effect=lambda timeout=1.0: listo.is_set()), patch.object(os_, "get_ollama_path", return_value="ollama.exe"), \
+             patch.object(os_.subprocess, "Popen", side_effect=lambda *a, **k: lanzado.append(1)):
+            self.assertTrue(os_.ensure_ollama_running(espera=3))
+        self.assertEqual(lanzado, [])                       # no se lanzó un segundo `ollama serve`
+
+    def test_espera_el_tiempo_que_se_le_da_para_que_ollama_responda(self):
+        os_ = ollama_service
+        arranque = time.monotonic()
+        with patch.object(os_, "is_ollama_running", side_effect=lambda timeout=1.0: time.monotonic() - arranque > 1.2), \
+             patch.object(os_, "get_ollama_path", return_value="ollama.exe"), patch.object(os_.subprocess, "Popen"):
+            self.assertTrue(os_.ensure_ollama_running(espera=5))      # tarda 1,2 s en responder: con los 8 s de antes ya valía, con 0,5 s no
+        self.assertGreaterEqual(os_.ESPERA_ARRANQUE, 30)               # y por defecto espera lo bastante para un portátil lento
 
     def test_no_arranca_dos_veces_a_la_vez(self):
         os_ = ollama_service
