@@ -3,6 +3,7 @@ No usan Ollama ni el modelo de embeddings, y trabajan en una carpeta de datos te
 import json
 import os
 import sys
+import shutil
 import tempfile
 import threading
 import time
@@ -539,15 +540,15 @@ class TestAjustes(unittest.TestCase):
         self.addCleanup(p.stop)
 
     def test_sin_archivo_o_con_basura_valen_los_valores_por_defecto(self):
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True})
+        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
         with open(self.ruta, "w") as f:
             f.write("{no es json")
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True})
+        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
 
     def test_guardar_ignora_claves_desconocidas_y_tipos_incorrectos(self):
         ajustes.guardar({"ia_activa": False, "modelo": "qwen2.5:3b", "otra": 1})
         ajustes.guardar({"ia_activa": "no", "modelo": 5})
-        self.assertEqual(ajustes.leer(), {"ia_activa": False, "modelo": "qwen2.5:3b", "buscar_actualizaciones": True})
+        self.assertEqual(ajustes.leer(), {"ia_activa": False, "modelo": "qwen2.5:3b", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
 
     def test_la_busqueda_de_actualizaciones_se_puede_apagar_y_se_guarda(self):
         self.assertTrue(ajustes.leer()["buscar_actualizaciones"])             # por defecto avisa de versiones nuevas
@@ -745,6 +746,69 @@ class TestIntercambio(unittest.TestCase):
         self.assertEqual(estados, ["pendiente"])   # una conexión rechazada de otra persona entra como pendiente para que la revises
 
 
+class TestSincronizacionEnLaApp(unittest.TestCase):
+    def setUp(self):
+        import sincronizacion
+        self.sinc = sincronizacion
+        self.ruta = os.path.join(tempfile.mkdtemp(), "ajustes.json")
+        p = patch.object(ajustes, "RUTA", self.ruta)
+        p.start()
+        self.addCleanup(p.stop)
+        self.compartida = tempfile.mkdtemp(prefix="ap-comp-")
+        self.client = TestClient(main.app, base_url="http://127.0.0.1")
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        main.servicio_sync.cambiar_carpeta()
+        self.addCleanup(self._limpiar)
+
+    def _limpiar(self):
+        main.servicio_sync.cambiar_carpeta()
+        for f in ("sync_a.json", "sync_b.json"):
+            try:
+                os.remove(os.path.join(DATA_DIR, "raw", f))
+            except OSError:
+                pass
+
+    def _elegir(self, carpeta):
+        with patch.object(main.threading, "Thread"):          # la primera vuelta automática al elegir carpeta se hace a mano en cada prueba
+            return self.client.put("/api/ajustes", json={"carpeta_sincronizacion": carpeta})
+
+    def test_la_carpeta_debe_existir_ser_completa_y_no_ser_la_de_los_datos(self):
+        for mala in ("no/es/absoluta", os.path.join(self.compartida, "no-existe"), DATA_DIR, os.path.join(DATA_DIR, "raw")):
+            self.assertEqual(self._elegir(mala).status_code, 400, mala)
+        self.assertEqual(ajustes.leer()["carpeta_sincronizacion"], "")
+        self.assertEqual(self._elegir(self.compartida).status_code, 200)
+        self.assertEqual(self._elegir("").json()["carpeta_sincronizacion"], "")      # quitarla también vale
+
+    def test_sin_carpeta_el_estado_dice_que_no_esta_configurada_y_ahora_no_hace_nada(self):
+        e = self.client.get("/api/sync/estado").json()
+        self.assertFalse(e["configurada"])
+        self.assertEqual(self.client.post("/api/sync/ahora").json()["ultima"], None)
+
+    def test_una_vuelta_publica_lo_local_y_recibe_lo_de_otro_pc(self):
+        with open(os.path.join(DATA_DIR, "raw", "sync_a.json"), "w", encoding="utf-8") as f:
+            json.dump({"nombre": "A", "cluster": "C", "teoria": "t"}, f)
+        self._elegir(self.compartida)
+        otro = os.path.join(self.compartida, self.sinc.RAIZ, "otropc", "neuronas")
+        os.makedirs(otro)
+        with open(os.path.join(otro, "sync_b.json"), "w", encoding="utf-8") as f:
+            json.dump({"_sync": {"t": 2_000_000_000_000_000, "rev": 1, "pc": "otropc", "borrada": False}, "datos": {"nombre": "B", "cluster": "C", "teoria": "u"}}, f)
+        with patch.object(main.db_conn, "compile_raw_jsons") as compilar, patch.object(main.db_conn, "quitar_aristas_huerfanas"):
+            e = self.client.post("/api/sync/ahora").json()
+        self.assertIsNone(e["error"])
+        self.assertGreaterEqual(e["ultima"]["enviadas"], 1)                               # (la carpeta de datos de las pruebas puede tener más neuronas de otras)
+        self.assertEqual(e["ultima"]["recibidas"], 1)
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, "raw", "sync_b.json")))      # llegó
+        compilar.assert_called()                                                           # y se recompiló la base
+        publicadas = os.listdir(os.path.join(self.compartida, self.sinc.RAIZ, main.servicio_sync.sincronizador.pc, "neuronas"))
+        self.assertIn("sync_a.json", publicadas)                                           # lo local salió
+
+    def test_una_carpeta_que_deja_de_estar_disponible_se_cuenta_como_error_sin_romper_nada(self):
+        self._elegir(self.compartida)
+        shutil.rmtree(self.compartida)
+        e = self.client.post("/api/sync/ahora").json()
+        self.assertIn("FileNotFoundError", e["error"])
+
+
 class TestEmpaquetado(unittest.TestCase):
     def test_todo_modulo_del_backend_que_otro_importa_va_en_el_instalador_y_en_tauri(self):
         """Los instaladores copian una lista fija de archivos: un módulo nuevo que se olvide ahí rompe el backend instalado (ImportError al arrancar)."""
@@ -766,6 +830,9 @@ class TestEmpaquetado(unittest.TestCase):
         for m in sorted(necesarios):
             self.assertIn(f'\{m}.py"', nsh, f"{m}.py falta en installer/instalacion.nsh")
             self.assertIn(f'backend/{m}.py"', tauri, f"{m}.py falta en tauri.conf.json")
+
+
+from test_sincronizacion import TestSincronizacion  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
 
 
 if __name__ == "__main__":

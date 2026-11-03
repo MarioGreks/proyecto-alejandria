@@ -3,6 +3,7 @@ import { API } from '../utils/api';
 import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } from '../utils/intercambio';
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
+import SincronizacionPcs from './SincronizacionPcs';
 
 interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number; buscar_actualizaciones: boolean }
 
@@ -67,6 +68,10 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
                         <div style={{ fontSize: 12, color: '#7aa', marginTop: 8 }}>
                             Es lo único que la app consulta por internet por su cuenta: pregunta a github.com si hay una versión nueva y no envía nada tuyo. Solo instala lo que esté firmado por el proyecto, y solo si tú pulsas Actualizar.
                         </div>
+                    </Seccion>
+
+                    <Seccion titulo="Sincronización entre PCs">
+                        <SincronizacionPcs />
                     </Seccion>
 
                     <Seccion titulo={`Tus datos (${e.neuronas} neuronas)`}>

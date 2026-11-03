@@ -9,10 +9,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 import ajustes
 import vigilante
 import intercambio
+import sincronizacion
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.2.0"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.2.1"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -57,11 +58,20 @@ class BloquearOrigenesAjenos:
 
 app.add_middleware(BloquearOrigenesAjenos)
 
+def _tras_sincronizar(neuronas: bool, aristas: bool):
+    """Lo que hay que rehacer en local cuando la sincronización cambia archivos: la base compilada y las conexiones que se quedaron sin neurona."""
+    if neuronas:
+        db_conn.compile_raw_jsons(force=True)
+        db_conn.quitar_aristas_huerfanas()
+
+servicio_sync = sincronizacion.Servicio(DATA_DIR, ajustes.leer, _tras_sincronizar)
+
 def startup_event():
     """Al iniciar el backend, arranca Ollama en segundo plano automáticamente para que los LLM internos funcionen de inmediato."""
     padre = os.environ.get("ALEJANDRIA_PADRE")      # la app que me lanzó: si muere sin avisar, me cierro (no quedar huérfano)
     if padre and padre.isdigit():
         vigilante.vigilar_padre(int(padre))
+    servicio_sync.iniciar_auto()                    # sincronización entre PCs, si hay carpeta elegida en Ajustes
     print(f"[Alejandria] Ollama: {arrancar_en_segundo_plano()}")     # sin esperar: el backend responde al momento y Ollama se levanta detrás
 
 @app.get("/")
@@ -463,6 +473,8 @@ def delete_node(node_id: str):
 class AjustesRequest(BaseModel):
     ia_activa: Optional[bool] = None
     buscar_actualizaciones: Optional[bool] = None
+    carpeta_sincronizacion: Optional[str] = Field(None, max_length=500)
+    sincronizar_auto: Optional[bool] = None
     modelo: Optional[str] = Field(None, max_length=100)
 
 @app.get("/api/ajustes")
@@ -473,12 +485,42 @@ def leer_ajustes():
             "modelos": modelos, "modelos_restringidos": [m for m in modelos if licencia_restrictiva(m)],
             "neuronas": len(db_conn.get_universe_metadata())}
 
+def _carpeta_sync_valida(carpeta: str) -> bool:
+    """Una carpeta que exista, con ruta completa, y que no sea la de los datos ni esté dentro de ella (se sincronizaría consigo misma)."""
+    if not carpeta:
+        return True
+    if not (os.path.isabs(carpeta) and os.path.isdir(carpeta)):
+        return False
+    datos, elegida = os.path.normcase(os.path.abspath(DATA_DIR)), os.path.normcase(os.path.abspath(carpeta))
+    return elegida != datos and not elegida.startswith(datos + os.sep)
+
 @app.put("/api/ajustes")
 def guardar_ajustes(req: AjustesRequest):
-    guardados = ajustes.guardar(req.model_dump(exclude_none=True))
+    cambios = req.model_dump(exclude_none=True)
+    cambio_carpeta = False
+    if "carpeta_sincronizacion" in cambios:
+        cambios["carpeta_sincronizacion"] = cambios["carpeta_sincronizacion"].strip()
+        if not _carpeta_sync_valida(cambios["carpeta_sincronizacion"]):
+            raise HTTPException(status_code=400, detail="La carpeta de sincronización debe existir (ruta completa) y no puede ser la de tus datos.")
+        cambio_carpeta = cambios["carpeta_sincronizacion"] != ajustes.leer()["carpeta_sincronizacion"]
+        if cambio_carpeta:
+            servicio_sync.cambiar_carpeta()              # otra carpeta: se empieza de cero con ella (lo local no se toca)
+    guardados = ajustes.guardar(cambios)
     if req.ia_activa:
         arrancar_en_segundo_plano()                      # al activar la IA local, Ollama se levanta solo si está instalado
+    if cambio_carpeta and guardados["carpeta_sincronizacion"]:
+        threading.Thread(target=servicio_sync.ahora, daemon=True).start()       # primera sincronización al elegirla
     return guardados
+
+@app.get("/api/sync/estado")
+def estado_sincronizacion():
+    """Estado de la sincronización entre PCs: carpeta, última vuelta (enviadas, recibidas, conflictos, avisos), otros PCs y error si lo hay."""
+    return servicio_sync.estado()
+
+@app.post("/api/sync/ahora")
+def sincronizar_ahora():
+    """Una vuelta de sincronización ahora mismo (si ya hay otra en marcha no la repite). Devuelve el estado."""
+    return servicio_sync.ahora()
 
 @app.post("/api/ollama/arrancar")
 def arrancar_ollama():

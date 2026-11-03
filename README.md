@@ -34,6 +34,7 @@ Tu segundo cerebro, local y privado. Cada concepto que aprendes es una **neurona
 - **Sinapsis**: una IA local (Ollama) propone conexiones con su razón; tú las aceptas o rechazas, y lo rechazado no se vuelve a proponer.
 - **Laboratorios editables**: mueve los controles y el gráfico se redibuja al instante (barras, líneas, áreas, escala logarítmica...); puedes cambiar variables, rangos y código.
 - **Tus datos son tuyos**: todo vive en una carpeta local; Ajustes permite exportar e importar neuronas, elegir el modelo de IA o desactivarla.
+- **Varios ordenadores**: en Ajustes eliges una carpeta que ya sincronice tu nube (OneDrive, Dropbox, Google Drive, Syncthing...) y cada PC deja ahí sus neuronas y conexiones y lee las de los demás, sin servidor ni cuentas nuevas. Viajan las ediciones, las neuronas nuevas, los borrados y qué conexiones aceptaste o rechazaste (no los ajustes). Si editas lo mismo en dos PCs a la vez gana lo más reciente y lo otro se guarda aparte. Los datos pasan por la nube que tú elijas.
 - **Tutorial** en la primera ejecución y 3 neuronas de ejemplo opcionales.
 
 ## Privacidad
@@ -106,6 +107,7 @@ Your second brain, local and private. Every concept you learn is a **neuron** in
 - **Synapses**: a local AI (Ollama) proposes links with a reason; you accept or reject them, and rejected links are never proposed again.
 - **Editable labs**: move the controls and the chart redraws instantly (bars, lines, areas, log scale...); you can change variables, ranges and code.
 - **Your data is yours**: everything lives in a local folder; Settings lets you export/import neurons, pick the AI model or turn the AI off.
+- **Several computers**: in Settings you pick a folder your cloud service already syncs (OneDrive, Dropbox, Google Drive, Syncthing...) and each PC leaves its neurons and connections there and reads the others', with no server or new accounts. Edits, new neurons, deletions and which connections you accepted or rejected travel (not settings). If you edit the same thing on two PCs at once the most recent wins and the other is kept aside. Your data goes through the cloud you choose.
 - **Tutorial** on first run and 3 optional example neurons.
 
 ### Privacy

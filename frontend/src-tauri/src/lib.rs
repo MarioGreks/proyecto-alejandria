@@ -343,13 +343,33 @@ async fn instalar_actualizacion(app: AppHandle, estado: State<'_, Estado>) -> Re
     .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+/// Diálogo de Windows para elegir una carpeta (la de la nube para sincronizar entre PCs). Usa PowerShell y Windows Forms, que vienen con Windows: sin dependencias
+/// nuevas. Devuelve la ruta elegida o `None` si se cancela.
+async fn elegir_carpeta(inicial: Option<String>) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let guion = "Add-Type -AssemblyName System.Windows.Forms;             $f = New-Object System.Windows.Forms.Form; $f.TopMost = $true;             $d = New-Object System.Windows.Forms.FolderBrowserDialog;             $d.Description = 'Elige la carpeta que sincroniza tu nube (OneDrive, Dropbox...)'; $d.ShowNewFolderButton = $true;             if ($env:AP_INICIAL -and (Test-Path -LiteralPath $env:AP_INICIAL)) { $d.SelectedPath = $env:AP_INICIAL };             [Console]::OutputEncoding = [System.Text.Encoding]::UTF8;             if ($d.ShowDialog($f) -eq [System.Windows.Forms.DialogResult]::OK) { $d.SelectedPath }";
+        let salida = Command::new("powershell.exe")
+            .args(["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", guion])
+            .env("AP_INICIAL", inicial.unwrap_or_default())
+            .stdin(Stdio::null())
+            .creation_flags(SIN_VENTANA)
+            .output()
+            .map_err(|e| format!("No se pudo abrir el selector de carpetas: {e}"))?;
+        let ruta = String::from_utf8_lossy(&salida.stdout).trim().to_string();
+        Ok(if ruta.is_empty() { None } else { Some(ruta) })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Estado::default())
-        .invoke_handler(tauri::generate_handler![arrancar_backend, buscar_actualizacion, instalar_actualizacion])
+        .invoke_handler(tauri::generate_handler![arrancar_backend, buscar_actualizacion, instalar_actualizacion, elegir_carpeta])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
     app.run(|app, evento| {

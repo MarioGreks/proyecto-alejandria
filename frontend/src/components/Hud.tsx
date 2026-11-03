@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API } from '../utils/api';
 import { MONO } from './terminal';
 
@@ -52,9 +52,28 @@ function useIA() {
     return texto;
 }
 
+/** Si la sincronización entre PCs trae neuronas o conexiones (cambia su «generación»), recarga el universo para que se vean sin pulsar nada. */
+function useSincronizacion(alCambiar: () => void) {
+    const accion = useRef(alCambiar);
+    accion.current = alCambiar;
+    useEffect(() => {
+        let vivo = true;
+        let ultima: number | null = null;
+        const leer = () => fetch(`${API}/api/sync/estado`).then(r => r.json()).then(e => {
+            if (!vivo || typeof e.generacion !== 'number') return;
+            if (ultima !== null && e.generacion !== ultima) accion.current();
+            ultima = e.generacion;
+        }).catch(() => {});
+        leer();
+        const t = setInterval(leer, 8000);
+        return () => { vivo = false; clearInterval(t); };
+    }, []);
+}
+
 export default function Hud(p: Props) {
     const [enfocado, setEnfocado] = useState(false);
     const ia = useIA();
+    useSincronizacion(p.onRecargar);
     const [seleccion, setSeleccion] = useState(0);
     useEffect(() => setSeleccion(0), [p.busqueda]);
     const abierto = enfocado && p.busqueda.trim() !== '' && p.resultados.length > 0;

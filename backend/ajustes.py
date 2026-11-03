@@ -1,4 +1,4 @@
-"""Ajustes del usuario (data/ajustes.json): si se usa la IA local, con qué modelo de Ollama y si la app busca versiones nuevas al abrirse."""
+"""Ajustes del usuario (data/ajustes.json): IA local y modelo de Ollama, búsqueda de versiones nuevas y carpeta compartida para sincronizar entre PCs."""
 import json
 import os
 import threading
@@ -6,7 +6,7 @@ import threading
 from database import DATA_DIR
 
 RUTA = os.path.join(DATA_DIR, "ajustes.json")
-DEFECTO = {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True}   # modelo "" = elegir automáticamente el mejor instalado
+DEFECTO = {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True}   # modelo "" = elegir automáticamente el mejor instalado
 _lock = threading.Lock()
 
 

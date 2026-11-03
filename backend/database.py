@@ -211,6 +211,34 @@ class LocalGraphDB:
         return quitadas
 
     @_locked
+    def listar_aristas(self):
+        """TODAS las aristas tal como están guardadas (también las rechazadas, que se recuerdan para no volver a proponerlas): lo que se sincroniza entre PCs."""
+        if not os.path.exists(ARISTAS_FILE):
+            return []
+        try:
+            df = pd.read_parquet(ARISTAS_FILE, engine="pyarrow")
+            if df.empty:
+                return []
+            return df.where(df.notna(), "").to_dict(orient="records")
+        except Exception as e:
+            print(f"Error leyendo aristas: {e}")
+            raise
+
+    @_locked
+    def quitar_arista(self, origen_id: str, destino_id: str):
+        """Quita la arista exacta (origen, destino). Devuelve si existía."""
+        if not os.path.exists(ARISTAS_FILE):
+            return False
+        df = pd.read_parquet(ARISTAS_FILE, engine="pyarrow")
+        if df.empty:
+            return False
+        resto = df[~((df['origen_id'] == origen_id) & (df['destino_id'] == destino_id))]
+        if len(resto) == len(df):
+            return False
+        _to_parquet(resto.reset_index(drop=True), ARISTAS_FILE)
+        return True
+
+    @_locked
     def get_known_pairs(self):
         """Parejas (origen, destino) que ya tienen arista en cualquier estado (también rechazada), en ambas direcciones."""
         if not os.path.exists(ARISTAS_FILE):
