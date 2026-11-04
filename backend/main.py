@@ -187,6 +187,7 @@ def get_node(node_id: str):
 import json
 import os
 import re
+from limpieza import limpiar_neurona
 
 def raw_path(node_id) -> str:
     """Ruta del JSON de un nodo dentro de DATA_DIR/raw. Rechaza ids que puedan salirse de esa carpeta."""
@@ -256,6 +257,7 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
         if not node_id:
             raise ValueError("El JSON no contiene el campo 'id'.")
         filepath = raw_path(node_id)  # valida el id antes de gastar embeddings/LLM
+        limpiar_neurona(data)         # «[reference:25]» y demás marcas de cita de la IA: ni se guardan ni llegan al clasificador
 
         # 🧠 PASO CLAVE: CLASIFICACIÓN LOCAL
         clasificador = None

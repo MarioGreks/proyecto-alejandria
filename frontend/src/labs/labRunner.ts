@@ -6,7 +6,7 @@ export interface ResultadoLab {
     msPaquetes: number;        // parte de ese tiempo dedicada a cargar paquetes (>0 solo la primera vez que se importan)
 }
 
-interface Pendiente { ok: (r: ResultadoLab) => void; fallo: (e: Error) => void; ejecutando: () => void }
+interface Pendiente { ok: (r: ResultadoLab) => void; fallo: (e: Error) => void; ejecutando: () => void; respaldo: () => void }
 
 export class LabRunner {
     private worker!: Worker;
@@ -23,6 +23,7 @@ export class LabRunner {
                 const m = e.data;
                 if (m.tipo === 'listo') ok(m.tiempos);
                 else if (m.tipo === 'ejecutando') this.pendientes.get(m.id)?.ejecutando();
+                else if (m.tipo === 'respaldo') this.pendientes.get(m.id)?.respaldo();
                 else if (m.tipo === 'resultado') { this.pendientes.get(m.id)?.ok(m); this.pendientes.delete(m.id); }
                 else if (m.tipo === 'error') {
                     const e2 = new Error(m.mensaje);
@@ -38,8 +39,11 @@ export class LabRunner {
     /**
      * Ejecuta un laboratorio. El tiempo máximo `maxMs` empieza a contar cuando el código ya se está ejecutando (bajar scipy la primera vez no
      * cuenta, hasta `maxCargaMs`); si se pasa, se mata el worker (lo único que corta un bucle infinito de verdad) y se rechaza.
+     * Si la grabadora no sabe dibujarlo y pasa al respaldo con matplotlib real (vuelve a ejecutar el código y renderiza un PNG, 10-100 veces
+     * más lento), el reloj vuelve a empezar con `maxRespaldoMs`: antes ese paso contaba dentro de los 3 s y los laboratorios con
+     * hist/imshow/contornos se cortaban siempre («tardó más de 3 s»).
      */
-    async ejecutar(codigo: string, maxMs = 3000, maxCargaMs = 60000): Promise<ResultadoLab> {
+    async ejecutar(codigo: string, maxMs = 3000, maxCargaMs = 60000, maxRespaldoMs = Math.max(maxMs, 20000)): Promise<ResultadoLab> {
         try { await this.listo; } catch { this.reiniciar(); await this.listo; }      // un arranque fallido (sin red...) se reintenta una vez
         const id = ++this.contador;
         return new Promise<ResultadoLab>((ok, fallo) => {
@@ -53,6 +57,7 @@ export class LabRunner {
                 ok: r => { clearTimeout(temporizador); ok(r); },
                 fallo: e => { clearTimeout(temporizador); fallo(e); },
                 ejecutando: () => armar(maxMs, `El laboratorio tardó más de ${maxMs / 1000} s y se detuvo.`),
+                respaldo: () => armar(maxRespaldoMs, `El laboratorio (dibujado como imagen con matplotlib) tardó más de ${maxRespaldoMs / 1000} s y se detuvo.`),
             });
             this.worker.postMessage({ tipo: 'ejecutar', id, codigo });
         });

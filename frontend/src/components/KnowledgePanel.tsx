@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { handleOpenExternal, markdownComponents, forceBlockMath } from '../utils/markdown';
+import { handleOpenExternal, markdownComponents, forceBlockMath, limpiarCitas } from '../utils/markdown';
 import LaboratorioWidget from './LaboratorioWidget';
 import type { LaboratorioData } from './LaboratorioWidget';
 import { API } from '../utils/api';
@@ -49,7 +49,7 @@ const Md = ({ texto, enLinea }: { texto: string; enLinea?: boolean }) => (
         rehypePlugins={[[rehypeKatex, { strict: false }]]}
         components={enLinea ? { ...markdownComponents, p: ({ node, ...props }: any) => <span {...props} /> } : markdownComponents}
     >
-        {enLinea ? texto : forceBlockMath(texto)}
+        {enLinea ? limpiarCitas(texto) : forceBlockMath(texto)}
     </ReactMarkdown>
 );
 

@@ -135,8 +135,57 @@ class TestGrabadora(unittest.TestCase):
         eje, = fig["ejes"]
         self.assertEqual((eje["xticks"], eje["yticks"]), (None, None))
 
+    def test_hist_da_las_mismas_barras_que_matplotlib(self):
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as real
+        import numpy as np
+        datos = np.random.default_rng(1).normal(2.0, 1.5, 500)
+        for kw in ({"bins": 40, "density": True}, {"bins": 7, "range": (0, 3)}, {}):
+            with self.subTest(**{k: str(v) for k, v in kw.items()}):
+                fig, = self.datos(
+                    "import numpy as np, matplotlib.pyplot as plt\n"
+                    f"d = np.random.default_rng(1).normal(2.0, 1.5, 500)\n"
+                    f"fig, ax = plt.subplots()\nn, b, p = ax.hist(d, color='steelblue', edgecolor='white', alpha=0.5, **{kw!r})\n"
+                    "assert len(b) == len(n) + 1\nplt.show()")
+                barras, = fig["ejes"][0]["series"]
+                n, b, parches = real.hist(datos, **kw)
+                real.close("all")
+                self.assertEqual(barras["tipo"], "barras")
+                np.testing.assert_allclose(barras["alto"], n, rtol=1e-5)
+                np.testing.assert_allclose(barras["x"], [p.get_x() + p.get_width() / 2 for p in parches], rtol=1e-5, atol=1e-6)
+                self.assertAlmostEqual(barras["ancho"], parches[0].get_width(), places=5)
+                self.assertEqual((barras["borde"], barras["alpha"]), ("#ffffff", 0.5))
+
+    def test_imshow_graba_los_pixeles_con_el_mapa_de_color_y_la_vista_de_matplotlib(self):
+        import base64
+        import matplotlib
+        import numpy as np
+        fig, = self.datos(
+            "import numpy as np, matplotlib.pyplot as plt\n"
+            "A = np.arange(12, dtype=float).reshape(3, 4); A[0, 0] = np.nan\n"
+            "fig, ax = plt.subplots(1, 2)\nax[0].imshow(A, cmap='gray', aspect='auto')\nax[1].imshow(A, origin='lower', vmin=0, vmax=20)\nplt.show()")
+        izq, der = fig["ejes"]
+        img = izq["series"][0]
+        self.assertEqual((img["tipo"], img["ancho"], img["alto"], img["origen"]), ("imagen", 4, 3, "upper"))
+        self.assertEqual(img["extent"], [-0.5, 3.5, 2.5, -0.5])
+        self.assertEqual((izq["xlim"], izq["ylim"], izq["aspecto_igual"]), ([-0.5, 3.5], [2.5, -0.5], False))   # eje Y invertido, como matplotlib
+        px = np.frombuffer(base64.b64decode(img["rgba"]), dtype=np.uint8).reshape(3, 4, 4)
+        self.assertEqual(px[0, 0, 3], 0)                                     # NaN -> transparente
+        self.assertEqual(tuple(px[2, 3]), (255, 255, 255, 255))              # el máximo en 'gray' es blanco
+        self.assertEqual(tuple(px[0, 1, :3]), (int(0.0 * 255),) * 3)         # el mínimo (1, tras el NaN) es negro
+        der_img = der["series"][0]
+        self.assertEqual((der_img["origen"], der_img["extent"], der["aspecto_igual"]), ("lower", [-0.5, 3.5, -0.5, 2.5], True))
+        esperado = matplotlib.colormaps["viridis"](matplotlib.colors.Normalize(0, 20)(11.0), bytes=True)
+        self.assertEqual(tuple(np.frombuffer(base64.b64decode(der_img["rgba"]), dtype=np.uint8).reshape(3, 4, 4)[2, 3]), tuple(esperado))
+
     def test_lo_que_no_sabe_dibujar_cae_a_imagen(self):
         casos = {
+            "hist con varias series": "import numpy as np, matplotlib.pyplot as plt\nplt.hist([np.ones(3), np.zeros(3)]); plt.show()",
+            "hist escalonado": "import matplotlib.pyplot as plt\nplt.hist([1, 2, 2], histtype='step'); plt.show()",
+            "hist con bins desiguales": "import matplotlib.pyplot as plt\nplt.hist([1, 2, 2], bins=[0, 1, 3]); plt.show()",
+            "imshow con interpolación suave": "import matplotlib.pyplot as plt\nplt.imshow([[0, 1], [1, 0]], interpolation='bilinear'); plt.show()",
+            "imshow con barra de color": "import matplotlib.pyplot as plt\nplt.imshow([[0, 1], [1, 0]]); plt.colorbar(); plt.show()",
             "contornos": "import numpy as np, matplotlib.pyplot as plt\nfig, ax = plt.subplots()\nax.contour(np.ones((3, 3)))\nplt.show()",
             "escala a medida": "import matplotlib.pyplot as plt\nplt.plot([1, 2]); plt.gca().set_yscale('symlog'); plt.show()",
             "log en base 2": "import matplotlib.pyplot as plt\nplt.plot([1, 2]); plt.yscale('log', base=2); plt.show()",

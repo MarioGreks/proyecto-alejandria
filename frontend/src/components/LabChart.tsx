@@ -39,6 +39,25 @@ const POS_LEYENDA: Record<string, [number, number]> = {
     'right': [1, 0.5], 'center left': [0, 0.5], 'center right': [1, 0.5], 'lower center': [0.5, 1], 'upper center': [0.5, 0], 'center': [0.5, 0.5],
 };
 
+// Los píxeles de una imagen (imshow) se decodifican una vez por serie: al pasar el ratón se redibuja el eje y no hace falta repetirlo.
+const lienzos = new WeakMap<object, HTMLCanvasElement | null>();
+function lienzoDe(serie: Extract<Serie, { tipo: 'imagen' }>): HTMLCanvasElement | null {
+    if (lienzos.has(serie)) return lienzos.get(serie)!;
+    let lienzo: HTMLCanvasElement | null = null;
+    try {
+        const bin = atob(serie.rgba);
+        if (bin.length === serie.ancho * serie.alto * 4) {
+            const datos = new Uint8ClampedArray(bin.length);
+            for (let i = 0; i < bin.length; i++) datos[i] = bin.charCodeAt(i);
+            lienzo = document.createElement('canvas');
+            lienzo.width = serie.ancho; lienzo.height = serie.alto;
+            lienzo.getContext('2d')!.putImageData(new ImageData(datos, serie.ancho, serie.alto), 0, 0);
+        }
+    } catch { lienzo = null; }
+    lienzos.set(serie, lienzo);
+    return lienzo;
+}
+
 function dibujarEje(ctx: CanvasRenderingContext2D, eje: Eje, W: number, H: number, s: number, cursor: { x: number; y: number } | null) {
     const px = (pt: number) => Math.max(10, pt * s);        // tamaños de fuente legibles
     const lw = (pt: number) => Math.max(1, pt * s);         // grosores
@@ -58,9 +77,11 @@ function dibujarEje(ctx: CanvasRenderingContext2D, eje: Eje, W: number, H: numbe
     const w = Math.max(10, W - L - R), h = Math.max(10, H - T - B);
 
     if (eje.aspecto_igual && !xlog && !ylog) {
-        const ux = w / (xmax - xmin), uy = h / (ymax - ymin), u = Math.min(ux, uy);
+        // Un eje puede ir invertido (imshow: la fila 0 arriba): se conserva el sentido de cada uno.
+        const sx = Math.sign(xmax - xmin) || 1, sy = Math.sign(ymax - ymin) || 1;
+        const ux = w / Math.abs(xmax - xmin), uy = h / Math.abs(ymax - ymin), u = Math.min(ux, uy);
         const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
-        xmin = cx - w / u / 2; xmax = cx + w / u / 2; ymin = cy - h / u / 2; ymax = cy + h / u / 2;
+        xmin = cx - sx * w / u / 2; xmax = cx + sx * w / u / 2; ymin = cy - sy * h / u / 2; ymax = cy + sy * h / u / 2;
     }
     // En escala logarítmica la posición es proporcional al exponente; un valor ≤ 0 no tiene posición (sale como NaN y el lienzo lo ignora).
     const lx = xlog ? Math.log10 : (v: number) => v, ly = ylog ? Math.log10 : (v: number) => v;
@@ -165,6 +186,21 @@ function dibujarEje(ctx: CanvasRenderingContext2D, eje: Eje, W: number, H: numbe
                 break;
             }
             case 'texto': textos.push(serie); break;
+            case 'imagen': {
+                const lienzo = lienzoDe(serie);
+                if (!lienzo) break;
+                const [izq, der, abajo, arriba] = serie.extent;
+                // La fila 0 del array está en `arriba` si origen = 'upper' (lo normal en imshow) y en `abajo` si 'lower'.
+                const x0 = X(izq), x1 = X(der);
+                const y0 = Y(serie.origen === 'upper' ? arriba : abajo), y1 = Y(serie.origen === 'upper' ? abajo : arriba);
+                ctx.save();
+                ctx.imageSmoothingEnabled = false;            // como matplotlib: píxeles nítidos al ampliar
+                ctx.translate(x0, y0);
+                ctx.scale(Math.sign(x1 - x0) || 1, Math.sign(y1 - y0) || 1);
+                ctx.drawImage(lienzo, 0, 0, Math.abs(x1 - x0), Math.abs(y1 - y0));
+                ctx.restore();
+                break;
+            }
         }
     }
     ctx.restore();
@@ -180,8 +216,8 @@ function dibujarEje(ctx: CanvasRenderingContext2D, eje: Eje, W: number, H: numbe
     ctx.stroke();
     // Si las etiquetas no caben una al lado de otra, se escribe solo una de cada n (las marcas se dejan todas).
     const etX = xt.map((v, i) => xm.labels?.[i] ?? formatoMarca(v, pasoX)), etY = yt.map((v, i) => ym.labels?.[i] ?? formatoMarca(v, pasoY));
-    const cadaX = cadaCuantas(etX.map(t => ctx.measureText(t).width), pasoDe(xt) / (xmax - xmin) * w);
-    const cadaY = cadaCuantas(etY.map(() => px(10) * 1.3), pasoDe(yt) / (ymax - ymin) * h);
+    const cadaX = cadaCuantas(etX.map(t => ctx.measureText(t).width), pasoDe(xt) / Math.abs(xmax - xmin) * w);
+    const cadaY = cadaCuantas(etY.map(() => px(10) * 1.3), pasoDe(yt) / Math.abs(ymax - ymin) * h);
     etX.forEach((t, i) => { if (i % cadaX === 0) ctx.fillText(t, X(xt[i]), T + h + 6); });
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     etY.forEach((t, i) => { if (i % cadaY === 0) ctx.fillText(t, L - 7, Y(yt[i])); });
@@ -209,7 +245,7 @@ function dibujarEje(ctx: CanvasRenderingContext2D, eje: Eje, W: number, H: numbe
 
     // Leyenda
     if (eje.leyenda !== null) {
-        const entradas = eje.series.filter((x): x is Exclude<Serie, { tipo: 'texto' }> => x.tipo !== 'texto' && !!x.label && !x.label.startsWith('_'));
+        const entradas = eje.series.filter((x): x is Exclude<Serie, { tipo: 'texto' | 'imagen' }> => x.tipo !== 'texto' && x.tipo !== 'imagen' && !!x.label && !x.label.startsWith('_'));
         if (entradas.length) {
             const fs = px(10);
             ctx.font = `${fs}px ${FONT}`;

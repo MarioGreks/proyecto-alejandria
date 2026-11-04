@@ -21,5 +21,14 @@ test('los prompts siguen siendo plantillas válidas: bloque json y reglas de gr�
     for (const p of [PROMPT_FUENTES, PROMPT_EXPLORACION]) {
         assert.ok(p.includes('```json'));
         assert.ok(p.includes('xticks'));
+        assert.ok(p.includes('`hist`') && p.includes('`imshow`'));        // la grabadora ya los dibuja en vivo
     }
+});
+
+test('ambos prompts piden no dejar marcas de cita como [reference:3] en los textos', () => {
+    for (const p of [PROMPT_FUENTES, PROMPT_EXPLORACION]) {
+        assert.match(p, /NO dejes las marcas de cita/);
+        assert.ok(p.includes('[reference:3]') && p.includes('"referencias"'));
+    }
+    assert.ok(PROMPT_FUENTES.trimEnd().endsWith('Devuelve ÚNICAMENTE el bloque JSON.'));   // la última regla sigue siendo la de formato
 });

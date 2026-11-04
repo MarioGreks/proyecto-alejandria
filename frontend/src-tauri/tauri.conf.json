@@ -40,6 +40,7 @@
       "../../backend/intercambio.py": "backend/intercambio.py",
       "../../backend/vigilante.py": "backend/vigilante.py",
       "../../backend/idioma.py": "backend/idioma.py",
+      "../../backend/limpieza.py": "backend/limpieza.py",
       "../../backend/sincronizacion.py": "backend/sincronizacion.py",
       "../../backend/requirements.txt": "backend/requirements.txt"
     },
