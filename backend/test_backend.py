@@ -854,6 +854,19 @@ class TestEmpaquetado(unittest.TestCase):
             self.assertIn(f'\{m}.py"', nsh, f"{m}.py falta en installer/instalacion.nsh")
             self.assertIn(f'backend/{m}.py"', tauri, f"{m}.py falta en tauri.conf.json")
 
+    def test_el_instalador_no_abre_consolas(self):
+        """Con Terminal como consola predeterminada de Windows 11, un `Exec` de PowerShell abre una pestaña de Terminal (y un botón en la barra de tareas) aunque se oculte
+        después: hay que crear el proceso con CREATE_NO_WINDOW, y los hijos de instalar.ps1 con -NoNewWindow (compartiendo esa consola oculta)."""
+        import re
+        inst = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "installer")
+        nsh = open(os.path.join(inst, "instalacion.nsh"), encoding="utf-8-sig").read()
+        self.assertIn("kernel32::CreateProcess(p 0, t r3", nsh)
+        self.assertIn("0x08000000", nsh)
+        self.assertNotRegex(nsh, r"(?m)^\s*Exec\s+'\"\$SYSDIR\\WindowsPowerShell", "powershell.exe no se lanza con Exec (abre consola visible)")
+        ps1 = open(os.path.join(inst, "instalar.ps1"), encoding="utf-8-sig").read()
+        sin_comentarios = "\n".join(re.sub(r"#.*$", "", l) for l in ps1.splitlines())
+        self.assertNotIn("Start-Process", "\n".join(l for l in sin_comentarios.splitlines() if "-WindowStyle Hidden" in l), "los hijos van con -NoNewWindow")
+
 
 from test_sincronizacion import TestSincronizacion  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
 

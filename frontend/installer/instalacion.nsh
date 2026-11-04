@@ -81,7 +81,32 @@ Function LanzarPowerShell
   FileWriteUTF16LE $0 "Esquema=$EsquemaActual$\r$\n"
   FileWriteUTF16LE $0 "Nuevas=$NuevasRutas$\r$\n"
   FileClose $0
-  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\instalar.ps1" -Parametros "$PLUGINSDIR\parametros.txt"'
+  ; Sin ventana de consola desde el primer instante (CREATE_NO_WINDOW): con `Exec`, Windows 11 con Terminal como consola predeterminada abre una pestaña de Terminal
+  ; (y un botón en la barra de tareas) aunque PowerShell se oculte después. Si CreateProcess fallara, se usa el arranque de siempre.
+  Push $1
+  Push $2
+  Push $3
+  Push $4
+  StrCpy $3 '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\instalar.ps1" -Parametros "$PLUGINSDIR\parametros.txt"'
+  System::Alloc 68                         ; STARTUPINFO (a ceros; cb = 68)
+  Pop $1
+  System::Call '*$1(i 68)'
+  System::Alloc 16                         ; PROCESS_INFORMATION
+  Pop $2
+  System::Call 'kernel32::CreateProcess(p 0, t r3, p 0, p 0, i 0, i 0x08000000, p 0, p 0, p r1, p r2)i .r0'      ; (con `t n` NSIS pasaría la letra «n» como nombre: error 123)
+  ${If} $0 = 0
+    Exec $3
+  ${Else}
+    System::Call '*$2(p .r3, p .r4)'       ; hProcess, hThread: ya no hacen falta
+    System::Call 'kernel32::CloseHandle(p r3)'
+    System::Call 'kernel32::CloseHandle(p r4)'
+  ${EndIf}
+  System::Free $1
+  System::Free $2
+  Pop $4
+  Pop $3
+  Pop $2
+  Pop $1
   StrCpy $PsLanzado 1
 FunctionEnd
 

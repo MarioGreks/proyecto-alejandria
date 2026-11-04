@@ -126,7 +126,8 @@ function Esperar($proceso, [scriptblock]$alAvanzar) {
 
 function Ejecutar([string]$exe, [string[]]$argumentos, [scriptblock]$alAvanzar, [string]$que) {
     $salida = Join-Path $Motor 'salida.tmp'
-    $p = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -WindowStyle Hidden -RedirectStandardOutput $salida -RedirectStandardError "$salida.err"
+    # -NoNewWindow: el hijo usa la consola (oculta) de este script; con -WindowStyle Hidden crearía una consola nueva y, con Terminal como predeterminada, se vería un instante.
+    $p = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -NoNewWindow -RedirectStandardOutput $salida -RedirectStandardError "$salida.err"
     Esperar $p $alAvanzar
     foreach ($f in $salida, "$salida.err") { if (Test-Path $f) { Get-Content $f -ErrorAction SilentlyContinue | ForEach-Object { Anotar "  $_" }; Remove-Item $f -Force -ErrorAction SilentlyContinue } }
     if ($p.ExitCode -ne 0) { throw ("$que falló (código $($p.ExitCode)); mira $registro." + (ExplicarCodigo $p.ExitCode)) }
@@ -167,7 +168,7 @@ function Bajar([string]$url, [string]$destino, [string]$fase, [string]$texto, [s
     $a = @('-L', '--fail', '--silent', '--show-error', '-o', "`"$destino`"")
     if ($rango) { $a = @('-r', $rango) + $a }
     $a += "`"$url`""
-    $p = Start-Process -FilePath curl.exe -ArgumentList $a -PassThru -WindowStyle Hidden -RedirectStandardError "$destino.err"
+    $p = Start-Process -FilePath curl.exe -ArgumentList $a -PassThru -NoNewWindow -RedirectStandardError "$destino.err"
     $mb = { param($b) [Math]::Round($b / 1MB) }
     Esperar $p {
         $hecho = if (Test-Path $destino) { (Get-Item $destino).Length } else { 0 }
@@ -254,7 +255,7 @@ try {
     Publicar 'trabajando' 'Comprobando que el motor arranca...'
     $codigoPrueba = if ($Prueba -eq 5) { 'import os; os._exit(-1073741819)' } else { 'import numpy, pandas, pyarrow, onnxruntime, fastembed' }    # 5: caída simulada
     $salidaPrueba = Join-Path $Motor 'prueba_motor.tmp'
-    $pp = Start-Process -FilePath $pythonExe -ArgumentList @('-X', 'faulthandler', '-c', "`"$codigoPrueba`"") -PassThru -WindowStyle Hidden -RedirectStandardOutput $salidaPrueba -RedirectStandardError "$salidaPrueba.err"
+    $pp = Start-Process -FilePath $pythonExe -ArgumentList @('-X', 'faulthandler', '-c', "`"$codigoPrueba`"") -PassThru -NoNewWindow -RedirectStandardOutput $salidaPrueba -RedirectStandardError "$salidaPrueba.err"
     Esperar $pp { Publicar 'trabajando' 'Comprobando que el motor arranca...' }
     foreach ($f in $salidaPrueba, "$salidaPrueba.err") { if (Test-Path $f) { Get-Content $f -ErrorAction SilentlyContinue | ForEach-Object { Anotar "  $_" }; Remove-Item $f -Force -ErrorAction SilentlyContinue } }
     if ($pp.ExitCode -ne 0) { throw ("El motor no arranca en este equipo (código {0}).{1}" -f $pp.ExitCode, (ExplicarCodigo $pp.ExitCode)) }
@@ -327,7 +328,9 @@ try {
         $vivo = { try { (Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2).StatusCode -eq 200 } catch { $false } }
         if (-not (& $vivo)) {
             Publicar 'trabajando' 'Arrancando Ollama...'
-            Start-Process -FilePath $ollamaExe -ArgumentList 'serve' -WindowStyle Hidden
+            $inicio = New-Object Diagnostics.ProcessStartInfo $ollamaExe, 'serve'      # sin consola (CREATE_NO_WINDOW): sigue vivo cuando acaba el instalador
+            $inicio.UseShellExecute = $false; $inicio.CreateNoWindow = $true
+            [void][Diagnostics.Process]::Start($inicio)
             for ($i = 0; $i -lt 40 -and -not (& $vivo); $i++) { Start-Sleep -Milliseconds 500; Comprobar }
             if (-not (& $vivo)) { throw 'Ollama no respondió al arrancar.' }
         }
