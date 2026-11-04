@@ -22,6 +22,7 @@ Function InstalarApp
   File "${BACKEND}\intercambio.py"
   File "${BACKEND}\vigilante.py"
   File "${BACKEND}\idioma.py"
+  File "${BACKEND}\limpieza.py"
   File "${BACKEND}\sincronizacion.py"
   File "${BACKEND}\requirements.txt"
   SetOutPath "$RutaApp"

@@ -173,3 +173,13 @@ test('escala logarítmica: marcas por década con exponentes, margen en el expon
     assert.equal(apiladas.ymin, 0);
     assert.ok(apiladas.ymax > 7);                                                    // el tope de la segunda barra es 4 + 3
 });
+
+test('imshow: la imagen fija los límites y un eje invertido da las mismas marcas que el normal', () => {
+    const imagen = { tipo: 'imagen', ancho: 4, alto: 3, origen: 'upper', extent: [-0.5, 3.5, 2.5, -0.5], rgba: '' };
+    const eje = { series: [imagen], xlim: [-0.5, 3.5], ylim: [2.5, -0.5], xticks: null, yticks: null, categorias: [] };
+    assert.deepEqual(limitesAuto(eje), { xmin: -0.5, xmax: 3.5, ymin: 2.5, ymax: -0.5 });     // Y invertido, sin margen
+    assert.deepEqual(marcasDe(null, 2.5, -0.5, 6), marcasDe(null, -0.5, 2.5, 6));
+    assert.ok(marcasDe(null, 2.5, -0.5, 6).pos.length > 1);
+    assert.equal(zorderDe(imagen), 0);                                                      // debajo de líneas y puntos
+    assert.deepEqual(puntosDe(eje), []);
+});

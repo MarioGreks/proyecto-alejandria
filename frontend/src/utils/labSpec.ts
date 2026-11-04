@@ -11,7 +11,9 @@ export type Serie =
     | (Base & { tipo: 'area'; x: Num[]; y1: Num[]; y2: Num[]; color: string })
     | (Base & { tipo: 'vline' | 'hline'; pos: number; color: string; ancho: number; estilo: string })
     | (Base & { tipo: 'banda_x' | 'banda_y'; desde: number; hasta: number; color: string })
-    | { tipo: 'texto'; x: number; y: number; texto: string; ejes: boolean; ha: string; va: string; tam: number; negrita: boolean; color: string; zorder?: number | null; flecha?: { x: number; y: number } };
+    | { tipo: 'texto'; x: number; y: number; texto: string; ejes: boolean; ha: string; va: string; tam: number; negrita: boolean; color: string; zorder?: number | null; flecha?: { x: number; y: number } }
+    // imshow: píxeles RGBA (base64, fila a fila) que ocupan `extent` = [izquierda, derecha, abajo, arriba]; la fila 0 va arriba si origen = 'upper'
+    | { tipo: 'imagen'; ancho: number; alto: number; origen: 'upper' | 'lower'; extent: [number, number, number, number]; rgba: string; zorder?: number | null };
 
 export interface Eje {
     fila: number; col: number; filas: number; cols: number;
@@ -145,7 +147,7 @@ export const literal = (v: Valor): string =>
 export const inyectar = (codigo: string, valores: Record<string, Valor>): string =>
     Object.entries(valores).reduce((c, [clave, v]) => c.split(`{${clave}}`).join(literal(v)), codigo);
 
-const ZORDER_POR_TIPO: Record<string, number> = { area: 1, barras: 1, dispersion: 1, banda_x: 0.5, banda_y: 0.5, linea: 2, vline: 2, hline: 2, texto: 3 };
+const ZORDER_POR_TIPO: Record<string, number> = { imagen: 0, area: 1, barras: 1, dispersion: 1, banda_x: 0.5, banda_y: 0.5, linea: 2, vline: 2, hline: 2, texto: 3 };
 export const zorderDe = (s: Serie): number => s.zorder ?? ZORDER_POR_TIPO[s.tipo] ?? 2;
 
 /** Texto sin LaTeX (para la leyenda dibujada en canvas): quita $ y barras y convierte comandos comunes. */
@@ -178,6 +180,7 @@ export function limitesAuto(eje: Eje): Limites {
             case 'banda_x': ex(s.desde); ex(s.hasta); break;
             case 'banda_y': ey(s.desde); ey(s.hasta); break;
             case 'texto': if (!s.ejes) { ex(s.x); ey(s.y); } break;
+            case 'imagen': ex(s.extent[0]); ex(s.extent[1]); ey(s.extent[2]); ey(s.extent[3]); break;
         }
     }
     const margen = (lo: number, hi: number, log: boolean): [number, number] => {
@@ -238,6 +241,7 @@ export function marcasLog(min: number, max: number, objetivo = 6): { pos: number
 
 /** Marcas de un eje dentro de [min, max]: las del laboratorio si las fijó (con sus etiquetas) o las automáticas. */
 export function marcasDe(fijas: Marcas | null | undefined, min: number, max: number, objetivo: number, log = false): { pos: number[]; labels: string[] | null } {
+    if (min > max) [min, max] = [max, min];     // eje invertido (imshow con origen arriba, o ylim(5, 0)): las marcas son las mismas
     if (!fijas?.pos.length) return log ? marcasLog(min, max, objetivo) : { pos: marcas(min, max, objetivo), labels: null };
     const eps = (max - min) * 1e-9;
     const dentro = fijas.pos.flatMap((p, i) => (p >= min - eps && p <= max + eps ? [i] : []));
@@ -275,7 +279,7 @@ export function puntosDe(eje: Eje): Punto[] {
     const out: Punto[] = [];
     const nombreX = (x: number) => eje.categorias[Math.round(x)] ?? formatoValor(x);
     for (const s of eje.series) {
-        const pre = s.tipo !== 'texto' && s.label && !s.label.startsWith('_') ? `${textoPlano(s.label)}: ` : '';
+        const pre = 'label' in s && s.label && !s.label.startsWith('_') ? `${textoPlano(s.label)}: ` : '';
         if (s.tipo === 'linea' || s.tipo === 'dispersion') {
             s.x.forEach((x, i) => { const y = s.y[i]; if (finito(x) && finito(y)) out.push({ x, y, texto: `${pre}x=${formatoValor(x)}, y=${formatoValor(y)}` }); });
         } else if (s.tipo === 'barras') {

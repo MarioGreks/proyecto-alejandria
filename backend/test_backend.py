@@ -754,6 +754,44 @@ class TestIntercambio(unittest.TestCase):
         estados = [l["estado"] for l in db_conn.get_links_metadata() if l["origen_id"] == "ix_b"]
         self.assertEqual(estados, ["pendiente"])   # una conexión rechazada de otra persona entra como pendiente para que la revises
 
+    def test_importar_quita_las_marcas_de_cita_de_los_textos(self):
+        archivo = {"formato": intercambio.FORMATO, "version": 1, "aristas": [],
+                   "neuronas": [{"id": "ix_a", "nombre": "A", "teoria": "Stirling[reference:25]. Fin",
+                                 "glosario": [{"termino": "t", "definicion": "d [ref 2]"}]}]}
+        self.client.post("/api/importar", json={"contenido": archivo})
+        with open(os.path.join(DATA_DIR, "raw", "ix_a.json"), encoding="utf-8") as f:
+            n = json.load(f)
+        self.assertEqual((n["teoria"], n["glosario"][0]["definicion"]), ("Stirling. Fin", "d"))
+
+
+class TestLimpiezaCitas(unittest.TestCase):
+    def test_quita_las_marcas_de_deepseek_chatgpt_y_gemini(self):
+        from limpieza import limpiar_texto
+        casos = {
+            "fórmula de Stirling[reference:25]. Karl": "fórmula de Stirling. Karl",
+            "colas[reference:34][reference:35]. Sin": "colas. Sin",
+            "texto [ref 3] y [ref:4, 5]": "texto y",
+            "[cite_start]Hola [cite: 1, 2].": "Hola.",
+            "dato :contentReference[oaicite:0]{index=0} fin": "dato fin",
+            "dato【4†fuente】 fin": "dato fin",
+            "aciteturn0search3 b": "a b",
+        }
+        for sucio, limpio in casos.items():
+            with self.subTest(sucio=sucio):
+                self.assertEqual(limpiar_texto(sucio), limpio)
+
+    def test_no_toca_corchetes_normales_ni_enlaces_ni_el_codigo(self):
+        from limpieza import limpiar_neurona, limpiar_texto
+        for t in ("Véase [ref](https://doi.org/10.1/x).", "El intervalo [a, b] y $A[i,j]$.", "[Laplace 1812]", "Uno.\n\nDos."):
+            self.assertEqual(limpiar_texto(t), t)
+        n = {"id": "x[ref 1]", "nombre": "N[ref 1]", "teoria": "T[reference:1]",
+             "referencias": [{"titulo": "Libro", "url": "https://x.org/[ref 1]", "nota": "N[reference:2]"}],
+             "laboratorio": {"explicacion": "E[ref 3]", "codigo": "d = {}\nprint(d['x'][ref])", "controles": [{"label": "L[ref 1]"}]}}
+        self.assertEqual(limpiar_neurona(n), 3)
+        self.assertEqual((n["teoria"], n["referencias"][0]["nota"], n["laboratorio"]["explicacion"]), ("T", "N", "E"))
+        self.assertEqual((n["id"], n["nombre"], n["referencias"][0]["url"], n["laboratorio"]["codigo"]),
+                         ("x[ref 1]", "N[ref 1]", "https://x.org/[ref 1]", "d = {}\nprint(d['x'][ref])"))
+
 
 class TestSincronizacionEnLaApp(unittest.TestCase):
     def setUp(self):

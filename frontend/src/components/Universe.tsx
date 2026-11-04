@@ -12,6 +12,7 @@ import Hud from './Hud';
 import { Cabecera, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
+import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionNeurona, rngDe } from '../utils/disposicion';
 // Fuente propia para los rótulos de los clústeres (DejaVu Sans Mono Bold, la de matplotlib, con licencia libre y todo el alfabeto latino con tildes):
 // sin `font`, troika baja una de un CDN, y con una fuente que no tenga alguna letra (la «Á» de MATEMÁTICAS) baja otra: no funciona sin internet y la CSP lo bloquea.
 const fuenteRotulos = `${import.meta.env.BASE_URL}fuentes/DejaVuSansMono-Bold.ttf`;
@@ -43,35 +44,8 @@ const copyToClipboard = (text: string) => {
     }
 };
 
-const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
-const ANGLE_INCREMENT = Math.PI * 2 * GOLDEN_RATIO;
-
-function fibonacciSphere(samples: number, radiusScale: number = 10) {
-    const points = [];
-    for (let i = 0; i < samples; i++) {
-        const t = i / (samples - 1);
-        const inclination = Math.acos(1 - 2 * t);
-        const azimuth = ANGLE_INCREMENT * i;
-        const x = Math.sin(inclination) * Math.cos(azimuth) * radiusScale;
-        const y = Math.sin(inclination) * Math.sin(azimuth) * radiusScale;
-        const z = Math.cos(inclination) * radiusScale;
-        points.push(new THREE.Vector3(x, y, z));
-    }
-    return points;
-}
-
-function randomCloud(center: THREE.Vector3, count: number, radius: number) {
-    const points = [];
-    for (let i = 0; i < count; i++) {
-        const u = Math.random() + Math.random() + Math.random() - 1.5; 
-        const v = Math.random() + Math.random() + Math.random() - 1.5;
-        const w = Math.random() + Math.random() + Math.random() - 1.5;
-        const dir = new THREE.Vector3(u, v, w).normalize();
-        const dist = Math.abs(Math.random() + Math.random() - 1) * radius; 
-        points.push(center.clone().add(dir.multiplyScalar(dist)));
-    }
-    return points;
-}
+// Posiciones estables: cada neurona y cada clúster tienen siempre el mismo sitio (ver utils/disposicion.ts). Antes se sorteaban con
+// Math.random() en cada recarga y, al añadir un clúster, se repartían todos de nuevo.
 
 // Dibuja una curva de Bézier suave y añade los vértices a los arrays
 function addSmoothCurve(
@@ -115,7 +89,8 @@ function generateDendriteTree(
     positions: number[],
     colors: number[],
     nodeIndex: number,
-    nodeIndices: number[]
+    nodeIndices: number[],
+    rnd: () => number             // aleatorio con semilla (el id de la neurona): la misma neurona tiene siempre las mismas ramas
 ) {
     if (depth > maxDepth) return;
     
@@ -126,25 +101,25 @@ function generateDendriteTree(
     // Usamos un vector ortogonal para hacer una curva natural, no un simple ruido
     const perp = new THREE.Vector3(1,0,0).cross(dir);
     if(perp.lengthSq() < 0.1) perp.set(0,1,0).cross(dir);
-    perp.normalize().applyAxisAngle(dir, Math.random() * Math.PI * 2);
+    perp.normalize().applyAxisAngle(dir, rnd() * Math.PI * 2);
     control.add(perp.multiplyScalar(length * 0.25));
     
     addSmoothCurve(start, end, control, baseColor, baseColor, positions, colors, 4, nodeIndex, nodeIndices);
     
     // Bifurcación: las dendritas se dividen en ramas más finas y cortas
     if (depth < maxDepth) {
-        const numBranches = 1 + Math.floor(Math.random() * 2); // 1 o 2 ramas hijas
+        const numBranches = 1 + Math.floor(rnd() * 2); // 1 o 2 ramas hijas
         for(let i=0; i<numBranches; i++) {
             // Desviamos la dirección hija respecto a la rama madre (apertura en V)
             const branchPerp = new THREE.Vector3(1,0,0).cross(dir);
             if(branchPerp.lengthSq() < 0.1) branchPerp.set(0,1,0).cross(dir);
-            branchPerp.normalize().applyAxisAngle(dir, Math.random() * Math.PI * 2);
+            branchPerp.normalize().applyAxisAngle(dir, rnd() * Math.PI * 2);
             
             // Mezclamos la dirección original con la desviación
             const newDir = dir.clone().multiplyScalar(0.6).add(branchPerp.multiplyScalar(0.6)).normalize();
             
             // La nueva rama es más corta
-            generateDendriteTree(end, newDir, length * 0.7, depth + 1, maxDepth, baseColor, positions, colors, nodeIndex, nodeIndices);
+            generateDendriteTree(end, newDir, length * 0.7, depth + 1, maxDepth, baseColor, positions, colors, nodeIndex, nodeIndices, rnd);
         }
     }
 }
@@ -217,26 +192,26 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
             clusterMap.get(cId)!.push(n);
         });
         
-        const clusterKeys = Array.from(clusterMap.keys());
-        const numClusters = clusterKeys.length;
-        
-        const clusterCenters = numClusters > 1 ? fibonacciSphere(numClusters, 20) : [new THREE.Vector3(0,0,0)];
+        // Orden alfabético (no el de llegada): el mismo universo da siempre los mismos índices.
+        const clusterKeys = Array.from(clusterMap.keys()).sort();
+        const casillas = casillasRecordadas(clusterKeys);
+        // Cada clúster en su casilla fija (el primero, en el centro) y con el color de su casilla.
+        const clusterCenters = clusterKeys.map(c => new THREE.Vector3(...centroDeCasilla(casillas[c])));
         const allNodes: THREE.Vector3[] = [];
         const totalNodes = realNodes.length;
         const colors = new Float32Array(totalNodes * 3);
         const ids: string[] = [];
-        
+
         let globalIdx = 0;
 
         clusterKeys.forEach((cId, idx) => {
             const center = clusterCenters[idx];
-            const cNodes = clusterMap.get(cId)!;
-            const color = baseColors[idx % baseColors.length];
-            
-            const positions = randomCloud(center, cNodes.length, 10);
-            
-            cNodes.forEach((node, i) => {
-                allNodes.push(positions[i]);
+            const cNodes = [...clusterMap.get(cId)!].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+            const color = baseColors[casillas[cId] % baseColors.length];
+            const centro: [number, number, number] = [center.x, center.y, center.z];
+
+            cNodes.forEach((node) => {
+                allNodes.push(new THREE.Vector3(...posicionNeurona(String(node.id), centro, 10)));
                 colors[globalIdx * 3] = color.r;
                 colors[globalIdx * 3 + 1] = color.g;
                 colors[globalIdx * 3 + 2] = color.b;
@@ -252,11 +227,12 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
         for (let i = 0; i < totalNodes; i++) {
             const baseColor = new THREE.Color(colors[i*3], colors[i*3+1], colors[i*3+2]);
 
-            const numPrimaryDendrites = 2 + Math.floor(Math.random() * 2); 
+            const rnd = rngDe(`d:${ids[i]}`);
+            const numPrimaryDendrites = 2 + Math.floor(rnd() * 2);
             for (let d = 0; d < numPrimaryDendrites; d++) {
-                const dir = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
-                const initialLength = 0.5 + Math.random() * 1.0; 
-                generateDendriteTree(allNodes[i], dir, initialLength, 0, 2, baseColor, linePositions, lineColors, i, lineNodeIndices);
+                const dir = new THREE.Vector3(rnd()-0.5, rnd()-0.5, rnd()-0.5).normalize();
+                const initialLength = 0.5 + rnd() * 1.0;
+                generateDendriteTree(allNodes[i], dir, initialLength, 0, 2, baseColor, linePositions, lineColors, i, lineNodeIndices, rnd);
             }
         }
         
@@ -281,10 +257,11 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
                     const perp = new THREE.Vector3(1,0,0).cross(dir);
                     if(perp.lengthSq() < 0.1) perp.set(0,1,0).cross(dir);
                     perp.normalize();
-                    perp.applyAxisAngle(dir, Math.random() * Math.PI * 2);
-                    
+                    const rnd = rngDe(`l:${link.origen_id}>${link.destino_id}`);   // cada conexión, siempre con la misma curva
+                    perp.applyAxisAngle(dir, rnd() * Math.PI * 2);
+
                     const midPoint = new THREE.Vector3().addVectors(allNodes[idxA], allNodes[idxB]).multiplyScalar(0.5);
-                    const arcHeight = dist * (0.2 + Math.random() * 0.2); 
+                    const arcHeight = dist * (0.2 + rnd() * 0.2);
                     midPoint.add(perp.multiplyScalar(arcHeight));
                     
                     addSmoothCurve(allNodes[idxA], allNodes[idxB], midPoint, baseColor, tColor, linePositions, lineColors, 12, idxA, lineNodeIndices);
@@ -317,7 +294,8 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
 
             nodes.forEach((pos, i) => {
                 dummy.position.copy(pos);
-                let scaleVal = 0.2 + Math.random() * 0.1;
+                const rnd = rngDe(`s:${nodeIds[i]}`);   // tamaño y giro de cada soma: fijos (antes cambiaban con cada letra de la búsqueda)
+                let scaleVal = 0.2 + rnd() * 0.1;
                 
                 const realNode = realNodes.find(n => n.id === nodeIds[i]);
                 const nodeName = realNode ? realNode.nombre || "" : "";
@@ -363,7 +341,7 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
                 nodeMatched[i] = isMatch;
                 
                 dummy.scale.set(scaleVal, scaleVal, scaleVal);
-                dummy.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                dummy.rotation.set(rnd()*Math.PI, rnd()*Math.PI, rnd()*Math.PI);
                 dummy.updateMatrix();
                 meshRef.current!.setMatrixAt(i, dummy.matrix);
                 
@@ -581,19 +559,23 @@ export default function Universe() {
 
     const cerrarInyector = () => { setShowInjector(false); setInjectionStatus(''); setInjectionData(''); };
 
+    // Solo se actualiza el estado si cambió algo que se dibuja (ids, clústeres, nombres, conexiones y su estado), para que React
+    // Three Fiber no recalcule la geometría cada 5 s. Antes se comparaba solo el NÚMERO de neuronas y conexiones: cambiar de clúster
+    // una neurona, aceptar/rechazar una conexión o recibir de otro PC una neurona a la vez que se borraba otra no se veía hasta pulsar Recargar.
+    const firmaActual = useRef('');
+    const aplicarUniverso = (data: any, forzar = false) => {
+        const nodos = Array.isArray(data?.nodes) ? data.nodes : null, aristas = Array.isArray(data?.links) ? data.links : null;
+        if (!nodos || !aristas) return;
+        const firma = firmaUniverso(nodos, aristas);
+        if (!forzar && firma === firmaActual.current) return;
+        firmaActual.current = firma;
+        setRealNodes(nodos);
+        setRealLinks(aristas);
+    };
     const loadData = () => {
-        fetch(`${API}/api/universe`)
+        fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
             .then(res => res.json())
-            .then(data => {
-                // Solo actualizamos el estado si cambió la cantidad para evitar que React Three Fiber 
-                // recalcule toda la geometría 3D cada 5 segundos sin necesidad.
-                if (data.nodes) {
-                    setRealNodes(prev => prev.length === data.nodes.length ? prev : data.nodes);
-                }
-                if (data.links) {
-                    setRealLinks(prev => prev.length === data.links.length ? prev : data.links);
-                }
-            })
+            .then(data => aplicarUniverso(data))
             .catch(err => console.error("Error fetching universe:", err));
     };
 
@@ -704,10 +686,7 @@ export default function Universe() {
                 onRecargar={() => {
                     fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
                         .then(res => res.json())
-                        .then(data => {
-                            if (data.nodes) setRealNodes(data.nodes);
-                            if (data.links) setRealLinks(data.links);
-                        })
+                        .then(data => aplicarUniverso(data, true))   // [ Recargar ] repinta siempre (las posiciones no cambian)
                         .catch(err => console.error("Error fetching universe:", err));
                 }}
                 onInyector={() => setShowInjector(true)}

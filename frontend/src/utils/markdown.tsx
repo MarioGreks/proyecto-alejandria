@@ -24,11 +24,14 @@ export const markdownComponents = {
     )
 };
 
+import { limpiarCitas } from './citas';
+export { limpiarCitas };
+
 // Pre-procesador para forzar que los $$ siempre sean bloques (display mode) en Markdown.
 export const forceBlockMath = (text: string) => {
     if (!text) return text;
     // Capturamos el bloque entero $$ ... $$
-    let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
+    let processed = limpiarCitas(text).replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
         // Lo aislamos con dobles saltos de línea por fuera (rompe el párrafo de Markdown)
         // y usamos un solo salto de línea por dentro (mantiene la integridad del bloque math).
         return `\n\n$$\n${formula.trim()}\n$$\n\n`;

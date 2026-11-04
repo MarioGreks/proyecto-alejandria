@@ -4,8 +4,8 @@ Ejecuta el código de un laboratorio con un "pyplot" falso que NO dibuja: solo a
 (líneas, puntos, barras, rectas, textos, títulos...) y devuelve esos datos para que el navegador los pinte.
 Construir y renderizar una figura real cuesta 100-300 ms; calcular los datos, 1-7 ms.
 
-Todo lo que la grabadora no sabe representar fielmente (contornos, 3D, imágenes, escalas log, ticks a medida,
-argumentos desconocidos...) lanza NoSoportado y quien llama vuelve a ejecutar el código con matplotlib de
+Histogramas (hist) e imágenes (imshow, como píxeles RGBA) sí se graban. Todo lo que la grabadora no sabe representar
+fielmente (contornos, 3D, barras de color, interpolación suave, argumentos desconocidos...) lanza NoSoportado y quien llama vuelve a ejecutar el código con matplotlib de
 verdad (imagen PNG), sin que el laboratorio cambie. Ante la duda, siempre se prefiere la imagen a un dibujo falso.
 
 Este archivo se ejecuta DENTRO de Pyodide (labWorker.ts lo importa con ?raw) y también se importa en sus tests
@@ -52,7 +52,10 @@ PERMITIDOS = {
     "grid": {"alpha", "linestyle", "ls", "linewidth", "lw", "color", "c", "zorder"},
     "legend": {"loc", "fontsize", "ncol", "frameon", "framealpha", "edgecolor", "facecolor", "shadow", "fancybox",
                "labelspacing", "handlelength", "borderpad", "columnspacing", "handletextpad", "markerscale"},
+    "hist": {"color", "alpha", "label", "edgecolor", "ec", "zorder", "linewidth", "lw", "facecolor", "fc"},
+    "imshow": {"interpolation", "zorder", "resample", "filternorm", "filterrad"},
 }
+MAX_PIXELES = 512 * 512   # una imagen más grande pesaría demasiado como datos: se deja al respaldo en PNG
 
 
 def _revisar(metodo, kw):
@@ -263,6 +266,89 @@ class _Eje:
                             "colores": colores, "borde": _color(borde) if isinstance(borde, str) else None, **self._comun(kw)})
         suelo = [0.0] * xs.size if base is None else base.tolist()
         return [_Barra(x0 - width / 2.0, width, h, y0) for x0, h, y0 in zip(xs.tolist(), alturas.tolist(), suelo)]
+
+    def hist(self, x, bins=None, range=None, density=False, weights=None, cumulative=False, bottom=None, histtype="bar",
+             align="mid", orientation="vertical", rwidth=None, log=False, stacked=False, **kw):
+        """Histograma = np.histogram + barras (como hace matplotlib). Solo una serie, vertical, de tipo 'bar' y con bins iguales."""
+        _revisar("hist", kw)
+        if histtype != "bar" or align != "mid" or orientation != "vertical" or cumulative or bottom is not None or stacked:
+            raise NoSoportado("hist con histtype/align/orientation/cumulative/bottom/stacked")
+        datos = np.asarray(x, dtype=float)
+        if datos.ndim != 1:
+            raise NoSoportado("hist con varias series")
+        pesos = None if weights is None else np.asarray(weights, dtype=float)
+        if pesos is not None and pesos.shape != datos.shape:
+            raise ValueError("weights debe tener la misma forma que x")
+        if isinstance(bins, str):
+            raise NoSoportado("hist con bins por nombre")
+        cuenta, bordes = np.histogram(datos, bins=10 if bins is None else bins, range=range, density=bool(density), weights=pesos)
+        anchos = np.diff(bordes)
+        if anchos.size == 0 or not np.allclose(anchos, anchos[0], rtol=1e-6, atol=0):
+            raise NoSoportado("hist con bins de distinta anchura")
+        ancho = float(anchos[0]) * (1.0 if rwidth is None else float(rwidth))
+        centros = (bordes[:-1] + bordes[1:]) / 2.0
+        color = kw.get("color", kw.get("facecolor", kw.get("fc")))
+        borde = kw.get("edgecolor", kw.get("ec"))
+        self.series.append({"tipo": "barras", "x": _lista(centros), "alto": _lista(cuenta), "base": None, "ancho": _escalar(ancho),
+                            "color": _color(color) if color is not None else self._siguiente_color(), "colores": None,
+                            "borde": _color(borde) if isinstance(borde, str) and borde != "none" else None, **self._comun(kw)})
+        if log:
+            self.yscale = "log"
+        return cuenta, bordes, _Mudo()
+
+    def imshow(self, X, cmap=None, norm=None, aspect=None, alpha=None, vmin=None, vmax=None, origin=None, extent=None, **kw):
+        """Imagen (matriz con mapa de color, o RGB/RGBA) -> píxeles RGBA en base64; el navegador la escala sin suavizar."""
+        _revisar("imshow", kw)
+        import base64
+        import matplotlib
+        from matplotlib.colors import Normalize
+        if norm is not None:
+            raise NoSoportado("imshow con norm")
+        if kw.get("interpolation") not in (None, "nearest", "none", "antialiased", "auto"):
+            raise NoSoportado("imshow con interpolación suave")
+        a = np.asarray(X)
+        if a.ndim == 2:
+            datos = np.ma.masked_invalid(a.astype(float))
+            nrm = Normalize(vmin=vmin, vmax=vmax)
+            mapa = matplotlib.colormaps[cmap if cmap is not None else matplotlib.rcParams["image.cmap"]]
+            rgba = mapa(nrm(datos), bytes=True)
+        elif a.ndim == 3 and a.shape[2] in (3, 4):
+            if a.dtype.kind == "f":
+                a = np.clip(a, 0.0, 1.0) * 255.0
+            rgba = np.asarray(np.clip(a, 0, 255), dtype=np.uint8)
+            if rgba.shape[2] == 3:
+                rgba = np.concatenate([rgba, np.full(rgba.shape[:2] + (1,), 255, dtype=np.uint8)], axis=2)
+        else:
+            raise NoSoportado("imshow con datos de esa forma")
+        alto, ancho = rgba.shape[:2]
+        if alto * ancho > MAX_PIXELES or alto == 0 or ancho == 0:
+            raise NoSoportado("imshow demasiado grande")
+        if alpha is not None:
+            if np.ndim(alpha) > 0:
+                raise NoSoportado("imshow con alpha por píxel")
+            rgba = rgba.copy()
+            rgba[..., 3] = (rgba[..., 3].astype(float) * float(alpha)).astype(np.uint8)
+        origen = origin or matplotlib.rcParams["image.origin"]
+        if origen not in ("upper", "lower"):
+            raise NoSoportado("imshow con ese origin")
+        if extent is None:   # como matplotlib: cada píxel ocupa una unidad centrada en su índice
+            extent = (-0.5, ancho - 0.5, alto - 0.5, -0.5) if origen == "upper" else (-0.5, ancho - 0.5, -0.5, alto - 0.5)
+        izq, der, abajo, arriba = (float(v) for v in extent)
+        self.series.append({"tipo": "imagen", "ancho": int(ancho), "alto": int(alto), "origen": origen,
+                            "extent": [_escalar(izq), _escalar(der), _escalar(abajo), _escalar(arriba)],
+                            "rgba": base64.b64encode(np.ascontiguousarray(rgba, dtype=np.uint8).tobytes()).decode("ascii"),
+                            "zorder": kw.get("zorder")})
+        # matplotlib ajusta la vista a la imagen (sin margen) y, salvo aspect='auto', con píxeles cuadrados
+        if self.xlim is None:
+            self.xlim = [_escalar(izq), _escalar(der)]
+        if self.ylim is None:
+            self.ylim = [_escalar(abajo), _escalar(arriba)]
+        aspecto = aspect if aspect is not None else matplotlib.rcParams["image.aspect"]
+        if aspecto in ("equal", 1, 1.0):
+            self.aspecto_igual = True
+        elif aspecto != "auto":
+            raise NoSoportado("imshow con aspect numérico")
+        return _Mudo()
 
     def fill_between(self, x, y1, y2=0, **kw):
         _revisar("fill_between", kw)
@@ -597,7 +683,7 @@ class _Pyplot(types.ModuleType):
         if nombre in IGNORAR_PLT:
             return lambda *a, **k: _Mudo()
         if nombre in ("plot", "scatter", "bar", "fill_between", "axvline", "axhline", "axvspan", "axhspan", "text", "annotate", "grid", "legend",
-                      "semilogx", "semilogy", "loglog"):
+                      "semilogx", "semilogy", "loglog", "hist", "imshow"):
             return getattr(self.gca(), nombre)
         raise NoSoportado(f"plt.{nombre}")
 

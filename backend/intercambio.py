@@ -4,6 +4,7 @@ import os
 import re
 
 from database import DATA_DIR, db_conn
+from limpieza import limpiar_neurona
 
 FORMATO = "alejandria-neuronas"
 VERSION = 1
@@ -61,8 +62,10 @@ def importar(contenido) -> dict:
         if os.path.exists(ruta) or n["id"] in nuevas:
             omitidas += 1
             continue
+        n = {k: v for k, v in n.items() if k != "embedding"}
+        limpiar_neurona(n)                    # marcas de cita «[reference:3]» que dejan las IA en los textos
         with open(ruta, "w", encoding="utf-8") as f:
-            json.dump({k: v for k, v in n.items() if k != "embedding"}, f, ensure_ascii=False, indent=2)
+            json.dump(n, f, ensure_ascii=False, indent=2)
         nuevas.append(n["id"])
     if nuevas:
         db_conn.compile_raw_jsons(force=True)
