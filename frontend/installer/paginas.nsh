@@ -447,12 +447,41 @@ Function DibujarInstalacion
   ${Next}
   IntOp $R7 $R7 / $R8
   StrCpy $BarraPct $R7
-  StrCpy $BarraLen 50
-  Call ConstruirBarra
-  ${NSD_SetText} $LblGlobal "Total   $BarraTxt"
+  ${If} $Actualizando = 1
+    StrCpy $BarraLen 33                    ; la ventanita de la actualización es estrecha
+    Call ConstruirBarra
+    ${NSD_SetText} $LblGlobal "$BarraTxt"
+  ${Else}
+    StrCpy $BarraLen 50
+    Call ConstruirBarra
+    ${NSD_SetText} $LblGlobal "Total   $BarraTxt"
+  ${EndIf}
+FunctionEnd
+
+; Error durante una actualización (ventanita mínima): el mensaje en rojo, la ruta del registro y [ Cerrar ] (que reabre la app que hubiera).
+Function MostrarErrorMini
+  StrCpy $Hecho 1
+  ${NSD_KillTimer} AvanzarInstalacion
+  SetCtlColors $LblLog ${C_ROJO} ${C_FONDO}
+  ${If} $ErrorFatal != ""
+    StrCpy $MensajePs $ErrorFatal
+  ${EndIf}
+  StrLen $0 $MensajePs
+  ${If} $0 > 120
+    StrCpy $MensajePs $MensajePs 117
+    StrCpy $MensajePs "$MensajePs..."
+  ${EndIf}
+  ${NSD_SetText} $LblLog "No se pudo actualizar: $MensajePs"
+  ${NSD_SetText} $LblRegistro "Registro: $RutaMotor\instalacion.log"
+  ShowWindow $LblRegistro ${SW_SHOW}
+  ShowWindow $BtnCerrar ${SW_SHOW}
 FunctionEnd
 
 Function MostrarError
+  ${If} $Actualizando = 1
+    Call MostrarErrorMini
+    Return
+  ${EndIf}
   StrCpy $Hecho 1
   ${NSD_KillTimer} AvanzarInstalacion
   SetCtlColors $LblLog ${C_ROJO} ${C_FONDO}
@@ -468,6 +497,9 @@ FunctionEnd
 
 Function CerrarConError
   Pop $Tmp
+  ${If} $Actualizando = 1
+    Call LanzarAppActualizada              ; si falló, la app que hubiera (la de antes, o la nueva si el fallo fue después de copiarla) se vuelve a abrir
+  ${EndIf}
   SendMessage $HWNDPARENT ${WM_COMMAND} 2 0
 FunctionEnd
 
@@ -541,7 +573,12 @@ Function AvanzarInstalacion
     StrCpy $SinNoticias 0
   ${EndIf}
   ${If} $SinNoticias > 400    ; un minuto sin recibir nada: se dice, con la ruta del registro, en vez de dejar la pantalla muda
-    ${NSD_SetText} $LblLog "$R1 Sin noticias del instalador desde hace un minuto. Si no avanza, mira el registro: $RutaMotor\instalacion.log"
+    ${If} $Actualizando = 1
+      ${NSD_SetText} $LblLog "$R1 Sin noticias desde hace un minuto. Si no avanza, cierra y mira $RutaMotor\instalacion.log"
+      ShowWindow $BtnCerrar ${SW_SHOW}       ; la ventanita no tiene barra de título: es la única forma de cerrarla
+    ${Else}
+      ${NSD_SetText} $LblLog "$R1 Sin noticias del instalador desde hace un minuto. Si no avanza, mira el registro: $RutaMotor\instalacion.log"
+    ${EndIf}
   ${Else}
     ${NSD_SetText} $LblLog "$R1 $MensajePs"
   ${EndIf}
@@ -549,10 +586,10 @@ FunctionEnd
 
 Function PgInstalar
   ${If} $Actualizando = 1
-    !insertmacro NuevaPagina "ACTUALIZANDO"
-  ${Else}
-    !insertmacro NuevaPagina "INSTALANDO"
+    Call PaginaActualizando                ; ventanita mínima, sin la pantalla de instalación
+    Return
   ${EndIf}
+  !insertmacro NuevaPagina "INSTALANDO"
   StrCpy $AppCopiada 0
   StrCpy $PsLanzado 0
   StrCpy $ErrorFatal ""
@@ -587,6 +624,63 @@ Function PgInstalar
   !insertmacro Boton $BtnCerrar 560 505 110 26 "[ Cerrar ]" CerrarConError
   ShowWindow $BtnCerrar ${SW_HIDE}
   !insertmacro BotonSuave $0 30 505 110 26 "[ Cancelar ]" CancelarInstalacion
+  Call DibujarInstalacion
+  ${NSD_CreateTimer} AvanzarInstalacion 150
+  nsDialogs::Show
+FunctionEnd
+
+; La actualización no enseña el instalador: una ventanita de 380x112 abajo a la derecha, sin barra de título ni botón en la barra de tareas, con un marco
+; fino del color de la app, el avance en una barra y una línea de estado. Se cierra sola al reabrirse la app. Solo si falla aparece [ Cerrar ].
+Function PaginaActualizando
+  nsDialogs::Create 1018
+  Pop $Dlg
+  ${If} $Dlg == error
+    Abort
+  ${EndIf}
+  SetCtlColors $Dlg ${C_VERDE} ${C_FONDO}
+  GetDlgItem $0 $HWNDPARENT 1                ; NSIS vuelve a enseñar los botones de Windows al cambiar de página
+  ShowWindow $0 ${SW_HIDE}
+  GetDlgItem $0 $HWNDPARENT 2
+  ShowWindow $0 ${SW_HIDE}
+  GetDlgItem $0 $HWNDPARENT 3
+  ShowWindow $0 ${SW_HIDE}
+  StrCpy $AppCopiada 0
+  StrCpy $PsLanzado 0
+  StrCpy $ErrorFatal ""
+  StrCpy $EstadoPs ""
+  StrCpy $MensajePs ""
+  StrCpy $Girando 0
+  StrCpy $SinNoticias 0
+  StrCpy $Hecho 0
+  StrCpy $FasePct1 0
+  StrCpy $FasePct2 0
+  StrCpy $FasePct3 0
+  StrCpy $FasePct4 0
+  StrCpy $FasePct5 0
+  StrCpy $FasePct6 -1
+  StrCpy $FasePct7 -1
+  ; marco de 1 px
+  ${NSD_CreateLabel} 0 0 380 1 ""
+  Pop $0
+  SetCtlColors $0 ${C_TENUE} ${C_TENUE}
+  ${NSD_CreateLabel} 0 111 380 1 ""
+  Pop $0
+  SetCtlColors $0 ${C_TENUE} ${C_TENUE}
+  ${NSD_CreateLabel} 0 0 1 112 ""
+  Pop $0
+  SetCtlColors $0 ${C_TENUE} ${C_TENUE}
+  ${NSD_CreateLabel} 379 0 1 112 ""
+  Pop $0
+  SetCtlColors $0 ${C_TENUE} ${C_TENUE}
+  !insertmacro Texto $0 16 12 348 18 "> ${APP} se está actualizando" ${C_VERDE} $Mono
+  !insertmacro Texto $LblGlobal 16 38 348 18 "" ${C_DORADO} $Mono
+  !insertmacro Texto $LblLog 16 62 348 32 "" ${C_SUAVE} $Mono
+  !insertmacro Texto $LblFases 0 0 1 1 "" ${C_FONDO} $Mono                         ; DibujarInstalacion lo rellena: aquí no se ve
+  ShowWindow $LblFases ${SW_HIDE}
+  !insertmacro TextoRuta $LblRegistro 16 94 348 14 "" ${C_TENUE} $Mono
+  ShowWindow $LblRegistro ${SW_HIDE}
+  !insertmacro Boton $BtnCerrar 284 80 80 22 "[ Cerrar ]" CerrarConError
+  ShowWindow $BtnCerrar ${SW_HIDE}
   Call DibujarInstalacion
   ${NSD_CreateTimer} AvanzarInstalacion 150
   nsDialogs::Show

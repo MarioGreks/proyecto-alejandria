@@ -60,6 +60,29 @@ Function CerrarAppEnMarcha
   Pop $0
 FunctionEnd
 
+; La ventana del instalador en una actualización: 380x112, abajo a la derecha del área de trabajo, siempre visible, sin barra de título y sin botón en la barra
+; de tareas (que no parezca un instalador). Si algo se atasca, a los 60 s sin noticias aparece [ Cerrar ] (no hay otra forma de cerrarla).
+Function PrepararVentanaMini
+  Call PrepararVentana                     ; oscura y sin los botones de Windows
+  System::Alloc 16
+  Pop $1
+  System::Call 'user32::SystemParametersInfo(i 48, i 0, i r1, i 0)'      ; SPI_GETWORKAREA
+  System::Call '*$1(i .r2, i .r3, i .r4, i .r5)'
+  System::Free $1
+  IntOp $6 $4 - 396                        ; derecha - 380 - 16
+  IntOp $7 $5 - 128                        ; abajo - 112 - 16
+  System::Call 'user32::GetWindowLong(i $HWNDPARENT, i -16)i .r0'
+  IntOp $0 $0 & 0xFF3FFFFF                 ; sin WS_CAPTION
+  System::Call 'user32::SetWindowLong(i $HWNDPARENT, i -16, i r0)'
+  System::Call 'user32::GetWindowLong(i $HWNDPARENT, i -20)i .r0'
+  IntOp $0 $0 & 0xFFFBFFFF                 ; sin WS_EX_APPWINDOW...
+  IntOp $0 $0 | 0x80                       ; ...y como ventana de herramientas: no sale en la barra de tareas
+  System::Call 'user32::SetWindowLong(i $HWNDPARENT, i -20, i r0)'
+  System::Call 'user32::SetWindowPos(i $HWNDPARENT, i -1, i r6, i r7, i 380, i 112, i 0x30)'      ; HWND_TOPMOST, sin activar, recalcula el marco
+  GetDlgItem $2 $HWNDPARENT 1018
+  System::Call 'user32::SetWindowPos(i r2, i 0, i 0, i 0, i 380, i 112, i 0x14)'
+FunctionEnd
+
 ; Al terminar la actualización: vuelve a abrir la app (con la configuración de prueba si es una prueba) y cierra el instalador.
 Function LanzarAppActualizada
   ${If} $ModoPrueba = 1
@@ -107,4 +130,5 @@ Function PgRutasNuevasSalir
     Abort
   ${EndIf}
   StrCpy $NuevasRutas "carpeta_nueva_prueba=$0"
+  Call PrepararVentanaMini                 ; ya elegida: el resto de la actualización va en la ventanita
 FunctionEnd

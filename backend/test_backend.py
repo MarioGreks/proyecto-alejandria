@@ -679,6 +679,15 @@ class TestAjustes(unittest.TestCase):
         with patch.object(main, "is_ollama_running", return_value=False), patch.object(main, "get_ollama_path", return_value="x"):
             self.assertTrue(client.get("/api/ajustes").json()["ollama_instalado"])
 
+    def test_ajustes_cuenta_las_neuronas_sin_construir_la_lista_entera_con_todos_sus_textos(self):
+        """Ajustes se consulta cada pocos segundos: antes serializaba teoría, glosario y ejercicios de TODAS las neuronas solo para contarlas."""
+        client = TestClient(main.app, base_url="http://127.0.0.1")
+        with patch.object(main, "is_ollama_running", return_value=False), \
+             patch.object(main.db_conn, "get_universe_metadata", side_effect=AssertionError("no debe pedir todos los textos")):
+            r = client.get("/api/ajustes").json()
+        self.assertEqual(r["neuronas"], main.db_conn.contar_neuronas())
+        self.assertIsInstance(r["neuronas"], int)
+
     def test_endpoints_leen_y_guardan(self):
         client = TestClient(main.app, base_url="http://127.0.0.1")
         with patch.object(main, "is_ollama_running", return_value=False):
@@ -771,6 +780,20 @@ class TestSincronizacionEnLaApp(unittest.TestCase):
     def _elegir(self, carpeta):
         with patch.object(main.threading, "Thread"):          # la primera vuelta automática al elegir carpeta se hace a mano en cada prueba
             return self.client.put("/api/ajustes", json={"carpeta_sincronizacion": carpeta})
+
+    def test_al_abrir_se_sincroniza_una_sola_vez_y_sin_repasos_periodicos(self):
+        for ajustes_, esperadas in (({"carpeta_sincronizacion": self.compartida, "sincronizar_auto": True}, 1),
+                                    ({"carpeta_sincronizacion": self.compartida, "sincronizar_auto": False}, 0),
+                                    ({"carpeta_sincronizacion": "", "sincronizar_auto": True}, 0)):
+            with self.subTest(ajustes=ajustes_):
+                llamadas = []
+                servicio = self.sinc.Servicio(DATA_DIR, lambda a=ajustes_: a, lambda n, ar: None)
+                with patch.object(servicio, "ahora", side_effect=lambda: llamadas.append(1)):
+                    servicio.iniciar_auto()
+                    servicio.iniciar_auto()                       # abrir dos veces la pantalla de arranque no lanza otra
+                    servicio.hilo.join(5)
+                self.assertFalse(servicio.hilo.is_alive())        # el hilo termina: no queda nada repasando cada minuto
+                self.assertEqual(len(llamadas), esperadas)
 
     def test_la_carpeta_debe_existir_ser_completa_y_no_ser_la_de_los_datos(self):
         for mala in ("no/es/absoluta", os.path.join(self.compartida, "no-existe"), DATA_DIR, os.path.join(DATA_DIR, "raw")):

@@ -55,8 +55,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'No se pudo firmar el instalador' }
           $firma = (Get-Content "$dir/Proyecto-Alejandria-Setup.exe.sig" -Raw).Trim()
           $version = '${{ github.ref_name }}'.TrimStart('v')
-          $notas = [string](gh api "repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" --jq '.body // ""')
-          $m = [regex]::Match($notas, '(?s)## Qué cambia\s*(.*?)\s*(?:## Instalar|$)')   # a la app solo le interesa «Qué cambia», sin el resto de la ficha
+          $notas = (@(gh api "repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" --jq '.body // ""') -join "`n")    # con los saltos de línea (un [string] directo los vuelve espacios)
+          $m = [regex]::Match($notas, '(?s)## Qué cambia\s*(.*?)\s*(?:\n## |$)')   # a la app solo le interesa «Qué cambia»: hasta el siguiente apartado, sea cual sea
           if ($m.Success) { $notas = $m.Groups[1].Value }
           $notas = $notas.Replace('**', '').Trim()
           $url = 'https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Proyecto-Alejandria-Setup.exe'

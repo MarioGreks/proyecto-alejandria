@@ -161,6 +161,11 @@ class LocalGraphDB:
                 self._df_cache = pd.DataFrame()
         return self._df_cache
 
+    def contar_neuronas(self) -> int:
+        """Cuántas neuronas hay, sin construir la lista con todos sus textos (get_universe_metadata): lo consulta Ajustes cada pocos segundos."""
+        df = self._get_df()
+        return 0 if df.empty else len(df)
+
     def get_universe_metadata(self):
         """Devuelve ID, nombre, cluster y textos completos de los nodos para el buscador."""
         df = self._get_df()

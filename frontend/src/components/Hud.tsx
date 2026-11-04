@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { API } from '../utils/api';
 import { MONO } from './terminal';
+import { guardarCache } from '../utils/cacheEstado';
 
 interface Resultado { node: { id: string; nombre: string }; type: string }
 interface Sinapsis { activo: boolean; nodo: string | null; hecho: number; total: number }
@@ -37,6 +38,7 @@ function useIA() {
         const leer = (arrancando = 0) => fetch(`${API}/api/ajustes`).then(r => r.json())
             .then(e => {
                 if (!vivo) return;
+                guardarCache('ajustes', e);
                 reintentando = false;
                 if (e.ia_activa && !e.ollama && e.ollama_instalado && (arrancando > 0 || !arranqueIntentado)) {
                     if (!arranqueIntentado) { arranqueIntentado = true; fetch(`${API}/api/ollama/arrancar`, { method: 'POST' }).catch(() => {}); }
@@ -52,21 +54,26 @@ function useIA() {
     return texto;
 }
 
-/** Si la sincronización entre PCs trae neuronas o conexiones (cambia su «generación»), recarga el universo para que se vean sin pulsar nada. */
+/** La sincronización entre PCs corre una vez al abrir la app. Mientras esa vuelta no termina se mira cada 2 s (y solo entonces); si trae neuronas o conexiones
+ *  (cambia su «generación») se recarga el universo para que se vean sin pulsar nada. Terminada, o sin carpeta elegida, esto deja de consultar. */
 function useSincronizacion(alCambiar: () => void) {
     const accion = useRef(alCambiar);
     accion.current = alCambiar;
     useEffect(() => {
         let vivo = true;
-        let ultima: number | null = null;
+        let base: number | null = null;
+        let intentos = 0;
+        let espera: ReturnType<typeof setTimeout> | undefined;
         const leer = () => fetch(`${API}/api/sync/estado`).then(r => r.json()).then(e => {
             if (!vivo || typeof e.generacion !== 'number') return;
-            if (ultima !== null && e.generacion !== ultima) accion.current();
-            ultima = e.generacion;
+            guardarCache('sync', e);
+            if (base === null) base = e.generacion;
+            if (e.generacion !== base) { accion.current(); return; }
+            const termino = !e.configurada || !e.auto || (!e.sincronizando && (e.ultima !== null || e.error !== null));
+            if (!termino && ++intentos < 60) espera = setTimeout(leer, 2000);       // como mucho unos 2 minutos
         }).catch(() => {});
         leer();
-        const t = setInterval(leer, 8000);
-        return () => { vivo = false; clearInterval(t); };
+        return () => { vivo = false; clearTimeout(espera); };
     }, []);
 }
 

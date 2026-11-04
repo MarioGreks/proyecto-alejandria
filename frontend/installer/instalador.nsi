@@ -17,7 +17,7 @@ ManifestDPIAware notset              ; Windows escala la ventana entera: un poco
 
 !define APP "Proyecto Alejandría"
 !define EXE "ProyectoAlejandria.exe"
-!define VERSION "0.2.1"
+!define VERSION "0.2.2"
 !define ID "dev.alejandria.app"      ; el mismo que tauri.conf.json: de él salen las carpetas de datos de la app
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define WEBVIEW2 "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
@@ -138,7 +138,12 @@ Function .onInit
 FunctionEnd
 
 Function .onGUIInit
-  Call PrepararVentana
+  ${If} $Actualizando = 1
+  ${AndIf} $EsquemaInst >= $EsquemaActual
+    Call PrepararVentanaMini               ; una actualización no se ve como un instalador (si pide carpetas nuevas, esa pantalla va en la ventana normal y luego se encoge)
+  ${Else}
+    Call PrepararVentana
+  ${EndIf}
 FunctionEnd
 
 ; Sin secciones de instalación NSIS no compila: todo el trabajo lo hacen las funciones de las páginas.

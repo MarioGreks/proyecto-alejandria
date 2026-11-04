@@ -13,7 +13,7 @@ import sincronizacion
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.2.1"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.2.2"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -483,7 +483,7 @@ def leer_ajustes():
     modelos = get_available_models() if ollama_ok else []
     return {**ajustes.leer(), "version": APP_VERSION, "carpeta_datos": DATA_DIR, "ollama": ollama_ok, "ollama_instalado": ollama_ok or get_ollama_path() is not None,
             "modelos": modelos, "modelos_restringidos": [m for m in modelos if licencia_restrictiva(m)],
-            "neuronas": len(db_conn.get_universe_metadata())}
+            "neuronas": db_conn.contar_neuronas()}
 
 def _carpeta_sync_valida(carpeta: str) -> bool:
     """Una carpeta que exista, con ruta completa, y que no sea la de los datos ni esté dentro de ella (se sincronizaría consigo misma)."""

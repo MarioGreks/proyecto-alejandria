@@ -378,7 +378,7 @@ def olvidar(datos_dir: str) -> None:
 
 
 class Servicio:
-    """Lo que usa la app: una sincronización configurable desde Ajustes, con un hilo que la repite cada minuto y un estado para enseñar en pantalla."""
+    """Lo que usa la app: una sincronización configurable desde Ajustes (al abrir la app y cuando el usuario la pide) y un estado para enseñar en pantalla."""
     def __init__(self, datos_dir: str, leer_ajustes: Callable[[], dict], al_cambiar: Callable[[bool, bool], None]):
         self.datos = datos_dir
         self.leer_ajustes = leer_ajustes
@@ -387,7 +387,6 @@ class Servicio:
         self.carpeta_actual = ""
         self.error: Optional[str] = None
         self.ejecutando = threading.Lock()
-        self.parar = threading.Event()
         self.hilo: Optional[threading.Thread] = None
 
     def _preparar(self) -> Optional[Sincronizador]:
@@ -435,19 +434,18 @@ class Servicio:
             base.update(pc=e["nombre"], ultima=e["ultima"], generacion=e["generacion"], pcs=(e["ultima"] or {}).get("pcs", []))
         return base
 
-    def iniciar_auto(self, periodo: float = 60.0) -> None:
-        """Hilo de fondo: al arrancar y luego cada `periodo` segundos, si hay carpeta y la sincronización automática está activa."""
+    def iniciar_auto(self) -> None:
+        """Una vuelta al abrir la app, en un hilo de fondo (si hay carpeta y la opción de sincronizar al abrir está activa). Después, solo cuando el usuario la pide
+        en Ajustes: sin repasos periódicos que gasten disco y procesador."""
         if self.hilo is not None:
             return
 
-        def bucle():
-            while not self.parar.is_set():
-                try:
-                    a = self.leer_ajustes()
-                    if _texto(a.get("carpeta_sincronizacion")).strip() and a.get("sincronizar_auto"):
-                        self.ahora()
-                except Exception as e:
-                    print(f"[Sincronización] {e}")
-                self.parar.wait(periodo)
-        self.hilo = threading.Thread(target=bucle, daemon=True, name="sincronizacion")
+        def vuelta():
+            try:
+                a = self.leer_ajustes()
+                if _texto(a.get("carpeta_sincronizacion")).strip() and a.get("sincronizar_auto"):
+                    self.ahora()
+            except Exception as e:
+                print(f"[Sincronización] {e}")
+        self.hilo = threading.Thread(target=vuelta, daemon=True, name="sincronizacion")
         self.hilo.start()

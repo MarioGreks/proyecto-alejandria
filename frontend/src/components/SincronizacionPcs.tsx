@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { API } from '../utils/api';
 import { enTauri } from './BarraTitulo';
+import { guardarCache, iguales, leerCache } from '../utils/cacheEstado';
 
 interface Resumen { enviadas: number; recibidas: number; borradas: number; conflictos: string[]; avisos: string[]; cuando: string }
 interface Estado {
@@ -22,13 +23,13 @@ const nombreDe = (clave: string) => clave.replace(/^[nc]\//, '').replace('@', ' 
 
 /** Ajustes → Sincronización entre PCs: eliges una carpeta que ya sincronice tu nube (OneDrive, Dropbox...) y cada PC deja ahí sus neuronas y conexiones y lee las de los demás. */
 export default function SincronizacionPcs() {
-    const [s, setS] = useState<Estado | null>(null);
-    const [ruta, setRuta] = useState('');
+    const [s, setS] = useState<Estado | null>(() => leerCache<Estado>('sync'));
+    const [ruta, setRuta] = useState(() => leerCache<Estado>('sync')?.carpeta ?? '');
     const [mensaje, setMensaje] = useState('');
     const [ocupado, setOcupado] = useState(false);
 
-    const cargar = () => fetch(`${API}/api/sync/estado`).then(r => r.json()).then((e: Estado) => { setS(e); setRuta(r => r || e.carpeta); }).catch(() => {});
-    useEffect(() => { cargar(); const t = setInterval(cargar, 4000); return () => clearInterval(t); }, []);
+    const cargar = () => fetch(`${API}/api/sync/estado`).then(r => r.json()).then((e: Estado) => { guardarCache('sync', e); setS(prev => (prev && iguales(prev, e) ? prev : e)); setRuta(r => r || e.carpeta); }).catch(() => {});
+    useEffect(() => { cargar(); const t = setInterval(() => { if (!document.hidden) cargar(); }, 5000); return () => clearInterval(t); }, []);
 
     const guardar = async (cambios: Record<string, unknown>) => {
         const res = await fetch(`${API}/api/ajustes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cambios) });
@@ -75,7 +76,7 @@ export default function SincronizacionPcs() {
         {s.configurada && (<div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.6 }}>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', marginBottom: 8 }}>
                 <input type="checkbox" className="t-check" checked={s.auto} onChange={ev => guardar({ sincronizar_auto: ev.target.checked })} />
-                Sincronizar solo (al abrir y cada minuto)
+                Sincronizar al abrir la app
             </label>
             <div style={{ color: s.error ? 'var(--t-error)' : 'var(--t-verde)' }}>
                 {s.error ? `○ No se pudo sincronizar: ${s.error}` : s.sincronizando ? '● Sincronizando...' : u ? `● Última sincronización ${hace(u.cuando)}: ${u.enviadas} enviadas, ${u.recibidas} recibidas${u.borradas ? `, ${u.borradas} borradas` : ''}` : '○ Aún no se ha sincronizado'}
@@ -88,7 +89,8 @@ export default function SincronizacionPcs() {
                 </div>
             )}
             {u && u.avisos.map((a, i) => <div key={i} style={{ color: 'var(--t-ambar)' }}>[!] {a}</div>)}
-            <div style={{ marginTop: 8 }}><button className="t-btn" disabled={ocupado || s.sincronizando} onClick={ahora}>[ Sincronizar ahora ]</button></div>
+            <div style={{ marginTop: 8 }}><button className="t-btn" disabled={ocupado || s.sincronizando} onClick={ahora}>[ Sincronizar ahora ]</button>
+                <span style={{ color: '#7aa', marginLeft: 10 }}>Se sincroniza al abrir la app y cuando pulsas este botón.</span></div>
         </div>)}
         {mensaje && <div style={{ marginTop: 10, color: 'var(--t-error)', fontSize: 12 }}>{mensaje}</div>}
     </>);

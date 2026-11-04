@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "pyodide": "node scripts/bajar-pyodide.mjs",
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "instalador": "tauri build --no-bundle && node installer/construir.mjs",
-    "test": "node --test src/utils/labSpec.test.mjs src/labs/adaptar.test.mjs src/utils/pilarAscii.test.mjs src/utils/prompts.test.mjs src/utils/ejemplos.test.mjs src/utils/actualizador.test.mjs"
+    "test": "node --test src/utils/labSpec.test.mjs src/labs/adaptar.test.mjs src/utils/pilarAscii.test.mjs src/utils/prompts.test.mjs src/utils/ejemplos.test.mjs src/utils/actualizador.test.mjs src/utils/versiones.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

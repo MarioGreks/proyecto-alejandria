@@ -4,19 +4,20 @@ import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } fro
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 import SincronizacionPcs from './SincronizacionPcs';
+import { guardarCache, iguales, leerCache } from '../utils/cacheEstado';
 
 interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number; buscar_actualizaciones: boolean }
 
 
 export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void; onTutorial: () => void }) {
-    const [e, setE] = useState<Estado | null>(null);
+    const [e, setE] = useState<Estado | null>(() => leerCache<Estado>('ajustes'));      // con lo último que se supo: se abre al instante
     const [mensaje, setMensaje] = useState('');
     const archivo = useRef<HTMLInputElement>(null);
     const [avisos, setAvisos] = useState<string | null>(null);   // texto de THIRD-PARTY-NOTICES.md; se carga solo al pedirlo (va en un trozo aparte del paquete)
     const verAvisos = () => import('../../../THIRD-PARTY-NOTICES.md?raw').then(m => setAvisos(m.default)).catch(() => setMensaje('Error: no se pudieron cargar las licencias de terceros.'));
 
-    const cargar = () => fetch(`${API}/api/ajustes`).then(r => r.json()).then((x: Estado) => { setE(x); if (x.ollama) setMensaje(m => m === 'Arrancando Ollama...' ? '' : m); }).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
-    useEffect(() => { cargar(); const t = setInterval(cargar, 4000); return () => clearInterval(t); }, []);     // el estado de Ollama cambia fuera de la app: se refresca solo
+    const cargar = () => fetch(`${API}/api/ajustes`).then(r => r.json()).then((x: Estado) => { guardarCache('ajustes', x); setE(prev => (prev && iguales(prev, x) ? prev : x)); if (x.ollama) setMensaje(m => m === 'Arrancando Ollama...' ? '' : m); }).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
+    useEffect(() => { cargar(); const t = setInterval(() => { if (!document.hidden) cargar(); }, 5000); return () => clearInterval(t); }, []);     // el estado de Ollama cambia fuera de la app: se refresca solo
     const arrancarOllama = () => fetch(`${API}/api/ollama/arrancar`, { method: 'POST' }).then(() => setMensaje('Arrancando Ollama...')).catch(() => setMensaje('Error: no se pudo hablar con el servidor.'));
 
     const guardar = async (cambios: Partial<Pick<Estado, 'ia_activa' | 'modelo' | 'buscar_actualizaciones'>>) => {
