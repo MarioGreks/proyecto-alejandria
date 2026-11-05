@@ -267,7 +267,7 @@ class ClasificadorLocal:
                    + ([f"Frases del texto de B que nombran algo de A: {pistas[1]}"] if pistas[1] else [])
             evidencia = "\n" + "\n".join(partes) + "\n"
 
-        prompt = f"""Eres un juez lógico estrictamente académico. Decide si estos dos conceptos están DIRECTAMENTE relacionados: que uno use, derive, generalice o aplique al otro, o que ambos compartan el mismo modelo o herramienta matemática concreta.
+        prompt = f"""Eres un juez lógico estrictamente académico. Decide si estos dos conceptos están DIRECTAMENTE relacionados: que uno use, derive, generalice o aplique al otro, o que ambos compartan el mismo modelo o herramienta matemática concreta, o que tengan un vínculo histórico o conceptual directo (misma persona o escuela, una influencia clara del uno en el otro).
 
 {bloque('A', a)}
 
@@ -276,8 +276,8 @@ class ClasificadorLocal:
 REGLAS:
 - "A_se_basa_en_B": A necesita, usa o deriva de B.
 - "B_se_basa_en_A": B necesita, usa o deriva de A.
-- "relacionados": comparten una herramienta, un modelo o un caso particular concreto, sin que uno sea requisito claro del otro.
-- "ninguna": solo pertenecen al mismo campo general (p. ej. los dos son de estadística) o se parecen de forma lejana.
+- "relacionados": comparten una herramienta, un modelo o un caso particular concreto, o tienen un vínculo histórico o conceptual directo (la misma persona o escuela, una influencia clara, una controversia común), sin que uno sea requisito claro del otro. Un vínculo histórico es «relacionados»: nunca «se basa en» salvo que uno use de verdad el resultado del otro.
+- "ninguna": solo pertenecen al mismo campo general (p. ej. los dos son de estadística) o a la misma época sin más, o se parecen de forma lejana.
 - Si un texto nombra al otro concepto para usarlo, aplicarlo o suponerlo, eso SÍ es una relación (no respondas "ninguna").
 
 {instruccion()} Eso incluye el campo "motivo".

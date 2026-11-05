@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { asignarCasillas, centroDeCasilla, firmaUniverso, hashTexto, posicionNeurona, rngDe } from './disposicion.ts';
+import { DISTANCIA_MINIMA, asignarCasillas, centroDeCasilla, desplazamientosCluster, firmaUniverso, hashTexto, posicionNeurona, rngDe } from './disposicion.ts';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
@@ -55,4 +55,45 @@ test('firmaUniverso cambia con clúster o estado y no con el orden', () => {
     assert.equal(firmaUniverso([...n].reverse(), l), f);
     assert.notEqual(firmaUniverso([{ ...n[0], cluster_id: 'Y' }, n[1]], l), f);
     assert.notEqual(firmaUniverso(n, [{ ...l[0], estado: 'aceptada' }]), f);
+});
+
+const minimaEntre = (puntos) => {
+    let m = Infinity;
+    for (let i = 0; i < puntos.length; i++) for (let j = i + 1; j < puntos.length; j++) m = Math.min(m, dist(puntos[i], puntos[j]));
+    return m;
+};
+const ids = (n, pre = 'n') => Array.from({ length: n }, (_, i) => `${pre}${String(i).padStart(3, '0')}`);
+
+test('ninguna neurona queda a menos de la distancia mínima de otra, y el resultado es siempre el mismo', () => {
+    const d = desplazamientosCluster(ids(80));
+    assert.equal(Object.keys(d).length, 80);
+    assert.ok(minimaEntre(Object.values(d)) >= DISTANCIA_MINIMA - 1e-9, `mínima ${minimaEntre(Object.values(d))}`);
+    assert.deepEqual(desplazamientosCluster([...ids(80)].reverse()), d);                  // el orden de llegada no importa
+});
+
+test('una neurona sin vecinas cerca conserva la posición de siempre', () => {
+    assert.deepEqual(desplazamientosCluster(['distribucion_poisson'])['distribucion_poisson'], posicionNeurona('distribucion_poisson', [0, 0, 0]));
+});
+
+test('una neurona nueva nunca mueve a las que ya estaban (con lo recordado)', () => {
+    const antes = desplazamientosCluster(ids(40));
+    const despues = desplazamientosCluster([...ids(40), 'a_nueva', 'zeta_nueva', ...ids(10, 'p')], antes);
+    for (const id of Object.keys(antes)) assert.deepEqual(despues[id], antes[id]);
+    assert.ok(minimaEntre(Object.values(despues)) >= DISTANCIA_MINIMA - 1e-9);
+});
+
+test('lo recordado se respeta aunque estuviera más junto que la distancia mínima', () => {
+    const d = desplazamientosCluster(['a', 'b', 'c'], { a: [0, 0, 0], b: [0.5, 0, 0] });
+    assert.deepEqual(d.a, [0, 0, 0]);
+    assert.deepEqual(d.b, [0.5, 0, 0]);
+    assert.ok(dist(d.c, d.a) >= DISTANCIA_MINIMA && dist(d.c, d.b) >= DISTANCIA_MINIMA);
+    assert.deepEqual(desplazamientosCluster(['a'], { a: [NaN, 0, 0] }).a, posicionNeurona('a', [0, 0, 0]));   // dato corrupto: se ignora
+});
+
+test('si el clúster se llena, la nube crece lo justo y se sigue cumpliendo la distancia', () => {
+    const d = desplazamientosCluster(ids(400));
+    const puntos = Object.values(d);
+    assert.ok(minimaEntre(puntos) >= DISTANCIA_MINIMA - 1e-9);
+    const mayor = Math.max(...puntos.map(p => Math.hypot(...p)));
+    assert.ok(mayor > 10 && mayor < 40, `radio final ${mayor}`);                         // creció, pero sin irse lejos
 });
