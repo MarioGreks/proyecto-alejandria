@@ -162,6 +162,12 @@ class TestSinapsis(unittest.TestCase):
         _, prompts = self._juzgar(True)
         self.assertIn("castellano de España", prompts[0])
 
+    def test_el_juez_admite_vinculos_historicos_solo_como_relacionados(self):
+        juicio, prompts = self._juzgar(True, relacion="relacionados")
+        self.assertEqual(juicio, ("rel", self.MOTIVO))
+        self.assertIn("vínculo histórico o conceptual directo", prompts[0])
+        self.assertIn("Un vínculo histórico es «relacionados»", prompts[0])    # nunca una flecha de dependencia por ser de la misma época o autor
+
     def test_segunda_revision_que_duda_de_la_direccion_baja_el_veredicto_a_relacionados(self):
         for no_confirma in (False, "false"):
             with self.subTest(respuesta=no_confirma):

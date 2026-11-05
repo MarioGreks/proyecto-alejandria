@@ -236,7 +236,8 @@ export default function KnowledgePanel({
 
                 {!loading && data && activeTab === 'glosario' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
-                        {data.glosario.map((g, idx) => (
+                        {(data.glosario ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene glosario</Vacio>}
+                        {(data.glosario ?? []).map((g, idx) => (
                             <Tarjeta key={idx} color="var(--t-ambar)">
                                 <div style={{ margin: '0 0 8px 0', color: 'var(--t-verde)', fontSize: 17, fontWeight: 700 }}>
                                     <Md texto={g.termino} enLinea />
@@ -262,7 +263,8 @@ export default function KnowledgePanel({
 
                 {!loading && data && activeTab === 'ejercicios' && (
                     <div style={{ textAlign: 'justify' }}>
-                        {data.ejercicios.map((ej, idx) => (
+                        {(data.ejercicios ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene ejercicios (es histórico o conceptual, o no se generaron)</Vacio>}
+                        {(data.ejercicios ?? []).map((ej, idx) => (
                             <EjercicioWidget key={idx} ejercicio={ej} />
                         ))}
                     </div>

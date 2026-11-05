@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Text, Billboard } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { PROMPT_FUENTES, PROMPT_EXPLORACION, conClustersExistentes } from '../utils/prompts';
+import { PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, conClustersExistentes } from '../utils/prompts';
 import { API } from '../utils/api';
 import Ajustes from './Ajustes';
 import ProcesandoNeurona from './ProcesandoNeurona';
@@ -12,7 +12,7 @@ import Hud from './Hud';
 import { Cabecera, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
-import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionNeurona, rngDe } from '../utils/disposicion';
+import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionesRecordadas, rngDe } from '../utils/disposicion';
 // Fuente propia para los rótulos de los clústeres (DejaVu Sans Mono Bold, la de matplotlib, con licencia libre y todo el alfabeto latino con tildes):
 // sin `font`, troika baja una de un CDN, y con una fuente que no tenga alguna letra (la «Á» de MATEMÁTICAS) baja otra: no funciona sin internet y la CSP lo bloquea.
 const fuenteRotulos = `${import.meta.env.BASE_URL}fuentes/DejaVuSansMono-Bold.ttf`;
@@ -197,6 +197,8 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
         const casillas = casillasRecordadas(clusterKeys);
         // Cada clúster en su casilla fija (el primero, en el centro) y con el color de su casilla.
         const clusterCenters = clusterKeys.map(c => new THREE.Vector3(...centroDeCasilla(casillas[c])));
+        // Sitio de cada neurona dentro de su clúster: con distancia mínima y recordado, así una neurona nueva nunca mueve a otra.
+        const desplazamientos = posicionesRecordadas(Object.fromEntries(clusterKeys.map(c => [c, clusterMap.get(c)!.map(n => String(n.id))])));
         const allNodes: THREE.Vector3[] = [];
         const totalNodes = realNodes.length;
         const colors = new Float32Array(totalNodes * 3);
@@ -208,10 +210,10 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
             const center = clusterCenters[idx];
             const cNodes = [...clusterMap.get(cId)!].sort((a, b) => String(a.id).localeCompare(String(b.id)));
             const color = baseColors[casillas[cId] % baseColors.length];
-            const centro: [number, number, number] = [center.x, center.y, center.z];
 
             cNodes.forEach((node) => {
-                allNodes.push(new THREE.Vector3(...posicionNeurona(String(node.id), centro, 10)));
+                const d = desplazamientos[String(node.id)];
+                allNodes.push(new THREE.Vector3(center.x + d[0], center.y + d[1], center.z + d[2]));
                 colors[globalIdx * 3] = color.r;
                 colors[globalIdx * 3 + 1] = color.g;
                 colors[globalIdx * 3 + 2] = color.b;
@@ -543,6 +545,9 @@ const CameraController = ({ resetFlag, targetPosition }: { resetFlag: number, ta
 
 export default function Universe() {
     const [resetCamera, setResetCamera] = useState(0);
+    // Prompt «clásico»: trata todo concepto como matemático (el de antes). Por defecto, el que distingue formal de histórico.
+    const [promptClasico, setPromptClasico] = useState(() => { try { return localStorage.getItem('alejandria.promptClasico') === '1'; } catch { return false; } });
+    const cambiarPromptClasico = (v: boolean) => { setPromptClasico(v); try { localStorage.setItem('alejandria.promptClasico', v ? '1' : '0'); } catch { /* sin almacenamiento: vale solo para esta sesión */ } };
     const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [realNodes, setRealNodes] = useState<any[]>([]);
@@ -705,7 +710,7 @@ export default function Universe() {
                                 className="t-btn"
                                 onClick={(e) => {
                                     const btn = e.currentTarget;
-                                    copyToClipboard(conClustersExistentes(PROMPT_FUENTES, clustersExistentes));
+                                    copyToClipboard(conClustersExistentes(promptClasico ? PROMPT_FUENTES_CLASICO : PROMPT_FUENTES, clustersExistentes));
                                     const originalText = btn.innerText;
                                     btn.innerText = "[ ¡Copiado! ]";
                                     setTimeout(() => { btn.innerText = originalText; }, 2000);
@@ -717,7 +722,7 @@ export default function Universe() {
                                 className="t-btn"
                                 onClick={(e) => {
                                     const btn = e.currentTarget;
-                                    copyToClipboard(conClustersExistentes(PROMPT_EXPLORACION, clustersExistentes));
+                                    copyToClipboard(conClustersExistentes(promptClasico ? PROMPT_EXPLORACION_CLASICO : PROMPT_EXPLORACION, clustersExistentes));
                                     const originalText = btn.innerText;
                                     btn.innerText = "[ ¡Copiado! ]";
                                     setTimeout(() => { btn.innerText = originalText; }, 2000);
@@ -726,6 +731,10 @@ export default function Universe() {
                                 [ Copiar: Exploración libre ]
                             </button>
                         </div>
+                        <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--t-suave)', fontSize: 13, cursor: 'pointer' }} title="El prompt normal distingue conceptos formales de históricos o conceptuales; el clásico pide siempre teoría matemática, ejercicios y laboratorio.">
+                            <input type="checkbox" checked={promptClasico} onChange={(e) => cambiarPromptClasico(e.target.checked)} />
+                            Usar el prompt clásico (todo concepto como matemático)
+                        </label>
 
                         <p style={{ color: 'var(--t-suave)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
                             Pega aquí la respuesta cruda en JSON (o bloque markdown) generada por tu Prompt Maestro. El núcleo lo asimilará y reconfigurará la red neuronal.

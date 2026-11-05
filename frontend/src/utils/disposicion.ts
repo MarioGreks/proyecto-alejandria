@@ -94,14 +94,57 @@ export function asignarCasillas(nombres: string[], previas: Record<string, numbe
     return res;
 }
 
-/** Posición de una neurona dentro de la nube de su clúster: depende solo de su id (y del centro del clúster). */
-export function posicionNeurona(id: string, centro: Vec3, radio = 10): Vec3 {
-    const r = rngDe(`n:${id}`);
+/** Punto de la nube (centrada en el origen) que sale de un generador con semilla: más denso hacia el centro, como un conglomerado. */
+function puntoDeNube(r: () => number, radio: number): Vec3 {
     let u = r() + r() + r() - 1.5, v = r() + r() + r() - 1.5, w = r() + r() + r() - 1.5;
     const largo = Math.hypot(u, v, w) || 1;
     u /= largo; v /= largo; w /= largo;
     const dist = Math.abs(r() + r() - 1) * radio;
-    return [centro[0] + u * dist, centro[1] + v * dist, centro[2] + w * dist];
+    return [u * dist, v * dist, w * dist];
+}
+
+/** Posición de una neurona dentro de la nube de su clúster: depende solo de su id (y del centro del clúster). Sin separación mínima: ver `desplazamientosCluster`. */
+export function posicionNeurona(id: string, centro: Vec3, radio = 10): Vec3 {
+    const [x, y, z] = puntoDeNube(rngDe(`n:${id}`), radio);
+    return [centro[0] + x, centro[1] + y, centro[2] + z];
+}
+
+/** Distancia mínima entre dos neuronas del mismo clúster (cada núcleo mide 0,2-0,3: así nunca están una encima de otra y sigue habiendo conglomerado). */
+export const DISTANCIA_MINIMA = 2.5;
+const INTENTOS_POR_PASO = 40, PASO_NUBE = 0.5, MAX_INTENTOS = 4000;   // la nube crece 0,5 cada 40 candidatos rechazados: solo lo justo
+
+const esVec3 = (p: unknown): p is Vec3 => Array.isArray(p) && p.length === 3 && p.every(n => typeof n === 'number' && Number.isFinite(n));
+const distancia = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+/**
+ * Posición (relativa al centro del clúster) de cada neurona, con una distancia mínima entre todas. Las que ya tenían sitio (`previas`) lo
+ * conservan SIEMPRE, aunque estuvieran más juntas; las nuevas, en orden alfabético de id, prueban los candidatos de su propia semilla
+ * hasta uno que cumpla (el primero es el de `posicionNeurona`, así que una neurona sin vecinas cerca no cambia de sitio). Si la nube se
+ * llena, su radio crece lo justo solo para esa neurona. Una neurona nueva nunca mueve a otra; sin memoria, el mismo conjunto de ids da
+ * el mismo resultado en cualquier ordenador.
+ * shortcut: compara contra todas las del clúster (O(n²)); con miles de neuronas en un clúster habría que usar una rejilla.
+ */
+export function desplazamientosCluster(ids: string[], previas: Record<string, Vec3> = {}, minima = DISTANCIA_MINIMA, radio = 10): Record<string, Vec3> {
+    const orden = [...new Set(ids)].sort();
+    const res: Record<string, Vec3> = {};
+    const colocadas: Vec3[] = [];
+    for (const id of orden) {
+        if (esVec3(previas[id])) { res[id] = previas[id]; colocadas.push(previas[id]); }
+    }
+    for (const id of orden) {
+        if (id in res) continue;
+        const r = rngDe(`n:${id}`);
+        let elegido: Vec3 | null = null, mejorDist = -1;
+        for (let i = 0; i < MAX_INTENTOS; i++) {
+            const p = puntoDeNube(r, radio + Math.floor(i / INTENTOS_POR_PASO) * PASO_NUBE);
+            const d = colocadas.reduce((m, q) => Math.min(m, distancia(p, q)), Infinity);
+            if (d >= minima) { elegido = p; break; }
+            if (d > mejorDist) { elegido = p; mejorDist = d; }       // por si se agotan los intentos: el menos malo
+        }
+        res[id] = elegido!;
+        colocadas.push(elegido!);
+    }
+    return res;
 }
 
 // Memoria de casillas de este ordenador: así un clúster conserva su sitio aunque mientras tanto aparezcan otros
@@ -120,6 +163,35 @@ export function casillasRecordadas(nombres: string[]): Record<string, number> {
         const recortadas = claves.length > MAX_RECORDADOS ? Object.fromEntries(claves.slice(-MAX_RECORDADOS).map(k => [k, todas[k]])) : todas;
         localStorage.setItem(CLAVE_CASILLAS, JSON.stringify(recortadas));
     } catch { /* sin almacenamiento: la asignación sigue siendo determinista por nombre */ }
+    return res;
+}
+
+const CLAVE_POSICIONES = 'alejandria.posicionesNeuronas';
+const MAX_POSICIONES = 5000;
+
+/**
+ * Posiciones (relativas al centro) de las neuronas de cada clúster, recordadas en este ordenador para que ninguna se mueva al añadir otras.
+ * `clusters`: nombre del clúster → ids de sus neuronas. Una neurona que cambia de clúster se vuelve a colocar en el nuevo.
+ */
+export function posicionesRecordadas(clusters: Record<string, string[]>): Record<string, Vec3> {
+    let guardado: Record<string, [string, Vec3]> = {};
+    try { guardado = JSON.parse(localStorage.getItem(CLAVE_POSICIONES) ?? '{}') ?? {}; } catch { guardado = {}; }
+    const res: Record<string, Vec3> = {};
+    const nuevo: Record<string, [string, Vec3]> = { ...guardado };
+    for (const [cluster, ids] of Object.entries(clusters)) {
+        const previas: Record<string, Vec3> = {};
+        for (const id of ids) {
+            const g = guardado[id];
+            if (Array.isArray(g) && g[0] === cluster && esVec3(g[1])) previas[id] = g[1];
+        }
+        const desp = desplazamientosCluster(ids, previas);
+        for (const id of ids) { res[id] = desp[id]; nuevo[id] = [cluster, desp[id]]; }
+    }
+    try {
+        const claves = Object.keys(nuevo);
+        const recortado = claves.length > MAX_POSICIONES ? Object.fromEntries(claves.slice(-MAX_POSICIONES).map(k => [k, nuevo[k]])) : nuevo;
+        localStorage.setItem(CLAVE_POSICIONES, JSON.stringify(recortado));
+    } catch { /* sin almacenamiento: la colocación sigue siendo determinista por id */ }
     return res;
 }
 
