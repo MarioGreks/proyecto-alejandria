@@ -13,7 +13,7 @@ import sincronizacion
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.3.0"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.3.1"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -210,14 +210,37 @@ _ESCAPE_JSON = re.compile(
     r'|\\[bfnrt]'                                          # saltos de línea, tabulaciones...: válidos
     r'|(?P<otro>\\.)', re.DOTALL)                          # cualquier otra barra invertida: no es JSON
 
+def _reparar_comillas_y_comas(texto: str, maximo: int = 300):
+    """Las IA escriben a veces comillas dobles sin escapar dentro de un texto (sobre todo en prosa histórica con citas textuales) o se
+    dejan una coma entre dos elementos. En ambos casos json.loads falla con «Expecting ',' delimiter» justo después del punto roto: se
+    corrige ese punto y se vuelve a intentar, hasta `maximo` veces.
+    shortcut: solo cubre ese error; con otro (p. ej. dos comillas internas seguidas, sin letra entre ellas) sigue fallando."""
+    for _ in range(maximo):
+        try:
+            return json.loads(texto, strict=False)
+        except json.JSONDecodeError as e:
+            if not e.msg.startswith("Expecting ',' delimiter"):
+                raise
+            antes = texto[:e.pos]
+            previo = antes.rstrip()
+            hueco = antes[len(previo):]
+            if "\n" in hueco and texto[e.pos:e.pos + 1] in '"{[' and previo[-1:] in '"}]0123456789el':
+                texto = previo + "," + hueco + texto[e.pos:]            # falta una coma entre dos elementos
+            elif previo.endswith('"'):
+                texto = previo[:-1] + '\\"' + hueco + texto[e.pos:]     # la comilla que cerró el texto antes de tiempo era del propio texto
+            else:
+                raise
+    return json.loads(texto, strict=False)
+
 def cargar_json_tolerante(raw: str):
     """json.loads, y si falla por barras invertidas (las IA escriben \\lambda o \\frac sin duplicar la barra, y eso no es JSON válido)
-    duplica las que no son escapes de verdad y vuelve a intentarlo. Los saltos de línea reales dentro de textos también se admiten."""
+    duplica las que no son escapes de verdad y vuelve a intentarlo. Los saltos de línea reales dentro de textos también se admiten,
+    y se reparan las comillas sin escapar dentro de un texto y las comas que faltan entre elementos."""
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         reparado = _ESCAPE_JSON.sub(lambda m: "\\" + m.group(0) if (m.group("latex") or m.group("otro")) else m.group(0), raw)
-        return json.loads(reparado, strict=False)
+        return _reparar_comillas_y_comas(reparado)
 
 def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None):
     guardadas = None

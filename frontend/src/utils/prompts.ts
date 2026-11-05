@@ -10,8 +10,16 @@ const SIN_MARCAS_CITA = `CITAS: dentro de los textos del JSON (teoría, glosario
 // Evita forzar matemáticas donde no las hay (una persona, una época, una escuela) sin rebajar el nivel de los conceptos formales.
 // El prompt «clásico» (sin esta regla) sigue disponible en la app. Ante la duda, FORMAL.
 const TIPO_CONCEPTO = `TIPO DE CONCEPTO: antes de rellenar el JSON decide en silencio de qué tipo es el concepto y adapta el contenido. Es un proceso interno: no menciones el tipo ni añadas campos extra al JSON.
-- FORMAL: tiene un resultado, teorema, modelo, método o magnitud cuantificable (p. ej. el teorema de Bayes, Black-Scholes, una distribución de probabilidad, un estimador). Si dudas entre formal e histórico, elige FORMAL. Se aplican todas las exigencias de nivel doctorado de este prompt: teoría extensa con desarrollo matemático, glosario, ejercicios y laboratorio.
-- HISTÓRICO O CONCEPTUAL: es una persona, una época, una escuela, una controversia o una idea sin fórmula propia (p. ej. «Bernoulli y el origen de la probabilidad», «la crisis de fundamentos»). No inventes matemáticas para que parezca formal. La teoría cuenta con rigor el contexto, las personas, las ideas y su influencia, con subtítulos ## a tu criterio y fórmulas solo si de verdad aportan (en bloques $$ como indica este prompt). El glosario recoge los términos y nombres clave con definiciones claras. "ejercicios" va como [] y "laboratorio" como {"explicacion": "", "controles": [], "codigo": ""}, salvo que el concepto tenga una parte cuantificable real: en ese caso se trata como FORMAL. Las referencias siguen siendo obligatorias y reales.`;
+- FORMAL: tiene un resultado, teorema, modelo, método o magnitud cuantificable (p. ej. el teorema de Bayes, Black-Scholes, una distribución de probabilidad, un estimador). Si dudas entre formal e histórico o teórico, elige FORMAL. Se aplican todas las exigencias de nivel doctorado de este prompt: teoría extensa con desarrollo matemático, glosario, ejercicios y laboratorio.
+- HISTÓRICO O CONCEPTUAL: es una persona, una época, una escuela, una controversia o una idea sin fórmula propia (p. ej. «Bernoulli y el origen de la probabilidad», «la crisis de fundamentos»). No inventes matemáticas para que parezca formal. La teoría cuenta con rigor el contexto, las personas, las ideas y su influencia, con subtítulos ## a tu criterio y fórmulas solo si de verdad aportan (en bloques $$ como indica este prompt). El glosario recoge los términos y nombres clave con definiciones claras. "ejercicios" va como [] y "laboratorio" como {"explicacion": "", "controles": [], "codigo": ""}, salvo que el concepto tenga una parte cuantificable real: en ese caso se trata como FORMAL. Las referencias siguen siendo obligatorias y reales.
+- TEÓRICO NO MATEMÁTICO: es un marco conceptual o argumental sin formalismo propio (p. ej. economía conceptual, filosofía de la ciencia, metodología de la investigación). La teoría es argumentada, con las posturas enfrentadas, sus autores y las críticas; el glosario recoge los conceptos clave con su autor; "ejercicios" son entre 2 y 4 casos de análisis (comparar posturas, aplicar el marco a un caso concreto, evaluar un argumento) con su respuesta razonada; "laboratorio" va vacío como arriba, salvo que haya una parte cuantificable real (entonces, FORMAL).`;
+
+// JSON que un parser estricto pueda leer: las IA fallan sobre todo en comillas dobles dentro de un texto (citas textuales) y en comas olvidadas.
+const JSON_SEGURO = `JSON VÁLIDO: el bloque tiene que poder leerse con un parser estricto. Escapa con \\" las comillas dobles que aparezcan DENTRO de un texto (son muy habituales en las citas textuales; mejor usa comillas «así»), escribe los saltos de línea de un texto como \n, duplica las barras invertidas de LaTeX (\\frac, \\lambda) y no olvides ninguna coma entre elementos.`;
+
+// Texto común a todos los modos (la plantilla formal y las de los conceptos no matemáticos comparten estas piezas).
+const CLUSTER_DESC = `RAMA ACADÉMICA ESPECÍFICA y breve (máximo 3 palabras, nunca una frase). Ej: 'Estadística' [para markov, splines, estocásticos], 'Biometría y Demografía' [para Lee-Carter, mortalidad, supervivencia], 'Finanzas' [para Black-Scholes, derivados], 'Economía' [Macro/Micro], 'Matemáticas Puras'. Sé preciso con la rama de especialidad, no uses 'Matemáticas' como cajón de sastre para todo. Si en este mensaje aparece una línea 'CLÚSTERES EXISTENTES', reutiliza EXACTAMENTE uno de esos nombres cuando el concepto encaje; crea uno nuevo solo si ninguno encaja.`;
+const FUENTES_BIBLIO = `Al final de tu explicación, incluye obligatoriamente un apartado detallando las fuentes bibliográficas y referencias académicas primarias (papers fundacionales, autores y manuales canónicos) de donde bebes la información. **Junto a cada referencia, debes añadir una nota o comentario explicativo que aclare con exactitud qué concepto, teorema, fórmula o desarrollo has sacado de esa fuente específica.** Para localizar y contrastar esas fuentes consulta como mínimo **Google Scholar** (https://scholar.google.com), además de arXiv, DOI/Crossref y las páginas de las editoriales: si tienes búsqueda web, úsala ahí y apóyate en los resultados y en el número de citas de Scholar para priorizar los trabajos fundacionales y más citados; si no puedes consultar la web, dilo expresamente en lugar de suponer. ANTES de escribir cada fuente, cuestiónate a ti mismo y verifica con rigor crítico si de verdad existen dichas fuentes en la literatura académica real (está estrictamente prohibido alucinar o inventar títulos/autores), y proporciona los enlaces directos (URL oficial, enlace DOI o link a arXiv/repositorio académico) a esos papers o páginas de donde las has obtenido.`;
 
 const DOBLE_SALTO = '\n\n';
 
@@ -29,7 +37,7 @@ Para el concepto ${flexible ? 'más crítico' : 'matemático/analítico más cr�
 \`\`\`json
 {
     "id": "identificador_unico_snake_case",
-    "cluster": "RAMA ACADÉMICA ESPECÍFICA y breve (máximo 3 palabras, nunca una frase). Ej: 'Estadística' [para markov, splines, estocásticos], 'Biometría y Demografía' [para Lee-Carter, mortalidad, supervivencia], 'Finanzas' [para Black-Scholes, derivados], 'Economía' [Macro/Micro], 'Matemáticas Puras'. Sé preciso con la rama de especialidad, no uses 'Matemáticas' como cajón de sastre para todo. Si en este mensaje aparece una línea 'CLÚSTERES EXISTENTES', reutiliza EXACTAMENTE uno de esos nombres cuando el concepto encaje; crea uno nuevo solo si ninguno encaja.",
+    "cluster": "${CLUSTER_DESC}",
     "nombre": "Nombre Completo del Concepto",
     "teoria": "${SI_FORMAL(flexible)}Explicación teórica EXTREMADAMENTE EXTENSA, profunda y rigurosa del concepto (mínimo 1000 palabras). Utiliza un lenguaje académico formal de nivel doctorado (PhD). DEBES estructurar el contenido con subtítulos Markdown (##) abarcando: 1. Introducción Histórica/Contextual, 2. Fundamentos y Axiomas, 3. Desarrollo Matemático Profundo, 4. Aplicaciones y Limitaciones (las referencias bibliográficas se colocan por separado en el campo 'referencias', NO dentro de este texto de teoría). Desglosa cada deducción paso a paso. ESTÁ ESTRICTAMENTE PROHIBIDO usar fórmulas apelmazadas dentro de los párrafos (inline con $). Absolutamente TODAS las fórmulas, ecuaciones y desarrollo matemático deben ir segregadas en bloques independientes usando $$ con líneas en blanco antes y después, y estar numeradas al estilo paper académico usando \\\\tag{n}, ejemplo:\\n\\n$$\\nf(x) = y \\\\tag{1}\\n$$\\n\\nUsa solo texto puro para explicar y manda toda la matemática a bloques $$.${SI_HISTORICO(flexible)}",
     "glosario": [
@@ -75,7 +83,7 @@ Para el concepto ${flexible ? 'más crítico' : 'matemático/analítico más cr�
 }
 \`\`\`
 
-${flexible ? TIPO_CONCEPTO + DOBLE_SALTO : ''}### REGLAS DE ORO:
+${flexible ? TIPO_CONCEPTO + DOBLE_SALTO + JSON_SEGURO + DOBLE_SALTO : ''}### REGLAS DE ORO:
 1. El campo \`codigo\` dentro de \`laboratorio\` debe ser un string de Python válido (con saltos de línea escapados \\n).
 2. ${flexible ? 'Si el concepto es FORMAL, debes' : 'Debes'} incluir SIEMPRE un array \`controles\` con los parámetros que el usuario podrá modificar en la UI. Define tantos como necesite el modelo para APRENDERLO explorando (suelen ser entre 2 y 8, hasta un máximo de 24): los que cambien de verdad el comportamiento, sin rellenar con controles que no enseñen nada ni dejar fuera una variable clave. Si son muchos, agrúpalos con el campo opcional \`"grupo"\` (p. ej. \`"grupo": "Mercado"\`). Cada rango (\`min\`/\`max\`) debe permitir ver los regímenes interesantes del modelo, no solo el valor típico. Por defecto son deslizables (\`min\`, \`max\`, \`step\`, \`default\` numéricos). También puedes usar \`"tipo": "checkbox"\` (\`default\`: true/false; en el código llega como True/False) o \`"tipo": "select"\` con \`"opciones": ["a", "b"]\` y un \`default\` de la lista (en el código llega como un literal de Python, p. ej. \`"a"\`).
 3. En el código Python, el valor de las variables controladas debe asignarse utilizando EXACTAMENTE las variables del array \`controles\` envueltas en llaves, por ejemplo \`v_ini = {v_ini}\`. Nuestro sistema reemplazará estos tokens en tiempo de ejecución.
@@ -94,7 +102,7 @@ Tu respuesta debe estructurarse obligatoriamente en **DOS PARTES SECUENCIALES**:
 **PARTE 1: Explicación Magistral (PhD Level)**
 Explícame el concepto paso a paso con un nivel de detalle propio de una tesis doctoral. Incluye el formalismo matemático subyacente${flexible ? ' (si el concepto lo tiene)' : ''}, intuición física/geométrica profunda, deducciones críticas, implicaciones en investigación actual y ejemplos avanzados. Usa todo el formato LaTeX (usando \`$$\` y \`$\`) que consideres necesario para que la lectura sea de altísimo valor investigativo. No escatimes en extensión, se tan explícito y minucioso como te sea posible. 
 
-Al final de tu explicación, incluye obligatoriamente un apartado detallando las fuentes bibliográficas y referencias académicas primarias (papers fundacionales, autores y manuales canónicos) de donde bebes la información. **Junto a cada referencia, debes añadir una nota o comentario explicativo que aclare con exactitud qué concepto, teorema, fórmula o desarrollo has sacado de esa fuente específica.** Para localizar y contrastar esas fuentes consulta como mínimo **Google Scholar** (https://scholar.google.com), además de arXiv, DOI/Crossref y las páginas de las editoriales: si tienes búsqueda web, úsala ahí y apóyate en los resultados y en el número de citas de Scholar para priorizar los trabajos fundacionales y más citados; si no puedes consultar la web, dilo expresamente en lugar de suponer. ANTES de escribir cada fuente, cuestiónate a ti mismo y verifica con rigor crítico si de verdad existen dichas fuentes en la literatura académica real (está estrictamente prohibido alucinar o inventar títulos/autores), y proporciona los enlaces directos (URL oficial, enlace DOI o link a arXiv/repositorio académico) a esos papers o páginas de donde las has obtenido.
+${FUENTES_BIBLIO}
 
 **PARTE 2: La Neurona JSON (Sintetizador de Alejandría)**
 Inmediatamente después de haber desarrollado toda tu explicación magistral (NUNCA te saltes la PARTE 1), debes aislar ${flexible ? 'el núcleo (su corazón matemático, si es formal)' : 'el corazón matemático'} de lo que me acabas de explicar y generar una "Neurona JSON" compatible con mi sistema de simulación interactiva.
@@ -104,7 +112,7 @@ La Neurona JSON debe estar al final de tu respuesta, obligatoriamente envuelta e
 \`\`\`json
 {
     "id": "identificador_unico_snake_case_del_tema",
-    "cluster": "RAMA ACADÉMICA ESPECÍFICA y breve (máximo 3 palabras, nunca una frase). Ej: 'Estadística' [para markov, splines, estocásticos], 'Biometría y Demografía' [para Lee-Carter, mortalidad, supervivencia], 'Finanzas' [para Black-Scholes, derivados], 'Economía' [Macro/Micro], 'Matemáticas Puras'. Sé preciso con la rama de especialidad, no uses 'Matemáticas' como cajón de sastre para todo. Si en este mensaje aparece una línea 'CLÚSTERES EXISTENTES', reutiliza EXACTAMENTE uno de esos nombres cuando el concepto encaje; crea uno nuevo solo si ninguno encaja.",
+    "cluster": "${CLUSTER_DESC}",
     "nombre": "Nombre Formal del Concepto",
     "teoria": "${SI_FORMAL(flexible)}Explicación teórica EXTREMADAMENTE EXTENSA, profunda y rigurosa del concepto (mínimo 1000 palabras). Basándote en tu explicación magistral anterior, debes estructurar el contenido con subtítulos Markdown (##) abarcando: 1. Introducción Histórica/Contextual, 2. Fundamentos y Axiomas, 3. Desarrollo Matemático Profundo, 4. Aplicaciones y Limitaciones (las referencias bibliográficas se colocan por separado en el campo 'referencias', NO dentro de este texto de teoría). ESTÁ ESTRICTAMENTE PROHIBIDO usar fórmulas apelmazadas dentro de los párrafos (inline con $). Absolutamente TODAS las fórmulas y desarrollos deben ir segregados en bloques independientes usando $$ con líneas en blanco antes y después, y numeradas con \\\\tag{n}. El texto solo para leer, las matemáticas separadas en bloques.${SI_HISTORICO(flexible)}",
     "glosario": [
@@ -150,7 +158,7 @@ La Neurona JSON debe estar al final de tu respuesta, obligatoriamente envuelta e
 }
 \`\`\`
 
-${flexible ? TIPO_CONCEPTO + DOBLE_SALTO : ''}### REGLAS DE ORO:
+${flexible ? TIPO_CONCEPTO + DOBLE_SALTO + JSON_SEGURO + DOBLE_SALTO : ''}### REGLAS DE ORO:
 1. El campo \`codigo\` dentro de \`laboratorio\` debe ser un string de Python válido (con saltos de línea escapados \\n).
 2. ${flexible ? 'Si el concepto es FORMAL, debes' : 'Debes'} incluir SIEMPRE un array \`controles\` con los parámetros que el usuario podrá modificar en la UI. Define tantos como necesite el modelo para APRENDERLO explorando (suelen ser entre 2 y 8, hasta un máximo de 24): los que cambien de verdad el comportamiento, sin rellenar con controles que no enseñen nada ni dejar fuera una variable clave. Si son muchos, agrúpalos con el campo opcional \`"grupo"\` (p. ej. \`"grupo": "Mercado"\`). Cada rango (\`min\`/\`max\`) debe permitir ver los regímenes interesantes del modelo, no solo el valor típico. Por defecto son deslizables (\`min\`, \`max\`, \`step\`, \`default\` numéricos). También puedes usar \`"tipo": "checkbox"\` (\`default\`: true/false; en el código llega como True/False) o \`"tipo": "select"\` con \`"opciones": ["a", "b"]\` y un \`default\` de la lista (en el código llega como un literal de Python, p. ej. \`"a"\`).
 3. En el código Python, el valor de las variables controladas debe asignarse utilizando EXACTAMENTE las variables del array \`controles\` envueltas en llaves, por ejemplo \`param_1 = {param_1}\`.
@@ -168,8 +176,133 @@ export const PROMPT_EXPLORACION = exploracion(true);
 export const PROMPT_FUENTES_CLASICO = fuentes(false);
 export const PROMPT_EXPLORACION_CLASICO = exploracion(false);
 
+// ---------------------------------------------------------------------------------------------------------------------------
+// Modos del Sintetizador. «formal» es el prompt de siempre; «auto» deja que la IA decida entre los tres tipos; «historico» y «teorico» son
+// prompts propios (no el matemático con partes vacías) para conceptos sin formalismo: comparten idioma, citas, verificación y formato.
+export type ModoPrompt = 'auto' | 'formal' | 'historico' | 'teorico';
+export const MODOS_PROMPT: { id: ModoPrompt; etiqueta: string; ayuda: string }[] = [
+    { id: 'auto', etiqueta: 'Automático (la IA decide)', ayuda: 'La IA decide si el concepto es formal, histórico o teórico y adapta el contenido. Ante la duda lo trata como formal.' },
+    { id: 'formal', etiqueta: 'Formal (matemático, el clásico)', ayuda: 'Teoría de doctorado con desarrollo matemático, glosario, ejercicios y laboratorio. Es el prompt de siempre.' },
+    { id: 'historico', etiqueta: 'Histórico o conceptual', ayuda: 'Personas, épocas, escuelas e ideas: relato documentado, glosario y referencias. Sin ejercicios ni laboratorio.' },
+    { id: 'teorico', etiqueta: 'Teórico no matemático', ayuda: 'Marcos conceptuales o argumentales (economía conceptual, filosofía de la ciencia, metodología): teoría argumentada, glosario, casos de análisis y referencias. Sin laboratorio.' },
+];
+
+type NoFormal = { rol: string; nombre: string; explicacion: string; teoria: string; termino: string; definicion: string; ejercicios: string; reglaEjercicios: string };
+
+const NO_FORMAL: Record<'historico' | 'teorico', NoFormal> = {
+    historico: {
+        rol: 'Historiador de la ciencia y Catedrático Universitario, experto en cómo nacen y evolucionan las ideas',
+        nombre: 'Nombre Completo del Concepto, la Persona o la Escuela',
+        explicacion: 'Cuéntame el concepto con el rigor de un historiador profesional y un nivel de detalle propio de una tesis doctoral: el problema de la época, las personas y escuelas implicadas, la cronología de cómo se formó la idea, las controversias y su influencia posterior. Distingue siempre lo documentado de lo que los historiadores aún discuten. Usa fórmulas ($$ y $) solo si de verdad aclaran una idea; no inventes desarrollo matemático. No escatimes en extensión.',
+        teoria: 'Relato EXTENSO, riguroso y bien documentado del concepto (mínimo 1000 palabras), con lenguaje académico formal. Estructúralo con subtítulos Markdown (##): 1. El problema y el contexto de la época, 2. Protagonistas y escuelas, 3. Cronología y desarrollo de las ideas, 4. Controversias, influencia y legado (las referencias bibliográficas se colocan por separado en el campo «referencias», NO dentro de este texto). Nombra siempre al autor y el año en la frase (p. ej. «como defendió Laplace (1812)») y distingue lo documentado de lo discutido por los historiadores. Fórmulas SOLO si aclaran una idea, en bloques $$ independientes con líneas en blanco antes y después; no inventes desarrollos matemáticos para que parezca formal.',
+        termino: 'Persona, obra o término clave',
+        definicion: 'Quién fue o qué significa, con fechas y contexto, en una o dos frases claras.',
+        ejercicios: '    "ejercicios": [],',
+        reglaEjercicios: 'El array "ejercicios" va vacío ([]), como en el ejemplo: un concepto histórico no tiene problemas que resolver.',
+    },
+    teorico: {
+        rol: 'Catedrático Universitario y tutor académico de nivel de Doctorado, experto en teoría y análisis conceptual',
+        nombre: 'Nombre Completo del Concepto o del Marco Teórico',
+        explicacion: 'Explícame el concepto con el rigor de una tesis doctoral: el problema que aborda, sus supuestos y definiciones, el desarrollo del argumento o del marco conceptual, las posturas enfrentadas con sus autores, las críticas y alternativas, y sus aplicaciones o casos. Distingue hechos, supuestos y valoraciones. Usa fórmulas ($$ y $) solo si de verdad aclaran una idea. No escatimes en extensión.',
+        teoria: 'Explicación teórica EXTENSA, rigurosa y argumentada del concepto (mínimo 1000 palabras), con lenguaje académico formal. Estructúrala con subtítulos Markdown (##): 1. Planteamiento y problema que aborda, 2. Supuestos y conceptos fundamentales, 3. Desarrollo del argumento o del marco, 4. Críticas, alternativas y límites, 5. Aplicaciones y casos (las referencias bibliográficas se colocan por separado en el campo «referencias», NO dentro de este texto). Presenta las posturas enfrentadas con su autor y año, y distingue hechos, supuestos y valoraciones. Fórmulas SOLO si aclaran una idea, en bloques $$ independientes con líneas en blanco antes y después; no fuerces un tratamiento matemático.',
+        termino: 'Concepto clave',
+        definicion: 'Definición precisa, con el autor que la propuso y el marco en el que se usa.',
+        ejercicios: `    "ejercicios": [
+        {
+            "enunciado": "Caso o pregunta de análisis (comparar dos posturas, aplicar el marco a un caso concreto, evaluar un argumento).",
+            "solucion": "Respuesta razonada paso a paso, con los criterios usados y las posturas contrarias consideradas."
+        }
+    ],`,
+        reglaEjercicios: 'En "ejercicios" incluye entre 2 y 4 casos de análisis (no problemas de cálculo): comparar posturas, aplicar el marco a un caso concreto o evaluar un argumento, cada uno con su respuesta razonada.',
+    },
+};
+
+const jsonNoFormal = (m: NoFormal) => `{
+    "id": "identificador_unico_snake_case",
+    "cluster": "${CLUSTER_DESC}",
+    "nombre": "${m.nombre}",
+    "teoria": "${m.teoria}",
+    "glosario": [
+        {"termino": "${m.termino} 1", "definicion": "${m.definicion}"},
+        {"termino": "${m.termino} 2", "definicion": "${m.definicion}"}
+    ],
+${m.ejercicios}
+    "referencias": [
+        {
+            "titulo": "Título exacto del paper, libro o publicación académica real",
+            "autores": "Autor/es y año (ej: 'Hald, A. (1990)')",
+            "url": "https://doi.org/..., enlace directo oficial o la ficha de la publicación en Google Scholar (https://scholar.google.com/...) si no tiene DOI",
+            "nota": "Comentario conciso explicando qué hecho, idea, postura o desarrollo concreto se ha extraído de esta fuente para este apunte. Si la localizaste o la contrastaste en Google Scholar, indícalo aquí."
+        }
+    ],
+    "laboratorio": {"explicacion": "", "controles": [], "codigo": ""}
+}`;
+
+const SIN_LABORATORIO = 'El campo "laboratorio" va SIEMPRE vacío, tal como está en el ejemplo: este tipo de concepto no tiene simulación. No inventes controles ni código.';
+
+const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_LABORATORIO, JSON_SEGURO, IDIOMAS[IDIOMA_ACTUAL], VERIFICACION_OCULTA, SIN_MARCAS_CITA, ultima]
+    .map((r, i) => `${i + 1}. ${r}`).join('\n');
+
+const noFormalFuentes = (m: NoFormal) => `Actúa como un ${m.rol}. Tu objetivo es procesar el material académico que te proporciono y estructurarlo con rigor y profundidad en un formato JSON diseñado para "Alejandría", una app de conocimiento interactiva.
+
+Para el concepto más crítico del texto, debes generar un único objeto JSON que siga EXACTAMENTE esta estructura, sin añadir texto fuera del JSON (ni saludos ni explicaciones extra):
+
+\`\`\`json
+${jsonNoFormal(m)}
+\`\`\`
+
+### REGLAS DE ORO:
+${reglasNoFormal(m, 'Devuelve ÚNICAMENTE el bloque JSON.')}`;
+
+const noFormalExploracion = (m: NoFormal) => `Actúa como un ${m.rol}, de nivel de Doctorado (PhD).
+Quiero que me expliques a fondo y con extremo rigor el siguiente concepto: **[INSERTA EL CONCEPTO AQUÍ]**.
+
+Tu respuesta debe estructurarse obligatoriamente en **DOS PARTES SECUENCIALES**:
+
+**PARTE 1: Explicación Magistral**
+${m.explicacion}
+
+${FUENTES_BIBLIO}
+
+**PARTE 2: La Neurona JSON (Sintetizador de Alejandría)**
+Inmediatamente después de haber desarrollado toda tu explicación (NUNCA te saltes la PARTE 1), debes aislar el núcleo de lo que me acabas de explicar y generar una "Neurona JSON" compatible con mi app de conocimiento interactiva.
+
+La Neurona JSON debe estar al final de tu respuesta, obligatoriamente envuelta en un bloque \`\`\`json y seguir EXACTAMENTE esta estructura:
+
+\`\`\`json
+${jsonNoFormal(m)}
+\`\`\`
+
+### REGLAS DE ORO:
+${reglasNoFormal(m, 'SECUENCIA OBLIGATORIA: tu respuesta DEBE contener AMBAS partes en este orden estricto. Primero escribe la PARTE 1 completa (la explicación extensa con sus fuentes verificadas, enlaces directos y la nota de extracción de cada una) y, solo al final, la PARTE 2 envuelta en su bloque json. Está TERMINANTEMENTE PROHIBIDO devolver únicamente el bloque JSON o saltarse la explicación inicial.')}`;
+
+/** Prompt de la modalidad «Fuentes propias» (material que pegas junto al prompt) para cada modo. */
+export const promptFuentes = (modo: ModoPrompt): string =>
+    modo === 'formal' ? PROMPT_FUENTES_CLASICO : modo === 'auto' ? PROMPT_FUENTES : noFormalFuentes(NO_FORMAL[modo]);
+/** Prompt de la modalidad «Exploración libre» (le das solo el concepto a la IA) para cada modo. */
+export const promptExploracion = (modo: ModoPrompt): string =>
+    modo === 'formal' ? PROMPT_EXPLORACION_CLASICO : modo === 'auto' ? PROMPT_EXPLORACION : noFormalExploracion(NO_FORMAL[modo]);
+
 // Añade, justo antes de las reglas, los clústeres que ya existen para que la IA reutilice sus nombres exactos.
 export const conClustersExistentes = (prompt: string, clusters: string[]) =>
     clusters.length === 0 ? prompt : prompt.replace('### REGLAS DE ORO:', () => `CLÚSTERES EXISTENTES EN MI SISTEMA: ${clusters.join(', ')}
 
 ### REGLAS DE ORO:`);
+
+const CLAVE_MODO = 'alejandria.modoPrompt';
+const esModo = (v: unknown): v is ModoPrompt => MODOS_PROMPT.some(m => m.id === v);
+
+/** Modo elegido en el Sintetizador, recordado en este ordenador. La casilla «prompt clásico» de la 0.3.0 equivale a «formal». */
+export function modoGuardado(almacen?: Pick<Storage, 'getItem'>): ModoPrompt {
+    try {
+        const a = almacen ?? localStorage;
+        const v = a.getItem(CLAVE_MODO);
+        if (esModo(v)) return v;
+        if (a.getItem('alejandria.promptClasico') === '1') return 'formal';
+    } catch { /* sin almacenamiento: vale «automático» */ }
+    return 'auto';
+}
+
+export function guardarModo(modo: ModoPrompt, almacen?: Pick<Storage, 'setItem'>): void {
+    try { (almacen ?? localStorage).setItem(CLAVE_MODO, modo); } catch { /* sin almacenamiento: vale solo para esta sesión */ }
+}

@@ -2,7 +2,7 @@
 
 > **Fuente de verdad:** `frontend/src/utils/prompts.ts` (son los prompts que copian los botones de la app). Este documento es una copia para uso manual: si cambias uno, cambia el otro. Los botones de la app añaden además, justo antes de las "REGLAS DE ORO", la línea `CLÚSTERES EXISTENTES EN MI SISTEMA: A, B, C` para que la IA reutilice esos nombres; si copias de aquí, puedes añadirla a mano.
 
-Este documento contiene dos modalidades de Prompt Maestro adaptadas a un **Nivel de Doctorado (PhD)**. Distinguen el tipo de concepto (regla «TIPO DE CONCEPTO»): los formales se tratan como siempre y los históricos o conceptuales no se fuerzan a ser matemáticos. La app conserva además el prompt «clásico» (todo es matemático) como opción en el Sintetizador.
+Este documento contiene dos modalidades de Prompt Maestro adaptadas a un **Nivel de Doctorado (PhD)**. Los prompts de abajo son los del modo **Automático** del Sintetizador: la IA decide entre tres tipos de concepto (regla «TIPO DE CONCEPTO»): formal (como siempre), histórico o conceptual, y teórico no matemático. La app permite además elegir el modo a mano en un desplegable: **Formal** (el prompt clásico de siempre, todo como matemático), **Histórico o conceptual** y **Teórico no matemático**. Estos dos últimos son prompts propios que solo viven en `frontend/src/utils/prompts.ts` (no están copiados aquí); cópialos desde la app.
 - Utiliza la **Modalidad 1** cuando tengas tus propios apuntes o papers (fuentes cerradas).
 - Utiliza la **Modalidad 2** cuando quieras explorar un concepto desde cero pidiéndoselo a un agente de IA externo (como DeepSeek, Claude o ChatGPT).
 

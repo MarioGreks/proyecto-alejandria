@@ -3,7 +3,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Text, Billboard } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, conClustersExistentes } from '../utils/prompts';
+import { MODOS_PROMPT, conClustersExistentes, guardarModo, modoGuardado, promptExploracion, promptFuentes } from '../utils/prompts';
+import type { ModoPrompt } from '../utils/prompts';
 import { API } from '../utils/api';
 import Ajustes from './Ajustes';
 import ProcesandoNeurona from './ProcesandoNeurona';
@@ -545,9 +546,9 @@ const CameraController = ({ resetFlag, targetPosition }: { resetFlag: number, ta
 
 export default function Universe() {
     const [resetCamera, setResetCamera] = useState(0);
-    // Prompt «clásico»: trata todo concepto como matemático (el de antes). Por defecto, el que distingue formal de histórico.
-    const [promptClasico, setPromptClasico] = useState(() => { try { return localStorage.getItem('alejandria.promptClasico') === '1'; } catch { return false; } });
-    const cambiarPromptClasico = (v: boolean) => { setPromptClasico(v); try { localStorage.setItem('alejandria.promptClasico', v ? '1' : '0'); } catch { /* sin almacenamiento: vale solo para esta sesión */ } };
+    // Tipo de concepto del Prompt Maestro (automático, formal, histórico o teórico): se recuerda en este ordenador.
+    const [modoPrompt, setModoPrompt] = useState<ModoPrompt>(() => modoGuardado());
+    const cambiarModoPrompt = (m: ModoPrompt) => { setModoPrompt(m); guardarModo(m); };
     const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [realNodes, setRealNodes] = useState<any[]>([]);
@@ -705,12 +706,19 @@ export default function Universe() {
                     {procesando && <ProcesandoNeurona p={procesando} />}
                     {/* Mientras se procesa solo se ve el pilar: el formulario se oculta */}
                     <div style={{ display: procesando ? 'none' : 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--t-suave)', fontSize: 13 }}>
+                            <span>Tipo de concepto del prompt:</span>
+                            <select className="t-campo" value={modoPrompt} onChange={(e) => cambiarModoPrompt(e.target.value as ModoPrompt)} style={{ padding: 5 }}>
+                                {MODOS_PROMPT.map(m => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
+                            </select>
+                            <span style={{ lineHeight: 1.5 }}>{MODOS_PROMPT.find(m => m.id === modoPrompt)?.ayuda}</span>
+                        </label>
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <button
                                 className="t-btn"
                                 onClick={(e) => {
                                     const btn = e.currentTarget;
-                                    copyToClipboard(conClustersExistentes(promptClasico ? PROMPT_FUENTES_CLASICO : PROMPT_FUENTES, clustersExistentes));
+                                    copyToClipboard(conClustersExistentes(promptFuentes(modoPrompt), clustersExistentes));
                                     const originalText = btn.innerText;
                                     btn.innerText = "[ ¡Copiado! ]";
                                     setTimeout(() => { btn.innerText = originalText; }, 2000);
@@ -722,7 +730,7 @@ export default function Universe() {
                                 className="t-btn"
                                 onClick={(e) => {
                                     const btn = e.currentTarget;
-                                    copyToClipboard(conClustersExistentes(promptClasico ? PROMPT_EXPLORACION_CLASICO : PROMPT_EXPLORACION, clustersExistentes));
+                                    copyToClipboard(conClustersExistentes(promptExploracion(modoPrompt), clustersExistentes));
                                     const originalText = btn.innerText;
                                     btn.innerText = "[ ¡Copiado! ]";
                                     setTimeout(() => { btn.innerText = originalText; }, 2000);
@@ -731,10 +739,6 @@ export default function Universe() {
                                 [ Copiar: Exploración libre ]
                             </button>
                         </div>
-                        <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--t-suave)', fontSize: 13, cursor: 'pointer' }} title="El prompt normal distingue conceptos formales de históricos o conceptuales; el clásico pide siempre teoría matemática, ejercicios y laboratorio.">
-                            <input type="checkbox" checked={promptClasico} onChange={(e) => cambiarPromptClasico(e.target.checked)} />
-                            Usar el prompt clásico (todo concepto como matemático)
-                        </label>
 
                         <p style={{ color: 'var(--t-suave)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
                             Pega aquí la respuesta cruda en JSON (o bloque markdown) generada por tu Prompt Maestro. El núcleo lo asimilará y reconfigurará la red neuronal.

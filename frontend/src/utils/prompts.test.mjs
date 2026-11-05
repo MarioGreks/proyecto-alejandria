@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, conClustersExistentes } from './prompts.ts';
+import {
+    PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, MODOS_PROMPT, conClustersExistentes,
+    guardarModo, modoGuardado, promptExploracion, promptFuentes,
+} from './prompts.ts';
 
 test('la exploración libre obliga a consultar Google Scholar y ambos prompts admiten su ficha como URL de la referencia', () => {
     assert.match(PROMPT_EXPLORACION, /consulta como mínimo \*\*Google Scholar\*\*/);
@@ -36,7 +39,7 @@ test('ambos prompts piden no dejar marcas de cita como [reference:3] en los text
 test('el prompt normal distingue formal de histórico (ante la duda, formal) y el clásico sigue siendo el de antes', () => {
     for (const [normal, clasico] of [[PROMPT_FUENTES, PROMPT_FUENTES_CLASICO], [PROMPT_EXPLORACION, PROMPT_EXPLORACION_CLASICO]]) {
         assert.match(normal, /TIPO DE CONCEPTO/);
-        assert.match(normal, /Si dudas entre formal e histórico, elige FORMAL/);
+        assert.match(normal, /Si dudas entre formal e histórico o teórico, elige FORMAL/);
         assert.match(normal, /"ejercicios" va como \[\]/);
         assert.match(normal, /Si el concepto es FORMAL, debes incluir SIEMPRE un array/);
         assert.ok(!clasico.includes('TIPO DE CONCEPTO') && !clasico.includes('HISTÓRICO'));      // sin la regla: todo es matemático
@@ -50,4 +53,104 @@ test('los clústeres existentes se añaden entre el tipo de concepto y las regla
     const p = conClustersExistentes(PROMPT_FUENTES, ['Estadística']);
     const i = p.indexOf('TIPO DE CONCEPTO: antes'), j = p.indexOf('CLÚSTERES EXISTENTES EN MI SISTEMA'), k = p.indexOf('### REGLAS DE ORO:');
     assert.ok(i > 0 && i < j && j < k);
+});
+
+const MODOS = ['auto', 'formal', 'historico', 'teorico'];
+const bloquesJson = (p) => [...p.matchAll(/```json\n([\s\S]*?)```/g)].map(m => m[1]);
+
+test('hay cuatro modos, sin repetir, y «formal» es el prompt clásico de siempre', () => {
+    assert.deepEqual(MODOS_PROMPT.map(m => m.id), MODOS);
+    assert.ok(MODOS_PROMPT.every(m => m.etiqueta && m.ayuda));
+    assert.equal(promptFuentes('formal'), PROMPT_FUENTES_CLASICO);
+    assert.equal(promptExploracion('formal'), PROMPT_EXPLORACION_CLASICO);
+    assert.equal(promptFuentes('auto'), PROMPT_FUENTES);
+    assert.equal(promptExploracion('auto'), PROMPT_EXPLORACION);
+});
+
+test('todos los modos y modalidades llevan lo común: JSON, reglas, castellano, citas y verificación', () => {
+    for (const modo of MODOS) for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+        assert.ok(p.includes('```json') && p.includes('### REGLAS DE ORO:'), modo);
+        assert.match(p, /castellano de España/);
+        assert.match(p, /NO dejes las marcas de cita/);
+        assert.match(p, /VERIFICACIÓN DOBLE OCULTA/);
+        assert.ok(!p.includes('undefined') && !p.includes('[object'), modo);
+        assert.ok(p.includes('Google Scholar'), modo);
+    }
+});
+
+test('el JSON de ejemplo de cada prompt es JSON válido y tiene todos los campos (es lo que la IA copia)', () => {
+    for (const modo of MODOS) for (const [nombre, p] of [['fuentes', promptFuentes(modo)], ['exploracion', promptExploracion(modo)]]) {
+        const bloques = bloquesJson(p);
+        assert.ok(bloques.length >= 1, `${modo}/${nombre}: sin bloque json`);
+        const ejemplo = JSON.parse(bloques[bloques.length - 1]);
+        for (const campo of ['id', 'cluster', 'nombre', 'teoria', 'glosario', 'ejercicios', 'referencias', 'laboratorio'])
+            assert.ok(campo in ejemplo, `${modo}/${nombre}: falta ${campo}`);
+    }
+});
+
+test('histórico y teórico no piden laboratorio ni gráficos; el histórico no pide ejercicios y el teórico pide casos de análisis', () => {
+    for (const modo of ['historico', 'teorico']) for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+        const ejemplo = JSON.parse(bloquesJson(p).at(-1));
+        assert.deepEqual(ejemplo.laboratorio, { explicacion: '', controles: [], codigo: '' });
+        assert.match(p, /El campo "laboratorio" va SIEMPRE vacío/);
+        assert.ok(!p.includes('matplotlib') && !p.includes('xticks') && !p.includes('controles` con los parámetros'));
+        assert.ok(!/mínimo 1000 palabras[^"]*Desarrollo Matemático Profundo/.test(p));      // no arrastran la estructura matemática
+    }
+    for (const p of [promptFuentes('historico'), promptExploracion('historico')]) {
+        assert.deepEqual(JSON.parse(bloquesJson(p).at(-1)).ejercicios, []);
+        assert.match(p, /Cronología y desarrollo de las ideas/);
+    }
+    for (const p of [promptFuentes('teorico'), promptExploracion('teorico')]) {
+        assert.equal(JSON.parse(bloquesJson(p).at(-1)).ejercicios.length, 1);
+        assert.match(p, /casos de análisis/);
+        assert.match(p, /Críticas, alternativas y límites/);
+    }
+});
+
+test('la modalidad de fuentes termina en la regla de formato y la de exploración exige las dos partes en orden', () => {
+    for (const modo of ['historico', 'teorico']) {
+        assert.ok(promptFuentes(modo).trimEnd().endsWith('Devuelve ÚNICAMENTE el bloque JSON.'));
+        const e = promptExploracion(modo);
+        assert.ok(e.includes('PARTE 1') && e.includes('PARTE 2') && e.includes('SECUENCIA OBLIGATORIA'));
+        assert.ok(e.indexOf('PARTE 1') < e.indexOf('PARTE 2'));
+        assert.match(e, /consulta como mínimo \*\*Google Scholar\*\*/);
+    }
+});
+
+test('el JSON válido se pide en todos los modos salvo en el clásico, que se queda idéntico al de siempre', () => {
+    for (const modo of ['auto', 'historico', 'teorico']) for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+        assert.match(p, /JSON VÁLIDO/);
+        assert.ok(p.includes('Escapa con \\" las comillas dobles'));
+    }
+    for (const p of [promptFuentes('formal'), promptExploracion('formal')]) assert.ok(!p.includes('JSON VÁLIDO'));
+});
+
+test('el modo automático conoce los tres tipos', () => {
+    for (const p of [promptFuentes('auto'), promptExploracion('auto')]) {
+        assert.match(p, /- FORMAL:/);
+        assert.match(p, /- HISTÓRICO O CONCEPTUAL:/);
+        assert.match(p, /- TEÓRICO NO MATEMÁTICO:/);
+    }
+});
+
+test('los clústeres existentes se añaden antes de las reglas en todos los modos', () => {
+    for (const modo of MODOS) for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+        const c = conClustersExistentes(p, ['Estadística', 'Finanzas']);
+        const i = c.indexOf('CLÚSTERES EXISTENTES EN MI SISTEMA: Estadística, Finanzas'), j = c.indexOf('### REGLAS DE ORO:');
+        assert.ok(i > 0 && i < j, modo);
+        assert.equal(conClustersExistentes(p, []), p);
+    }
+});
+
+test('el modo se recuerda por ordenador, vale «automático» por defecto y respeta la casilla de la 0.3.0', () => {
+    const memoria = (datos) => ({ getItem: (k) => datos[k] ?? null, setItem: (k, v) => { datos[k] = v; } });
+    assert.equal(modoGuardado(memoria({})), 'auto');
+    assert.equal(modoGuardado(memoria({ 'alejandria.modoPrompt': 'teorico' })), 'teorico');
+    assert.equal(modoGuardado(memoria({ 'alejandria.modoPrompt': 'inventado' })), 'auto');           // dato corrupto
+    assert.equal(modoGuardado(memoria({ 'alejandria.promptClasico': '1' })), 'formal');              // casilla «clásico» de la 0.3.0
+    assert.equal(modoGuardado(memoria({ 'alejandria.promptClasico': '1', 'alejandria.modoPrompt': 'historico' })), 'historico');
+    const datos = {}; guardarModo('historico', memoria(datos));
+    assert.equal(datos['alejandria.modoPrompt'], 'historico');
+    assert.equal(modoGuardado({ getItem: () => { throw new Error('sin almacenamiento'); } }), 'auto');
+    assert.doesNotThrow(() => guardarModo('formal', { setItem: () => { throw new Error('lleno'); } }));
 });

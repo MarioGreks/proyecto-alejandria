@@ -510,6 +510,57 @@ class TestJsonTolerante(unittest.TestCase):
         with self.assertRaises(ValueError):
             main.cargar_json_tolerante('{"t": ')
 
+    def test_comillas_sin_escapar_dentro_de_un_texto_se_conservan(self):
+        # prosa histórica con citas textuales: la IA no escapa las comillas dobles
+        d = main.cargar_json_tolerante('{"t": "Escribió: "incluso el más necio lo sabe" y lo llamó "teorema de oro". Fin.", "u": 1}')
+        self.assertEqual(d, {"t": 'Escribió: "incluso el más necio lo sabe" y lo llamó "teorema de oro". Fin.', "u": 1})
+        d = main.cargar_json_tolerante('{"a": [{"x": "dijo "hola"", "y": "ok"}], "b": "con \\\\lambda y "citas""}')
+        self.assertEqual(d["a"][0], {"x": 'dijo "hola"', "y": "ok"})
+        self.assertEqual(d["b"], 'con \\lambda y "citas"')
+
+    def test_una_coma_que_falta_entre_elementos_se_repone(self):
+        d = main.cargar_json_tolerante('{\n "r": [\n  {"a": 1}\n  {"a": 2}\n ],\n "s": "x"\n "t": true\n "n": 3\n "z": null\n}')
+        self.assertEqual(d, {"r": [{"a": 1}, {"a": 2}], "s": "x", "t": True, "n": 3, "z": None})
+
+    def test_la_reparacion_no_inventa_json_valido_de_la_nada(self):
+        # (dos textos seguidos, como "a" "b", se leen como un solo texto con comillas dentro: es justo lo que se repara)
+        for roto in ('{"t": [1 2]}', '{"t" "x"}', '{"t": "x"', '{"t": tru}'):
+            with self.subTest(roto=roto), self.assertRaises(ValueError):
+                main.cargar_json_tolerante(roto)
+
+    def test_la_ruta_de_inyeccion_acepta_una_neurona_historica_con_json_imperfecto(self):
+        """Neurona histórica como la pide el prompt nuevo (sin ejercicios ni laboratorio), con comillas sin escapar y una coma que falta."""
+        client = TestClient(main.app, base_url="http://127.0.0.1")
+        raw = '''```json
+{
+    "id": "hist_bernoulli_x",
+    "cluster": "Estadística",
+    "nombre": "Bernoulli y el origen de la probabilidad",
+    "teoria": "## Contexto\\n\\nBernoulli escribió: "cuantas más observaciones, menor el riesgo" en 1713.\\n\\n## Legado\\n\\nSu "teorema de oro" abrió la inferencia.",
+    "glosario": [
+        {"termino": "Ars Conjectandi", "definicion": "Obra póstuma de Jacob Bernoulli (1713)."}
+    ],
+    "ejercicios": [],
+    "referencias": [
+        {"titulo": "Ars Conjectandi", "autores": "Bernoulli, J. (1713)", "url": "https://scholar.google.com/scholar?q=Ars+Conjectandi", "nota": "Origen."}
+        {"titulo": "A History of Probability and Statistics", "autores": "Hald, A. (1990)", "url": "https://scholar.google.com/scholar?q=Hald", "nota": "Contexto[reference:3]."}
+    ],
+    "laboratorio": {"explicacion": "", "controles": [], "codigo": ""}
+}
+```'''
+        try:
+            r = client.post("/api/node", json={"raw_json": raw})
+            self.assertEqual(r.status_code, 200, r.text)
+            n = client.get("/node/hist_bernoulli_x").json()
+            self.assertIn('Bernoulli escribió: "cuantas más observaciones, menor el riesgo" en 1713.', n["teoria"])
+            self.assertIn('Su "teorema de oro" abrió la inferencia.', n["teoria"])
+            self.assertEqual(n["ejercicios"], [])
+            self.assertEqual(n["laboratorio"].get("codigo", ""), "")        # sin laboratorio: el panel ofrece crearlo
+            self.assertEqual([x["autores"] for x in n["referencias"]], ["Bernoulli, J. (1713)", "Hald, A. (1990)"])
+            self.assertEqual(n["referencias"][1]["nota"], "Contexto.")      # y la marca de cita se limpia igualmente
+        finally:
+            client.delete("/api/node/hist_bernoulli_x")
+
     def test_la_ruta_de_inyeccion_acepta_latex_sin_duplicar(self):
         client = TestClient(main.app, base_url="http://127.0.0.1")
         raw = r'{"id": "json_tol_x", "nombre": "N", "teoria": "Sea $\lambda$ y $\frac{1}{2}$", "cluster": "X"}'
