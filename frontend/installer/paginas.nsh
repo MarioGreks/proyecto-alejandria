@@ -50,6 +50,7 @@ Var EdApp
 Var EdMotor
 Var EdDatos
 Var EdModelos
+Var EdOllama
 
 Var UnaCarpeta        ; 1 = todo en una sola carpeta (cada parte en su subcarpeta)
 Var LblUna
@@ -75,7 +76,7 @@ Var LblUna
   FunctionEnd
 !macroend
 
-; $0 = la carpeta elegida: cada parte va en su subcarpeta (la de los modelos se guarda en $RutaModelos, que se enseña en la página de componentes).
+; $0 = la carpeta elegida: cada parte va en su subcarpeta (las de Ollama y sus modelos se guardan en $RutaOllama y $RutaModelos, que se enseñan en la página de componentes).
 Function AplicarCarpetaUnica
   StrCpy $R0 $0
   StrCpy $R1 "Aplicacion"
@@ -93,6 +94,10 @@ Function AplicarCarpetaUnica
   StrCpy $R1 "Modelos"
   Call ComponerRuta
   StrCpy $RutaModelos $R0
+  StrCpy $R0 $0
+  StrCpy $R1 "Ollama"
+  Call ComponerRuta
+  StrCpy $RutaOllama $R0
 FunctionEnd
 
 Function AlternarUna
@@ -116,6 +121,7 @@ FunctionEnd
 !insertmacro DefExaminar ExaminarMotor $EdMotor "Carpeta del motor (Python y librerías)" "Motor" 1
 !insertmacro DefExaminar ExaminarDatos $EdDatos "Carpeta de tus neuronas" "Neuronas" 1
 !insertmacro DefExaminar ExaminarModelos $EdModelos "Carpeta de los modelos de Ollama" "Modelos" 0
+!insertmacro DefExaminar ExaminarOllama $EdOllama "Carpeta del programa Ollama" "Ollama" 0
 
 Function PgRutas
   ${If} $Actualizando = 1
@@ -168,6 +174,8 @@ Var LblM2
 Var LblEsc
 Var TxtModelos
 Var BtnModelos
+Var TxtOllama
+Var BtnOllama
 
 Function RefrescarComponentes
   ${If} $OllamaYa = 1
@@ -197,12 +205,18 @@ Function RefrescarComponentes
   ${Else}
     ${NSD_SetText} $LblEsc "[ ] Crear un acceso directo en el escritorio"
   ${EndIf}
-  ; la carpeta de modelos solo se elige si se instala Ollama
+  ; las carpetas de Ollama y de sus modelos solo se eligen si se instala Ollama
   ${If} $OllamaSi = 1
+    ShowWindow $TxtOllama ${SW_SHOW}
+    ShowWindow $EdOllama ${SW_SHOW}
+    ShowWindow $BtnOllama ${SW_SHOW}
     ShowWindow $TxtModelos ${SW_SHOW}
     ShowWindow $EdModelos ${SW_SHOW}
     ShowWindow $BtnModelos ${SW_SHOW}
   ${Else}
+    ShowWindow $TxtOllama ${SW_HIDE}
+    ShowWindow $EdOllama ${SW_HIDE}
+    ShowWindow $BtnOllama ${SW_HIDE}
     ShowWindow $TxtModelos ${SW_HIDE}
     ShowWindow $EdModelos ${SW_HIDE}
     ShowWindow $BtnModelos ${SW_HIDE}
@@ -276,20 +290,31 @@ Function PgComponentes
   !insertmacro Casilla $LblM2 50 198 620 22 0 "" ElegirM2
   !insertmacro Casilla $LblM0 50 222 620 22 0 "" ElegirM0
 
-  !insertmacro Texto $TxtModelos 30 262 640 18 "Carpeta de los modelos de Ollama (ocupan varios GB):" ${C_BLANCO} $Mono
-  !insertmacro Campo $EdModelos 30 284 520 24 "$RutaModelos"
-  !insertmacro BotonSuave $BtnModelos 560 284 110 24 "[ Examinar ]" ExaminarModelos
+  !insertmacro Texto $TxtOllama 30 258 640 18 "Carpeta del programa Ollama:" ${C_BLANCO} $Mono
+  !insertmacro Campo $EdOllama 30 280 520 24 "$RutaOllama"
+  !insertmacro BotonSuave $BtnOllama 560 280 110 24 "[ Examinar ]" ExaminarOllama
 
-  !insertmacro Casilla $LblEsc 30 340 640 22 0 "" AlternarEscritorio
-  !insertmacro Texto $0 30 380 640 40 "Se añade siempre al menú Inicio. Todo se puede cambiar después en Ajustes." ${C_TENUE} $Mono
+  !insertmacro Texto $TxtModelos 30 318 640 18 "Carpeta de los modelos de Ollama (ocupan varios GB):" ${C_BLANCO} $Mono
+  !insertmacro Campo $EdModelos 30 340 520 24 "$RutaModelos"
+  !insertmacro BotonSuave $BtnModelos 560 340 110 24 "[ Examinar ]" ExaminarModelos
+
+  !insertmacro Casilla $LblEsc 30 396 640 22 0 "" AlternarEscritorio
+  !insertmacro Texto $0 30 436 640 40 "Se añade siempre al menú Inicio. Todo se puede cambiar después en Ajustes." ${C_TENUE} $Mono
   Call RefrescarComponentes
   !insertmacro PieConAtras "[ Siguiente > ]"
   nsDialogs::Show
 FunctionEnd
 
 Function PgComponentesSalir
+  ${NSD_GetText} $EdOllama $RutaOllama
   ${NSD_GetText} $EdModelos $RutaModelos
   ${If} $OllamaSi = 1
+    !insertmacro ValidarRuta $RutaOllama "Carpeta del programa Ollama"
+    StrLen $0 $RutaOllama
+    ${If} $0 < 4
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Carpeta del programa Ollama: elige una carpeta, no la raíz de una unidad (por ejemplo D:\Ollama)."
+      Abort
+    ${EndIf}
     !insertmacro ValidarRuta $RutaModelos "Carpeta de los modelos de Ollama"
   ${EndIf}
 FunctionEnd
@@ -335,8 +360,10 @@ Function PgResumen
     IntOp $DiscoMB $DiscoMB + 2000
     !insertmacro Texto $0 30 214 130 18 "Ollama" ${C_VERDE} $Mono
     !insertmacro Texto $0 170 214 500 18 "se instalará (descarga de ~1,6 GB)" ${C_DORADO} $Mono
-    !insertmacro Texto $0 30 240 130 18 "Modelos en" ${C_VERDE} $Mono
-    !insertmacro TextoRuta $0 170 240 500 18 "$RutaModelos" ${C_BLANCO} $Mono
+    !insertmacro Texto $0 30 240 130 18 "Ollama en" ${C_VERDE} $Mono
+    !insertmacro TextoRuta $0 170 240 500 18 "$RutaOllama" ${C_BLANCO} $Mono
+    !insertmacro Texto $0 30 266 130 18 "Modelos en" ${C_VERDE} $Mono
+    !insertmacro TextoRuta $0 170 266 500 18 "$RutaModelos" ${C_BLANCO} $Mono
   ${Else}
     !insertmacro Texto $0 30 214 130 18 "Ollama" ${C_VERDE} $Mono
     !insertmacro Texto $0 170 214 500 18 "no se instala (puedes hacerlo más tarde)" ${C_BLANCO} $Mono
@@ -344,16 +371,16 @@ Function PgResumen
   ${If} $ModeloSel = 1
     IntOp $DescargaMB $DescargaMB + 1000
     IntOp $DiscoMB $DiscoMB + 1000
-    !insertmacro Texto $0 30 266 130 18 "Modelo" ${C_VERDE} $Mono
-    !insertmacro Texto $0 170 266 500 18 "qwen2.5:1.5b (~1 GB)" ${C_DORADO} $Mono
+    !insertmacro Texto $0 30 292 130 18 "Modelo" ${C_VERDE} $Mono
+    !insertmacro Texto $0 170 292 500 18 "qwen2.5:1.5b (~1 GB)" ${C_DORADO} $Mono
   ${ElseIf} $ModeloSel = 2
     IntOp $DescargaMB $DescargaMB + 2300
     IntOp $DiscoMB $DiscoMB + 2300
-    !insertmacro Texto $0 30 266 130 18 "Modelo" ${C_VERDE} $Mono
-    !insertmacro Texto $0 170 266 500 18 "phi3:mini (~2,2 GB)" ${C_DORADO} $Mono
+    !insertmacro Texto $0 30 292 130 18 "Modelo" ${C_VERDE} $Mono
+    !insertmacro Texto $0 170 292 500 18 "phi3:mini (~2,2 GB)" ${C_DORADO} $Mono
   ${Else}
-    !insertmacro Texto $0 30 266 130 18 "Modelo" ${C_VERDE} $Mono
-    !insertmacro Texto $0 170 266 500 18 "ninguno por ahora" ${C_BLANCO} $Mono
+    !insertmacro Texto $0 30 292 130 18 "Modelo" ${C_VERDE} $Mono
+    !insertmacro Texto $0 170 292 500 18 "ninguno por ahora" ${C_BLANCO} $Mono
   ${EndIf}
 
   StrCpy $R0 $DescargaMB

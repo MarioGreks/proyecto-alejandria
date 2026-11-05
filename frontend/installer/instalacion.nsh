@@ -75,6 +75,7 @@ Function LanzarPowerShell
   FileWriteUTF16LE $0 "Config=$RutaConfig$\r$\n"
   FileWriteUTF16LE $0 "Datos=$RutaDatos$\r$\n"
   FileWriteUTF16LE $0 "Modelos=$RutaModelos$\r$\n"
+  FileWriteUTF16LE $0 "RutaOllama=$RutaOllama$\r$\n"
   FileWriteUTF16LE $0 "Ollama=$OllamaSi$\r$\n"
   FileWriteUTF16LE $0 "Modelo=$ModeloNombre$\r$\n"
   FileWriteUTF16LE $0 "Prueba=$PruebaNum$\r$\n"

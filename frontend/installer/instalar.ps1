@@ -11,6 +11,7 @@ param(
     [string]$Config = '',                       # dónde escribir instalacion.json (rutas elegidas, que lee la app)
     [string]$Datos = '',
     [string]$Modelos = '',
+    [string]$RutaOllama = '',                   # carpeta donde instalar el programa Ollama (/DIR de su instalador); vacía = la de siempre, %LOCALAPPDATA%\Programs\Ollama
     [int]$Ollama = 0,
     [string]$Modelo = '',
     [int]$Prueba = 0,                           # 1: de Ollama solo se bajan 50 MB (sin instalar ni tocar variables de entorno); 2: igual, aunque Ollama ya esté instalado
@@ -293,7 +294,15 @@ try {
     }
 
     # ---------------------------------------------------------------- Ollama (opcional)
-    $ollamaExe = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
+    $ollamaPorDefecto = Join-Path $env:LOCALAPPDATA 'Programs\Ollama'
+    if ($RutaOllama) {                                   # una carpeta elegida por el usuario: ruta completa y sin caracteres que rompan la línea de órdenes del instalador de Ollama
+        if ($RutaOllama -notmatch '^[A-Za-z]:\\' -or $RutaOllama -match '["<>|*?\r\n]') { throw "La carpeta de Ollama no es válida: $RutaOllama" }
+        $RutaOllama = $RutaOllama.TrimEnd('\')
+        if ($RutaOllama -notmatch '^[A-Za-z]:\\.') { throw "Elige una carpeta para Ollama, no la raíz de una unidad: $RutaOllama" }
+    }
+    $carpetaOllama = if ($RutaOllama) { $RutaOllama } else { $ollamaPorDefecto }
+    $ollamaExe = Join-Path $carpetaOllama 'ollama.exe'
+    if (-not (Test-Path $ollamaExe)) { $ollamaExe = Join-Path $ollamaPorDefecto 'ollama.exe' }
     if (-not (Test-Path $ollamaExe)) { $c = Get-Command ollama.exe -ErrorAction SilentlyContinue; if ($c) { $ollamaExe = $c.Source } }
     if ($Ollama) {
         if ((Test-Path $ollamaExe) -and $Prueba -lt 2) {      # -Prueba 2: se ignora el Ollama que ya hay para ver la descarga
@@ -312,11 +321,14 @@ try {
                 if ($firma.Status -ne 'Valid' -or $firma.SignerCertificate.Subject -notmatch 'Ollama') { Remove-Item $descarga -Force; throw 'El instalador de Ollama no tiene una firma válida de Ollama: se ha descartado por seguridad.' }
                 if ($Modelos) { [Environment]::SetEnvironmentVariable('OLLAMA_MODELS', $Modelos, 'User'); $env:OLLAMA_MODELS = $Modelos }
                 Publicar 'trabajando' 'Firma verificada; instalando Ollama...'
-                $p = Start-Process -FilePath $descarga -ArgumentList '/SILENT', '/NORESTART' -PassThru
+                $argumentosOllama = @('/SILENT', '/NORESTART')
+                if ($RutaOllama -and $RutaOllama -ne $ollamaPorDefecto) { $argumentosOllama += "/DIR=`"$RutaOllama`"" }      # /DIR: el instalador de Ollama lo documenta; sin él va a la carpeta de siempre
+                Anotar "Instalando Ollama con: $($argumentosOllama -join ' ')"
+                $p = Start-Process -FilePath $descarga -ArgumentList $argumentosOllama -PassThru
                 Esperar $p { $avance.ollama = 99 }
                 Remove-Item $descarga -Force
-                $ollamaExe = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
-                if (-not (Test-Path $ollamaExe)) { throw 'Ollama no apareció tras instalarlo.' }
+                $ollamaExe = Join-Path $carpetaOllama 'ollama.exe'
+                if (-not (Test-Path $ollamaExe)) { throw "Ollama no apareció tras instalarlo en $carpetaOllama." }
                 $avance.ollama = 100
             }
         }
@@ -363,6 +375,8 @@ try {
         }
         $cfg['motor'] = $Motor; $cfg['datos'] = $Datos
         if (-not $Actualizar -or -not $cfg.Contains('modelos_ollama')) { $cfg['modelos_ollama'] = $Modelos }
+        # carpeta de Ollama (la que usará la app aunque no esté en el PATH de este proceso); al actualizar se conserva la que ya había
+        if ((Test-Path $ollamaExe) -and (-not $Actualizar -or -not $cfg.Contains('ruta_ollama'))) { $cfg['ruta_ollama'] = (Split-Path $ollamaExe) }
         if ($Esquema -gt 0) { $cfg['esquema'] = $Esquema }
         foreach ($par in ($Nuevas -split ';')) { if ($par -match '^([^=]+)=(.+)$') { $cfg[$Matches[1]] = $Matches[2] } }
         $cfg | ConvertTo-Json | Set-Content -Path $Config -Encoding UTF8

@@ -17,7 +17,7 @@ ManifestDPIAware notset              ; Windows escala la ventana entera: un poco
 
 !define APP "Proyecto Alejandría"
 !define EXE "ProyectoAlejandria.exe"
-!define VERSION "0.3.3"
+!define VERSION "0.3.4"
 !define ID "dev.alejandria.app"      ; el mismo que tauri.conf.json: de él salen las carpetas de datos de la app
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define WEBVIEW2 "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
@@ -82,6 +82,7 @@ Function .onInit
     StrCpy $RutaMotor "$R1\motor"
     StrCpy $RutaDatos "$R1\datos"
     StrCpy $RutaModelos "$R1\modelos"
+    StrCpy $RutaOllama "$R1\ollama"
     StrCpy $RutaConfig "$R1\config\instalacion.json"
     StrCpy $CarpetaMenu "$R1\accesos\menu"
     StrCpy $CarpetaEscritorio "$R1\accesos\escritorio"
@@ -113,6 +114,7 @@ Function .onInit
     StrCpy $RutaMotor "$LOCALAPPDATA\${ID}\motor"
     StrCpy $RutaDatos "$APPDATA\${ID}\datos"
     StrCpy $RutaModelos "$PROFILE\.ollama\models"
+    StrCpy $RutaOllama "$LOCALAPPDATA\Programs\Ollama"
     StrCpy $RutaConfig "$APPDATA\${ID}\instalacion.json"
     StrCpy $CarpetaMenu "$SMPROGRAMS"
     StrCpy $CarpetaEscritorio "$DESKTOP"

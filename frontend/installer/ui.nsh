@@ -55,6 +55,7 @@ Var RutaApp
 Var RutaMotor
 Var RutaDatos
 Var RutaModelos
+Var RutaOllama        ; carpeta del programa Ollama (el instalador de Ollama la recibe con /DIR)
 Var OllamaYa        ; 1 si Ollama ya está instalado
 Var OllamaSi        ; 1 si se pide instalarlo
 Var ModeloSel       ; 0 ninguno, 1 qwen2.5:1.5b, 2 phi3:mini

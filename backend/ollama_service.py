@@ -33,8 +33,31 @@ def is_ollama_running(timeout: float = 2.0) -> bool:
     except Exception:
         return False
 
+def _carpeta_ollama_del_instalador() -> Optional[str]:
+    """Carpeta de Ollama que eligió (o encontró) el instalador de la app: clave `ruta_ollama` de instalacion.json (%APPDATA%\\dev.alejandria.app).
+    Hace falta porque, si el usuario eligió otra carpeta, Ollama no está en las rutas de siempre y el PATH de este proceso puede no incluirla todavía."""
+    config = os.environ.get("ALEJANDRIA_INSTALACION")
+    if not config:
+        appdata = os.environ.get("APPDATA")
+        if not appdata:
+            return None
+        config = os.path.join(appdata, "dev.alejandria.app", "instalacion.json")
+    try:
+        with open(config, encoding="utf-8-sig") as f:      # PowerShell lo escribe en UTF-8 con BOM
+            ruta = json.load(f).get("ruta_ollama")
+        return ruta if isinstance(ruta, str) and ruta.strip() else None
+    except Exception:
+        return None                                         # sin archivo, ilegible o sin esa clave: se sigue con las rutas de siempre
+
 def get_ollama_path() -> Optional[str]:
     """Encuentra la ruta al ejecutable de Ollama en Windows u otros sistemas."""
+    # 0. La carpeta que eligió el usuario en el instalador (si el ejecutable sigue ahí)
+    elegida = _carpeta_ollama_del_instalador()
+    if elegida:
+        cand = os.path.join(elegida, "ollama.exe" if os.name == "nt" else "ollama")
+        if os.path.exists(cand):
+            return cand
+
     # 1. Comprobar si 'ollama' ya está en PATH
     path = shutil.which("ollama")
     if path and os.path.exists(path):

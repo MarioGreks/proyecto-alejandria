@@ -965,6 +965,56 @@ class TestEmpaquetado(unittest.TestCase):
             self.assertIn(f'\{m}.py"', nsh, f"{m}.py falta en installer/instalacion.nsh")
             self.assertIn(f'backend/{m}.py"', tauri, f"{m}.py falta en tauri.conf.json")
 
+    def test_la_app_usa_la_carpeta_de_ollama_que_eligio_el_instalador(self):
+        """Si el usuario instala Ollama en otra carpeta, la app lo encuentra por `ruta_ollama` (instalacion.json) antes que por el PATH; si ese dato falta o
+        está roto, se sigue con lo de siempre."""
+        os_ = ollama_service
+        nombre = "ollama.exe" if os.name == "nt" else "ollama"
+        with tempfile.TemporaryDirectory() as d:
+            elegida, otra = os.path.join(d, "Mi Ollama"), os.path.join(d, "otra")
+            for carpeta in (elegida, otra):
+                os.makedirs(carpeta)
+                open(os.path.join(carpeta, nombre), "w").close()
+            exe_elegido, exe_otro = os.path.join(elegida, nombre), os.path.join(otra, nombre)
+            cfg = os.path.join(d, "instalacion.json")
+
+            def escribir(contenido, codificacion="utf-8-sig"):
+                with open(cfg, "w", encoding=codificacion) as f:
+                    f.write(contenido)
+
+            with patch.dict(os.environ, {"ALEJANDRIA_INSTALACION": cfg}), patch.object(os_.shutil, "which", return_value=exe_otro):
+                escribir(json.dumps({"motor": "x", "ruta_ollama": elegida}))
+                self.assertEqual(os_.get_ollama_path(), exe_elegido)          # gana la elegida aunque haya otro Ollama en el PATH
+                for caso, contenido in (("clave ausente", json.dumps({"motor": "x"})), ("carpeta que ya no existe", json.dumps({"ruta_ollama": os.path.join(d, "borrada")})),
+                                        ("ruta vacía", json.dumps({"ruta_ollama": "  "})), ("no es texto", json.dumps({"ruta_ollama": 5})), ("JSON roto", "{no es json")):
+                    with self.subTest(caso=caso):
+                        escribir(contenido)
+                        self.assertEqual(os_.get_ollama_path(), exe_otro)     # vuelve al PATH
+                os.remove(cfg)
+                self.assertEqual(os_.get_ollama_path(), exe_otro)             # sin archivo
+                escribir(json.dumps({"ruta_ollama": elegida}), "utf-8")        # también sin BOM
+                self.assertEqual(os_.get_ollama_path(), exe_elegido)
+
+    def test_el_instalador_ofrece_elegir_la_carpeta_de_ollama(self):
+        """La carpeta se elige en la página de componentes, viaja a instalar.ps1 por el archivo de parámetros, se pasa al instalador de Ollama con /DIR,
+        se valida (ruta completa, sin raíz de unidad) y queda en instalacion.json para que la app la encuentre."""
+        inst = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "installer")
+        leer = lambda n: open(os.path.join(inst, n), encoding="utf-8-sig").read()
+        paginas, nsh, ps1, nsi, ui = leer("paginas.nsh"), leer("instalacion.nsh"), leer("instalar.ps1"), leer("instalador.nsi"), leer("ui.nsh")
+        self.assertIn("Var RutaOllama", ui)
+        self.assertIn('StrCpy $RutaOllama "$LOCALAPPDATA\\Programs\\Ollama"', nsi)                  # por defecto, la carpeta de siempre
+        for pieza in ("Var EdOllama", "ExaminarOllama", "$TxtOllama", "$BtnOllama", "NSD_GetText} $EdOllama $RutaOllama", 'ValidarRuta $RutaOllama'):
+            self.assertIn(pieza, paginas, pieza)
+        self.assertIn("RutaOllama=$RutaOllama", nsh)
+        self.assertIn("[string]$RutaOllama", ps1)
+        self.assertIn("/DIR=", ps1)
+        self.assertRegex(ps1, r"\$cfg\['ruta_ollama'\]")
+        self.assertIn("raíz de una unidad", ps1)
+        # la carpeta y sus modelos se ocultan juntas cuando no se instala Ollama
+        for control in ("$TxtOllama", "$EdOllama", "$BtnOllama"):
+            self.assertIn(f"ShowWindow {control} ${{SW_HIDE}}", paginas)
+            self.assertIn(f"ShowWindow {control} ${{SW_SHOW}}", paginas)
+
     def test_el_instalador_no_abre_consolas(self):
         """Con Terminal como consola predeterminada de Windows 11, un `Exec` de PowerShell abre una pestaña de Terminal (y un botón en la barra de tareas) aunque se oculte
         después: hay que crear el proceso con CREATE_NO_WINDOW, y los hijos de instalar.ps1 con -NoNewWindow (compartiendo esa consola oculta)."""
