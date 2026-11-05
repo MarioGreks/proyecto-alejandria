@@ -85,10 +85,10 @@ def ensure_ollama_running(espera: float = ESPERA_ARRANQUE) -> bool:
         try:
             creationflags = 0
             if os.name == "nt":
-                # CREATE_NO_WINDOW (0x08000000) evita que se abra una ventana negra de consola
+                # SOLO CREATE_NO_WINDOW (0x08000000): Ollama queda con una consola oculta que heredan sus hijos (llama-server, ollama runner).
+                # NO añadir DETACHED_PROCESS: con él Windows ignora CREATE_NO_WINDOW, Ollama se queda sin consola y cada hijo abre una ventana
+                # visible (decenas de destellos de Terminal al abrir la app; medido con una instancia propia de `ollama serve`).
                 creationflags = 0x08000000
-                if hasattr(subprocess, "DETACHED_PROCESS"):
-                    creationflags |= subprocess.DETACHED_PROCESS
 
             subprocess.Popen(
                 [ollama_bin, "serve"],

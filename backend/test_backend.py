@@ -715,6 +715,22 @@ class TestAjustes(unittest.TestCase):
             self.assertTrue(os_.ensure_ollama_running(espera=5))      # tarda 1,2 s en responder: con los 8 s de antes ya valía, con 0,5 s no
         self.assertGreaterEqual(os_.ESPERA_ARRANQUE, 30)               # y por defecto espera lo bastante para un portátil lento
 
+    @unittest.skipUnless(os.name == "nt", "las banderas de creación de procesos son cosa de Windows")
+    def test_ollama_se_lanza_sin_ventana_y_sin_separarse_de_su_consola_oculta(self):
+        """Con DETACHED_PROCESS Windows ignora CREATE_NO_WINDOW: Ollama se queda sin consola y cada hijo suyo (llama-server, ollama runner)
+        abre una ventana visible. Medido: 36 destellos de Terminal en 22 s al abrir la app; con solo CREATE_NO_WINDOW, ninguno."""
+        os_ = ollama_service
+        estado = iter([False, False, True, True, True])
+        with patch.object(os_, "is_ollama_running", side_effect=lambda timeout=1.0: next(estado, True)), patch.object(os_, "get_ollama_path", return_value="ollama.exe"), \
+             patch.object(os_.ajustes, "leer", return_value={"ia_activa": True}), patch.object(os_.time, "sleep"), patch.object(os_.subprocess, "Popen") as popen:
+            self.assertTrue(os_.ensure_ollama_running(espera=5))
+        popen.assert_called_once()
+        banderas = popen.call_args.kwargs["creationflags"]
+        self.assertEqual(banderas & 0x08000000, 0x08000000)       # CREATE_NO_WINDOW
+        self.assertEqual(banderas & 0x00000008, 0)                # sin DETACHED_PROCESS
+        self.assertEqual(banderas & 0x00000010, 0)                # ni CREATE_NEW_CONSOLE
+        self.assertEqual(popen.call_args.args[0], ["ollama.exe", "serve"])
+
     def test_no_arranca_dos_veces_a_la_vez(self):
         os_ = ollama_service
         llamadas = []
