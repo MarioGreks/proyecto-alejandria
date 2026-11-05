@@ -5,10 +5,12 @@ import rehypeKatex from 'rehype-katex';
 import { API } from '../utils/api';
 import { forceBlockMath, markdownComponents } from '../utils/markdown';
 import { aprobarLaboratorio, inyectar, laboratorioAprobado, PLANTILLA_LABORATORIO, sha256Hex, sincronizarValores, validarControles } from '../utils/labSpec';
+import { etiquetaPlana } from '../utils/etiquetaMath';
 import type { ControlParams, Figura, LaboratorioData, OpcionControl, Valor } from '../utils/labSpec';
 import LabChart from './LabChart';
 import LabEditor from './LabEditor';
 import SliderAscii from './SliderAscii';
+import EtiquetaMath from './EtiquetaMath';
 import { adaptarResultado, esJsonXY } from '../labs/adaptar';
 import { obtenerRunner } from '../labs/labRunner';
 
@@ -189,7 +191,7 @@ export default function LaboratorioWidget({ data, nodeId, onGuardado }: { data: 
         return (
             <>
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--t-texto)', fontSize: 13, marginBottom: 6, gap: 8, fontFamily: 'var(--t-mono)' }}>
-                    <span>{c.label}</span>
+                    <span><EtiquetaMath texto={c.label} /></span>
                     <input
                         className="t-campo"
                         type="number" min={min} max={max} step={step}
@@ -201,7 +203,7 @@ export default function LaboratorioWidget({ data, nodeId, onGuardado }: { data: 
                         style={{ width: 90, padding: '2px 6px', textAlign: 'right', color: 'var(--t-verde)', fontWeight: 700 }}
                     />
                 </label>
-                <SliderAscii min={min} max={max} step={step} value={v} decimales={decimales(step)} etiqueta={c.label} onChange={n => cambiarUno(c.variable, n)} />
+                <SliderAscii min={min} max={max} step={step} value={v} decimales={decimales(step)} etiqueta={etiquetaPlana(c.label)} onChange={n => cambiarUno(c.variable, n)} />
             </>
         );
     };
@@ -212,13 +214,13 @@ export default function LaboratorioWidget({ data, nodeId, onGuardado }: { data: 
                 return (
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--t-texto)', fontSize: 13, cursor: 'pointer', minHeight: 48, fontFamily: 'var(--t-mono)' }}>
                         <input type="checkbox" className="t-check" checked={!!valores[c.variable]} onChange={e => cambiarUno(c.variable, e.target.checked)} />
-                        <span>{c.label}</span>
+                        <span><EtiquetaMath texto={c.label} /></span>
                     </label>
                 );
             case 'select':
                 return (
                     <>
-                        <label style={{ display: 'block', color: 'var(--t-texto)', fontSize: 13, marginBottom: 6, fontFamily: 'var(--t-mono)' }}>{c.label}</label>
+                        <label style={{ display: 'block', color: 'var(--t-texto)', fontSize: 13, marginBottom: 6, fontFamily: 'var(--t-mono)' }}><EtiquetaMath texto={c.label} /></label>
                         <select
                             className="t-campo"
                             value={String(valores[c.variable])}
@@ -228,7 +230,7 @@ export default function LaboratorioWidget({ data, nodeId, onGuardado }: { data: 
                             }}
                             style={{ width: '100%', color: 'var(--t-verde)', padding: '6px 8px' }}
                         >
-                            {(c.opciones ?? []).map(opcionDe).map(o => <option key={String(o.valor)} value={String(o.valor)}>{o.label ?? String(o.valor)}</option>)}
+                            {(c.opciones ?? []).map(opcionDe).map(o => <option key={String(o.valor)} value={String(o.valor)}>{etiquetaPlana(o.label ?? String(o.valor))}</option>)}
                         </select>
                     </>
                 );
@@ -291,7 +293,7 @@ export default function LaboratorioWidget({ data, nodeId, onGuardado }: { data: 
 
                     {grupos.map(([nombre, cs]) => (
                         <div key={nombre} style={{ marginBottom: 14 }}>
-                            {nombre && <div style={{ color: 'var(--t-suave)', fontSize: 12, margin: '0 0 8px 0', borderBottom: '1px dashed var(--t-linea)', paddingBottom: 4 }}>### {nombre}</div>}
+                            {nombre && <div style={{ color: 'var(--t-suave)', fontSize: 12, margin: '0 0 8px 0', borderBottom: '1px dashed var(--t-linea)', paddingBottom: 4 }}>### <EtiquetaMath texto={nombre} /></div>}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
                                 {cs.map((c, i) => <div key={`${c.variable}-${i}`}>{campo(c)}</div>)}
                             </div>
