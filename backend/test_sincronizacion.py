@@ -141,6 +141,21 @@ class TestSincronizacion(unittest.TestCase):
         self.converger(a, b)
         self.assertEqual(a.leer("x")["teoria"], "de vuelta")
 
+    def test_la_papelera_viaja_como_una_edicion_y_restaurar_la_revive_en_todos(self):
+        """Mover a la papelera marca el JSON (`papelera`); restaurar quita la marca; borrar de verdad es el borrado de siempre (tumba)."""
+        a, b = self.pc("A"), self.pc("B")
+        a.neurona("x")
+        self.converger(a, b)
+        a.neurona("x", papelera={"fecha": "2026-11-07T10:00:00+00:00"})
+        self.converger(a, b)
+        self.assertEqual(b.leer("x")["papelera"]["fecha"], "2026-11-07T10:00:00+00:00")     # el otro PC también la tiene en su papelera
+        b.neurona("x")                                                                      # se restaura en B (sin la marca)...
+        self.converger(a, b)
+        self.assertNotIn("papelera", a.leer("x"))                                           # ...y revive también en A
+        b.borrar("x")                                                                       # y borrar de verdad se propaga como siempre
+        self.converger(a, b)
+        self.assertIsNone(a.leer("x"))
+
     def test_un_conflicto_lo_gana_la_edicion_mas_reciente_y_los_dos_convergen(self):
         a, b = self.pc("A"), self.pc("B")
         a.neurona("x", teoria="base")

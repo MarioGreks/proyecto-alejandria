@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import { handleOpenExternal, markdownComponents, forceBlockMath, limpiarCitas } from '../utils/markdown';
+import { handleOpenExternal } from '../utils/markdown';
+import { Md } from './Md';
+import EditorNeurona from './EditorNeurona';
+import { formDesdeNeurona, normalizarTipo, TIPOS_NEURONA } from '../utils/neurona';
+import { promptRevision } from '../utils/prompts';
 import LaboratorioWidget from './LaboratorioWidget';
 import type { LaboratorioData } from './LaboratorioWidget';
 import { API } from '../utils/api';
@@ -23,6 +23,8 @@ interface NodeData {
     id: string;
     nombre: string;
     cluster_id?: string;
+    cluster?: string;
+    tipo?: string;
     teoria: string;
     glosario: { termino: string, definicion: string }[];
     ejercicios: { enunciado: string, solucion: string }[];
@@ -41,17 +43,6 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 const MONO = 'var(--t-mono)';
-
-/** Markdown con fórmulas KaTeX. `enLinea` quita el párrafo (para términos del glosario). */
-const Md = ({ texto, enLinea }: { texto: string; enLinea?: boolean }) => (
-    <ReactMarkdown
-        remarkPlugins={[remarkMath]}
-        rehypePlugins={[[rehypeKatex, { strict: false }]]}
-        components={enLinea ? { ...markdownComponents, p: ({ node, ...props }: any) => <span {...props} /> } : markdownComponents}
-    >
-        {enLinea ? limpiarCitas(texto) : forceBlockMath(texto)}
-    </ReactMarkdown>
-);
 
 /** Recuadro vacío con guiones: «aquí no hay nada». */
 const Vacio = ({ children }: { children: React.ReactNode }) => (
@@ -106,15 +97,20 @@ export default function KnowledgePanel({
     const [newEdgeReason, setNewEdgeReason] = useState<string>('');
 
     // Diálogos propios (en vez de prompt/confirm/alert del sistema) y mensaje de error de la cabecera
-    const [dialogo, setDialogo] = useState<'cluster' | 'borrar' | null>(null);
+    const [dialogo, setDialogo] = useState<'cluster' | 'borrar' | 'descartar' | null>(null);
     const [clusterNuevo, setClusterNuevo] = useState('');
     const [aviso, setAviso] = useState('');
+    const [info, setInfo] = useState('');                 // mensaje en verde (copiado, guardado...)
+    const [editando, setEditando] = useState(false);      // editor de la neurona abierto
+    const [editorSucio, setEditorSucio] = useState(false);   // con cambios sin guardar
 
     useEffect(() => {
         if (nodeId !== null) {
             precalentarLaboratorios();   // el motor de laboratorios tarda ~3 s en arrancar: que ya esté listo al abrir la pestaña
             setLoading(true);
             setAviso('');
+            setInfo('');
+            setEditando(false);
             // Hacemos la llamada real a nuestro Backend de Python (Fase 1)
             fetch(`${API}/node/${nodeId}`)
                 .then(res => res.json())
@@ -182,6 +178,27 @@ export default function KnowledgePanel({
         }
     };
 
+    /** Copia al portapapeles el prompt para que una IA externa revise esta neurona (el resultado se pega en el editor). */
+    const pedirRevision = async () => {
+        if (!data) return;
+        const prompt = promptRevision({ id: data.id, nombre: data.nombre, cluster: data.cluster ?? data.cluster_id, tipo: normalizarTipo(data.tipo) ?? 'formal',
+            teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias });
+        let copiado = false;
+        try { await navigator.clipboard.writeText(prompt); copiado = true; } catch { /* sin permiso del portapapeles: se prueba con un campo temporal */ }
+        if (!copiado) {
+            const t = document.createElement('textarea');
+            t.value = prompt; t.style.position = 'fixed'; t.style.opacity = '0';
+            document.body.appendChild(t); t.select();
+            try { copiado = document.execCommand('copy'); } catch { copiado = false; }
+            t.remove();
+        }
+        if (!copiado) { setInfo(''); setAviso('Error: no se pudo copiar al portapapeles.'); return; }
+        setAviso('');
+        setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`);
+    };
+
+    const cerrar = () => (editando && editorSucio ? setDialogo('descartar') : onClose());
+    const tipoInfo = data ? TIPOS_NEURONA.find(t => t.id === (normalizarTipo(data.tipo) ?? 'formal')) : undefined;
     const title = loading || !data ? 'Estableciendo conexión sináptica...' : data.nombre;
     const enlaces = data ? universeLinks.filter(l => l.origen_id === data.id || l.destino_id === data.id) : [];
 
@@ -204,37 +221,46 @@ export default function KnowledgePanel({
                 <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12, color: 'var(--t-ambar)', marginBottom: 6 }}>
                         ## neurona{data && !loading ? ` | cluster: ${data.cluster_id ?? universeNodes.find(n => n.id === data.id)?.cluster_id ?? '—'}` : ''}
+                        {data && !loading && tipoInfo && <span title={`Tipo: ${tipoInfo.etiqueta}. ${tipoInfo.ayuda}`} style={{ color: 'var(--t-suave)' }}> | tipo: [{tipoInfo.sigla}] {tipoInfo.etiqueta.toLowerCase()}</span>}
                     </div>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--t-verde)', fontFamily: MONO }}>&gt; {title}</h2>
                     {aviso && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t-error)' }}>{aviso}</div>}
+                    {info && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t-verde)', lineHeight: 1.5 }}>{info}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 'none' }}>
+                    <button className="t-btn" title="Editar el nombre, la teoría, el glosario, los ejercicios y las referencias" disabled={loading || !data || editando} onClick={() => { setInfo(''); setAviso(''); setEditando(true); }}>[ Editar ]</button>
+                    <button className="t-btn" title="Copiar un prompt para que una IA externa revise esta neurona" disabled={loading || !data} onClick={pedirRevision}>[ Pedir revisión ]</button>
                     <button className="t-btn" title="Corregir el clúster a mano" onClick={() => { setClusterNuevo(''); setDialogo('cluster'); }}>[ Editar clúster ]</button>
-                    <button className="t-btn peligro" title="Destruir la neurona (irreversible)" onClick={() => setDialogo('borrar')}>[ Destruir ]</button>
-                    <button className="t-btn plano" title="Cerrar" onClick={onClose} style={{ fontSize: 16 }}>[x]</button>
+                    <button className="t-btn peligro" title="Mandar la neurona a la papelera (se puede recuperar)" onClick={() => setDialogo('borrar')}>[ A la papelera ]</button>
+                    <button className="t-btn plano" title="Cerrar" onClick={cerrar} style={{ fontSize: 16 }}>[x]</button>
                 </div>
             </div>
 
             {/* Pestañas */}
-            <div style={{ display: 'flex', padding: '0 12px', borderBottom: '1px solid var(--t-linea)' }}>
+            {!editando && <div style={{ display: 'flex', padding: '0 12px', borderBottom: '1px solid var(--t-linea)' }}>
                 {TABS.map(tab => (
                     <button key={tab} className={`t-tab${activeTab === tab ? ' activa' : ''}`} onClick={() => setActiveTab(tab)}>
                         {activeTab === tab ? `[ ${TAB_LABELS[tab]} ]` : TAB_LABELS[tab]}
                     </button>
                 ))}
-            </div>
+            </div>}
 
             {/* Contenido Dinámico */}
             <div style={{ flex: 1, padding: 28, overflowY: 'auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
                 {loading && <p style={{ color: 'var(--t-verde)', fontFamily: MONO }}>&gt; Leyendo memoria...</p>}
 
-                {!loading && data && activeTab === 'teoria' && (
+                {!loading && data && editando && (
+                    <EditorNeurona key={data.id} nodeId={nodeId!} inicial={formDesdeNeurona(data)} onCambios={setEditorSucio}
+                        onGuardado={n => { setData(n); setEditando(false); setAviso(''); setInfo('Neurona guardada.'); }} onSalir={() => setEditando(false)} />
+                )}
+
+                {!loading && data && !editando && activeTab === 'teoria' && (
                     <div className="markdown-container" style={{ lineHeight: 1.6, fontSize: 16, textAlign: 'justify', color: '#e0e0e0' }}>
                         <Md texto={data.teoria} />
                     </div>
                 )}
 
-                {!loading && data && activeTab === 'glosario' && (
+                {!loading && data && !editando && activeTab === 'glosario' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
                         {(data.glosario ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene glosario</Vacio>}
                         {(data.glosario ?? []).map((g, idx) => (
@@ -250,7 +276,7 @@ export default function KnowledgePanel({
                     </div>
                 )}
 
-                {!loading && data && activeTab === 'laboratorio' && (
+                {!loading && data && !editando && activeTab === 'laboratorio' && (
                     <div style={{ marginTop: 6 }}>
                         <LaboratorioWidget
                             key={nodeId}
@@ -261,7 +287,7 @@ export default function KnowledgePanel({
                     </div>
                 )}
 
-                {!loading && data && activeTab === 'ejercicios' && (
+                {!loading && data && !editando && activeTab === 'ejercicios' && (
                     <div style={{ textAlign: 'justify' }}>
                         {(data.ejercicios ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene ejercicios (es histórico o conceptual, o no se generaron)</Vacio>}
                         {(data.ejercicios ?? []).map((ej, idx) => (
@@ -270,7 +296,7 @@ export default function KnowledgePanel({
                     </div>
                 )}
 
-                {!loading && data && activeTab === 'referencias' && (
+                {!loading && data && !editando && activeTab === 'referencias' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'justify' }}>
                         {(!data.referencias || data.referencias.length === 0) ? (
                             <Vacio>
@@ -323,7 +349,7 @@ export default function KnowledgePanel({
                     </div>
                 )}
 
-                {!loading && data && activeTab === 'sinapsis' && (
+                {!loading && data && !editando && activeTab === 'sinapsis' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
                         {enlaces.length === 0 ? (
                             <Vacio>Esta neurona aún no ha formado conexiones sinápticas con otras.</Vacio>
@@ -397,8 +423,12 @@ export default function KnowledgePanel({
                     onAceptar={cambiarCluster} onCancelar={() => setDialogo(null)} />
             )}
             {dialogo === 'borrar' && (
-                <Dialogo titulo="Destruir neurona" texto="¿Seguro que quieres destruir esta neurona? Es irreversible y recargará la red."
-                    aceptar="Destruir" peligro onAceptar={destruir} onCancelar={() => setDialogo(null)} />
+                <Dialogo titulo="Mandar a la papelera" texto="Esta neurona irá a la papelera y desaparecerá del universo. Durante 7 días podrás recuperarla, con sus conexiones, desde [ Papelera ] en la barra superior; pasado ese tiempo se borra sola. Recargará la red."
+                    aceptar="A la papelera" peligro onAceptar={destruir} onCancelar={() => setDialogo(null)} />
+            )}
+            {dialogo === 'descartar' && (
+                <Dialogo titulo="Descartar cambios" texto="Estás editando esta neurona y hay cambios sin guardar. Si cierras ahora se pierden."
+                    aceptar="Descartar y cerrar" peligro onAceptar={() => { setDialogo(null); onClose(); }} onCancelar={() => setDialogo(null)} />
             )}
         </div>
     );

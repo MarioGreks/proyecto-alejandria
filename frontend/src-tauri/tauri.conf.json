@@ -42,6 +42,8 @@
       "../../backend/idioma.py": "backend/idioma.py",
       "../../backend/limpieza.py": "backend/limpieza.py",
       "../../backend/sincronizacion.py": "backend/sincronizacion.py",
+      "../../backend/papelera.py": "backend/papelera.py",
+      "../../backend/agenda.py": "backend/agenda.py",
       "../../backend/requirements.txt": "backend/requirements.txt"
     },
     "windows": {

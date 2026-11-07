@@ -20,6 +20,18 @@ def _raw_dir() -> str:
     return os.path.join(DATA_DIR, "raw")
 
 
+def _existe_viva(ruta: str) -> bool:
+    """Hay una neurona viva en esa ruta. Una en la papelera cuenta como que no existe (el usuario no la ve): importar la reemplaza.
+    Un archivo ilegible se trata como existente: no se pisa."""
+    if not os.path.exists(ruta):
+        return False
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            return not json.load(f).get("papelera")
+    except (OSError, ValueError, AttributeError):
+        return True
+
+
 def exportar() -> dict:
     """Todas las neuronas (sin embedding: se regenera al importar, y pesa mucho) y las conexiones que no se hayan rechazado."""
     neuronas = []
@@ -31,6 +43,8 @@ def exportar() -> dict:
                 with open(os.path.join(_raw_dir(), f), encoding="utf-8") as fh:
                     n = json.load(fh)
             except (OSError, ValueError):
+                continue
+            if n.get("papelera"):
                 continue
             n.pop("embedding", None)
             n["id"] = f[:-5]
@@ -59,7 +73,7 @@ def importar(contenido) -> dict:
     nuevas, omitidas = [], 0
     for n in neuronas:
         ruta = os.path.join(_raw_dir(), n["id"] + ".json")
-        if os.path.exists(ruta) or n["id"] in nuevas:
+        if _existe_viva(ruta) or n["id"] in nuevas:
             omitidas += 1
             continue
         n = {k: v for k, v in n.items() if k != "embedding"}

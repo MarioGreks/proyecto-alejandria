@@ -7,6 +7,8 @@ import { MODOS_PROMPT, conClustersExistentes, guardarModo, modoGuardado, promptE
 import type { ModoPrompt } from '../utils/prompts';
 import { API } from '../utils/api';
 import Ajustes from './Ajustes';
+import Agenda from './Agenda';
+import Papelera from './Papelera';
 import ProcesandoNeurona from './ProcesandoNeurona';
 import Seguro from './Seguro';
 import Hud from './Hud';
@@ -558,6 +560,8 @@ export default function Universe() {
     // Estados para el Inyector Neuronal
     const [showInjector, setShowInjector] = useState(false);
     const [showAjustes, setShowAjustes] = useState(false);
+    const [showAgenda, setShowAgenda] = useState(false);
+    const [showPapelera, setShowPapelera] = useState(false);
     const [showTutorial, setShowTutorial] = useState(() => !tutorialVisto());   // la primera vez que se abre la app
     const [injectionData, setInjectionData] = useState('');
     const [injectionStatus, setInjectionStatus] = useState('');
@@ -582,6 +586,13 @@ export default function Universe() {
         fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
             .then(res => res.json())
             .then(data => aplicarUniverso(data))
+            .catch(err => console.error("Error fetching universe:", err));
+    };
+
+    const recargar = () => {
+        fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
+            .then(res => res.json())
+            .then(data => aplicarUniverso(data, true))
             .catch(err => console.error("Error fetching universe:", err));
     };
 
@@ -689,6 +700,8 @@ export default function Universe() {
                 sinapsis={sinapsis}
                 aviso={avisoSinapsis}
                 onAjustes={() => setShowAjustes(true)}
+                onAgenda={() => setShowAgenda(true)}
+                onPapelera={() => setShowPapelera(true)}
                 onRecargar={() => {
                     fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
                         .then(res => res.json())
@@ -804,6 +817,8 @@ export default function Universe() {
             )}
 
             {showAjustes && <Ajustes onCerrar={() => setShowAjustes(false)} onTutorial={() => { setShowAjustes(false); setShowTutorial(true); }} />}
+            {showAgenda && <Agenda onCerrar={() => setShowAgenda(false)} />}
+            {showPapelera && <Papelera onCerrar={() => setShowPapelera(false)} onCambio={recargar} />}
             {showTutorial && <Tutorial onCerrar={() => setShowTutorial(false)} />}
 
             {/* Panel de Conocimiento Desplegable */}

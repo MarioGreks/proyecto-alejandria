@@ -16,6 +16,8 @@ interface Props {
     sinapsis: Sinapsis | null;
     aviso: string | null;
     onAjustes: () => void;
+    onAgenda: () => void;
+    onPapelera: () => void;
     onRecargar: () => void;
     onInyector: () => void;
     onCentrar: () => void;
@@ -90,6 +92,8 @@ export default function Hud(p: Props) {
         {/* Barra superior: ajustes, búsqueda y recarga */}
         <div style={{ ...barra, top: 0, borderBottom: '1px solid var(--t-linea)' }}>
             <button className="t-btn" onClick={p.onAjustes}>[ Ajustes ]</button>
+            <button className="t-btn" onClick={p.onAgenda} title="Contactos privados y para qué los guardaste">[ Agenda ]</button>
+            <button className="t-btn" onClick={p.onPapelera} title="Neuronas destruidas, recuperables unos días">[ Papelera ]</button>
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                 <div style={{ position: 'relative', width: 'min(520px, 100%)' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--t-linea)', padding: '4px 10px', background: 'var(--t-fondo)' }}>

@@ -3,6 +3,7 @@ import os
 import threading
 import pandas as pd
 from pydantic import BaseModel
+from limpieza import tipo_de
 from typing import Optional
 
 # Definimos la ruta de datos de forma absoluta, referenciada al directorio actual.
@@ -47,6 +48,7 @@ class LocalGraphDB:
         self._df_cache = None
         self._last_parquet_mtime = 0
         self._n_fallidos = 0  # JSON de raw/ que no se pudieron leer en la última compilación
+        self._n_papelera = 0  # JSON de raw/ que están en la papelera (no entran en la base) en la última compilación
         self._lock = threading.RLock()
 
         if not os.path.exists(DATA_DIR):
@@ -96,7 +98,7 @@ class LocalGraphDB:
             if parquet_mtime >= max_mtime:
                 # Cache: podríamos tener archivos borrados, así que comprobamos longitud
                 # (los JSON ilegibles no están en la caché; sin descontarlos se recompilaría en cada petición)
-                if self._df_cache is not None and len(self._df_cache) == len(json_files) - self._n_fallidos:
+                if self._df_cache is not None and len(self._df_cache) == len(json_files) - self._n_fallidos - self._n_papelera:
                     return 0 # Ya está actualizado
                 
         import json
@@ -109,11 +111,16 @@ class LocalGraphDB:
 
         nodos_nuevos = []
         self._n_fallidos = 0
+        self._n_papelera = 0
         for file in json_files:
             try:
                 filepath = os.path.join(raw_dir, file)
                 with open(filepath, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+
+                if data.get("papelera"):      # en la papelera: el archivo se queda en raw/ (así viaja con la sincronización) pero no es una neurona viva
+                    self._n_papelera += 1
+                    continue
                     
                 # Si falta el embedding, lo generamos y lo escribimos en el JSON
                 if ("embedding" not in data or not data["embedding"]) and clasificador is not None:
@@ -133,14 +140,16 @@ class LocalGraphDB:
                     "laboratorio": json.dumps(data.get("laboratorio", {})),
                     "referencias": json.dumps(data.get("referencias", [])),
                     "embedding": data.get("embedding", []),
-                    "origen": data.get("origen", "")
+                    "origen": data.get("origen", ""),
+                    "tipo": tipo_de(data)
                 })
             except Exception as e:
                 self._n_fallidos += 1
                 print(f"Error procesando {file}: {e}")
 
-        if nodos_nuevos:
-            df = pd.DataFrame(nodos_nuevos)
+        if nodos_nuevos or (self._n_papelera and not self._n_fallidos):      # todo en la papelera: la base queda vacía
+            df = pd.DataFrame(nodos_nuevos) if nodos_nuevos else pd.DataFrame(
+                columns=["id", "nombre", "cluster_id", "descripcion", "teoria", "glosario", "ejercicios", "laboratorio", "referencias", "tipo"])
             _to_parquet(df, NODOS_FILE)
             self._df_cache = df
             self._last_parquet_mtime = os.path.getmtime(NODOS_FILE)
@@ -189,6 +198,8 @@ class LocalGraphDB:
             df_aristas = pd.read_parquet(ARISTAS_FILE, engine="pyarrow")
             if df_aristas.empty:
                 return []
+            ids = set(self._get_df().get("id", []))      # las conexiones de una neurona en la papelera siguen guardadas pero no se ven (vuelven al restaurarla)
+            df_aristas = df_aristas[df_aristas['origen_id'].isin(ids) & df_aristas['destino_id'].isin(ids)]
             if 'estado' in df_aristas.columns:
                 df_aristas = df_aristas[df_aristas['estado'] != 'rechazada']
                 df_aristas['estado'] = df_aristas['estado'].fillna('pendiente')
@@ -322,14 +333,18 @@ class LocalGraphDB:
                 
             row = fila.iloc[0]
             import json
+            ejercicios = json.loads(row.get("ejercicios", "[]"))
+            laboratorio = json.loads(row.get("laboratorio", "{}"))
+            tipo = row.get("tipo")
             return {
                 "id": row["id"],
                 "nombre": row["nombre"],
                 "cluster": row["cluster_id"],
+                "tipo": tipo if isinstance(tipo, str) and tipo else tipo_de({"ejercicios": ejercicios, "laboratorio": laboratorio}),
                 "teoria": row.get("teoria", ""),
                 "glosario": json.loads(row.get("glosario", "[]")),
-                "ejercicios": json.loads(row.get("ejercicios", "[]")),
-                "laboratorio": json.loads(row.get("laboratorio", "{}")),
+                "ejercicios": ejercicios,
+                "laboratorio": laboratorio,
                 "referencias": json.loads(row.get("referencias", "[]")) if isinstance(row.get("referencias"), str) else (row.get("referencias") if isinstance(row.get("referencias"), list) else [])
             }
         except Exception as e:

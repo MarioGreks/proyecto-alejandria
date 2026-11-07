@@ -10,6 +10,8 @@ import ajustes
 import vigilante
 import intercambio
 import sincronizacion
+import papelera
+import agenda
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
@@ -71,6 +73,10 @@ def startup_event():
     padre = os.environ.get("ALEJANDRIA_PADRE")      # la app que me lanzó: si muere sin avisar, me cierro (no quedar huérfano)
     if padre and padre.isdigit():
         vigilante.vigilar_padre(int(padre))
+    try:
+        papelera.purgar_caducadas()                 # las neuronas que llevan más de 7 días en la papelera se borran de verdad
+    except Exception as e:
+        print(f"[Papelera] {e}")
     servicio_sync.iniciar_auto()                    # sincronización entre PCs, si hay carpeta elegida en Ajustes
     print(f"[Alejandria] Ollama: {arrancar_en_segundo_plano()}")     # sin esperar: el backend responde al momento y Ollama se levanta detrás
 
@@ -187,7 +193,7 @@ def get_node(node_id: str):
 import json
 import os
 import re
-from limpieza import limpiar_neurona
+from limpieza import limpiar_neurona, tipo_de
 
 def raw_path(node_id) -> str:
     """Ruta del JSON de un nodo dentro de DATA_DIR/raw. Rechaza ids que puedan salirse de esa carpeta."""
@@ -242,6 +248,34 @@ def cargar_json_tolerante(raw: str):
         reparado = _ESCAPE_JSON.sub(lambda m: "\\" + m.group(0) if (m.group("latex") or m.group("otro")) else m.group(0), raw)
         return _reparar_comillas_y_comas(reparado)
 
+def extraer_bloque_json(raw: str) -> str:
+    """Si el texto trae un bloque ```json (o ``` a secas), solo ese contenido; si no, el texto tal cual."""
+    if "```json" in raw:
+        match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
+        if match:
+            return match.group(1)
+    elif "```" in raw:
+        match = re.search(r"```\s*(.*?)\s*```", raw, re.DOTALL)
+        if match:
+            return match.group(1)
+    return raw
+
+class InterpretarJsonRequest(BaseModel):
+    texto: str = Field(max_length=3_000_000)
+
+@app.post("/api/json/interpretar")
+def interpretar_json(req: InterpretarJsonRequest):
+    """Lee el JSON de una neurona que el usuario pegó (con o sin bloque ```json, con las barras de LaTeX, comillas y comas que suelen romper las IA) y lo
+    devuelve ya como objeto, SIN guardar nada: el editor lo enseña y el usuario decide. Es lo que usa «Pegar JSON revisado»."""
+    try:
+        datos = cargar_json_tolerante(extraer_bloque_json(req.texto))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer el JSON: {e}")
+    if not isinstance(datos, dict):
+        raise HTTPException(status_code=400, detail="El JSON no es una neurona (debe ser un objeto con campos).")
+    datos.pop("embedding", None)
+    return {"datos": datos}
+
 def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None):
     guardadas = None
     try:
@@ -263,17 +297,8 @@ def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, gl
 @app.post("/api/node")
 def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
     """Recibe código JSON crudo (incluso con formato Markdown de ChatGPT) y lo inyecta como una nueva neurona."""
-    raw = req.raw_json
-    # Limpiar bloques de markdown
-    if "```json" in raw:
-        match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
-        if match:
-            raw = match.group(1)
-    elif "```" in raw:
-        match = re.search(r"```\s*(.*?)\s*```", raw, re.DOTALL)
-        if match:
-            raw = match.group(1)
-            
+    raw = extraer_bloque_json(req.raw_json)
+
     try:
         data = cargar_json_tolerante(raw)
         node_id = data.get("id")
@@ -281,6 +306,7 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
             raise ValueError("El JSON no contiene el campo 'id'.")
         filepath = raw_path(node_id)  # valida el id antes de gastar embeddings/LLM
         limpiar_neurona(data)         # «[reference:25]» y demás marcas de cita de la IA: ni se guardan ni llegan al clasificador
+        data["tipo"] = tipo_de(data)  # el que fijó la IA (formal, historico o teorico) o, si no lo puso, el que se deduce de lo que trae
 
         # 🧠 PASO CLAVE: CLASIFICACIÓN LOCAL
         clasificador = None
@@ -419,6 +445,79 @@ def guardar_laboratorio(node_id: str, req: LaboratorioGuardar):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"No se pudo guardar el laboratorio: {e}")
 
+def _solo_http(url: str) -> str:
+    if url and not re.match(r"https?://", url, re.IGNORECASE):
+        raise ValueError("el enlace debe empezar por http:// o https://")
+    return url
+
+class GlosarioItem(BaseModel):
+    termino: str = Field(max_length=500)
+    definicion: str = Field(max_length=30000)
+
+class EjercicioItem(BaseModel):
+    enunciado: str = Field(max_length=60000)
+    solucion: str = Field("", max_length=60000)
+
+class ReferenciaItem(BaseModel):
+    titulo: str = Field(min_length=1, max_length=1000)
+    autores: str = Field("", max_length=1000)
+    url: str = Field("", max_length=2000)
+    nota: str = Field("", max_length=30000)
+
+    @field_validator("url")
+    @classmethod
+    def enlace_web(cls, v):
+        return _solo_http(v.strip())
+
+class NeuronaEditar(BaseModel):
+    """Lo que se edita desde el panel. El resto del JSON de la neurona (id, clúster, laboratorio, embedding, origen...) no se toca."""
+    nombre: str = Field(min_length=1, max_length=300)
+    teoria: str = Field(max_length=400000)
+    glosario: list[GlosarioItem] = Field(max_length=500)
+    ejercicios: list[EjercicioItem] = Field(max_length=200)
+    referencias: list[ReferenciaItem] = Field(max_length=500)
+    tipo: Literal["formal", "historico", "teorico"]
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_limpio(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("el nombre no puede estar vacío")
+        return v
+
+@app.put("/api/node/{node_id}")
+def editar_neurona(node_id: str, req: NeuronaEditar):
+    """Guarda lo editado en el panel (nombre, teoría, glosario, ejercicios, referencias y tipo) conservando el resto del JSON, limpia las marcas de cita,
+    recompila la base y, si cambió el texto del que sale el embedding (nombre o teoría), lo borra para que se recalcule. Devuelve la neurona ya guardada.
+    La sincronización entre PCs lo ve como una edición más (versión nueva; si otro PC la editó a la vez, la perdedora va a datos/conflictos/)."""
+    filepath = raw_path(node_id)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Neurona no encontrada")
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("papelera"):
+            raise HTTPException(status_code=409, detail="La neurona está en la papelera: restáurala para editarla.")
+        antes = (data.get("nombre"), data.get("teoria"))
+        data["nombre"], data["teoria"], data["tipo"] = req.nombre, req.teoria, req.tipo
+        data["glosario"] = [g.model_dump() for g in req.glosario]
+        data["ejercicios"] = [e.model_dump() for e in req.ejercicios]
+        data["referencias"] = [{k: v for k, v in r.model_dump().items() if k == "titulo" or v} for r in req.referencias]
+        limpiar_neurona(data)
+        if (data["nombre"], data["teoria"]) != antes:
+            data.pop("embedding", None)        # compile_raw_jsons lo recalcula (si no hay modelo local, queda sin él hasta que lo haya)
+        tmp = filepath + ".tmp"   # escritura atómica
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, filepath)
+        db_conn.compile_raw_jsons(force=True)
+        return db_conn.get_node(node_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar la neurona: {e}")
+
 class ClusterCorrectionRequest(BaseModel):
     nuevo_cluster: str
 
@@ -482,18 +581,99 @@ def create_arista_manual(req: NuevaAristaRequest):
 
 @app.delete("/api/node/{node_id}")
 def delete_node(node_id: str):
-    """Elimina permanentemente una neurona de la base de datos."""
-    filepath = raw_path(node_id)
+    """Manda la neurona a la papelera (recuperable durante papelera.DIAS_RETENCION días). Sus conexiones se guardan y vuelven al restaurarla."""
+    raw_path(node_id)       # valida el id
     try:
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            
-        # Forzar recarga del parquet sin el nodo borrado (o para limpiar fantasmas)
-        db_conn.compile_raw_jsons(force=True)
-        quitadas = db_conn.quitar_aristas_huerfanas()
-        return {"status": "success", "message": f"Neurona '{node_id}' destruida correctamente.", "aristas_quitadas": quitadas}
+        if not papelera.mover(node_id):
+            raise HTTPException(status_code=404, detail="Neurona no encontrada")
+        return {"status": "success", "message": f"Neurona '{node_id}' enviada a la papelera.", "dias": papelera.DIAS_RETENCION}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al destruir la neurona: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al enviar la neurona a la papelera: {str(e)}")
+
+@app.get("/api/papelera")
+def ver_papelera():
+    """Las neuronas en la papelera (antes de listar se borran las que ya caducaron)."""
+    try:
+        papelera.purgar_caducadas()
+        return {"dias": papelera.DIAS_RETENCION, "neuronas": papelera.listar()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo leer la papelera: {e}")
+
+@app.post("/api/papelera/{node_id}/restaurar")
+def restaurar_neurona(node_id: str):
+    raw_path(node_id)
+    try:
+        if not papelera.restaurar(node_id):
+            raise HTTPException(status_code=404, detail="Esa neurona no está en la papelera.")
+        return {"status": "success", "message": f"Neurona '{node_id}' restaurada."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo restaurar: {e}")
+
+@app.delete("/api/papelera/{node_id}")
+def borrar_para_siempre(node_id: str):
+    """Borrar DE VERDAD una neurona (solo si ya está en la papelera). Irreversible; se propaga a los otros PCs como un borrado."""
+    raw_path(node_id)
+    try:
+        if not papelera.borrar_definitivo(node_id):
+            raise HTTPException(status_code=404, detail="Esa neurona no está en la papelera.")
+        return {"status": "success", "message": f"Neurona '{node_id}' borrada para siempre."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo borrar: {e}")
+
+@app.delete("/api/papelera")
+def vaciar_papelera():
+    """Vacía la papelera: borra de verdad todas las neuronas que hay en ella."""
+    try:
+        return {"status": "success", "borradas": papelera.vaciar()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo vaciar la papelera: {e}")
+
+def _agenda(fn, *args):
+    """Errores de la agenda: archivo ilegible o lleno (ValueError) y de disco (OSError) → 500 con el motivo; los datos no se tocan."""
+    try:
+        return fn(*args)
+    except agenda.ArchivoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ValueError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/agenda")
+def ver_agenda():
+    return {"contactos": _agenda(agenda.listar)}
+
+@app.get("/api/agenda/exportar")
+def exportar_agenda():
+    return _agenda(agenda.exportar)
+
+class ImportarAgendaRequest(BaseModel):
+    contenido: dict
+
+@app.post("/api/agenda/importar")
+def importar_agenda(req: ImportarAgendaRequest):
+    return {"status": "success", **_agenda(agenda.importar, req.contenido)}
+
+@app.post("/api/agenda")
+def crear_contacto(req: agenda.Contacto):
+    return _agenda(agenda.crear, req)
+
+@app.put("/api/agenda/{contacto_id}")
+def editar_contacto(contacto_id: str, req: agenda.Contacto):
+    c = _agenda(agenda.editar, contacto_id, req)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    return c
+
+@app.delete("/api/agenda/{contacto_id}")
+def borrar_contacto(contacto_id: str):
+    if not _agenda(agenda.borrar, contacto_id):
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    return {"status": "success"}
 
 class AjustesRequest(BaseModel):
     ia_activa: Optional[bool] = None

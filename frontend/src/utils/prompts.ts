@@ -9,7 +9,7 @@ const SIN_MARCAS_CITA = `CITAS: dentro de los textos del JSON (teoría, glosario
 
 // Evita forzar matemáticas donde no las hay (una persona, una época, una escuela) sin rebajar el nivel de los conceptos formales.
 // El prompt «clásico» (sin esta regla) sigue disponible en la app. Ante la duda, FORMAL.
-const TIPO_CONCEPTO = `TIPO DE CONCEPTO: antes de rellenar el JSON decide en silencio de qué tipo es el concepto y adapta el contenido. Es un proceso interno: no menciones el tipo ni añadas campos extra al JSON.
+const TIPO_CONCEPTO = `TIPO DE CONCEPTO: antes de rellenar el JSON decide en silencio de qué tipo es el concepto y adapta el contenido. Es un proceso interno: no lo menciones en el texto de la respuesta ni añadas más campos al JSON que los del ejemplo; el tipo se anota solo en el campo "tipo" del JSON (formal, historico o teorico, sin tildes).
 - FORMAL: tiene un resultado, teorema, modelo, método o magnitud cuantificable (p. ej. el teorema de Bayes, Black-Scholes, una distribución de probabilidad, un estimador). Si dudas entre formal e histórico o teórico, elige FORMAL. Se aplican todas las exigencias de nivel doctorado de este prompt: teoría extensa con desarrollo matemático, glosario, ejercicios y laboratorio.
 - HISTÓRICO O CONCEPTUAL: es una persona, una época, una escuela, una controversia o una idea sin fórmula propia (p. ej. «Bernoulli y el origen de la probabilidad», «la crisis de fundamentos»). No inventes matemáticas para que parezca formal. La teoría cuenta con rigor el contexto, las personas, las ideas y su influencia, con subtítulos ## a tu criterio y fórmulas solo si de verdad aportan (en bloques $$ como indica este prompt). El glosario recoge los términos y nombres clave con definiciones claras. "ejercicios" va como [] y "laboratorio" como {"explicacion": "", "controles": [], "codigo": ""}, salvo que el concepto tenga una parte cuantificable real: en ese caso se trata como FORMAL. Las referencias siguen siendo obligatorias y reales.
 - TEÓRICO NO MATEMÁTICO: es un marco conceptual o argumental sin formalismo propio (p. ej. economía conceptual, filosofía de la ciencia, metodología de la investigación). La teoría es argumentada, con las posturas enfrentadas, sus autores y las críticas; el glosario recoge los conceptos clave con su autor; "ejercicios" son entre 2 y 4 casos de análisis (comparar posturas, aplicar el marco a un caso concreto, evaluar un argumento) con su respuesta razonada; "laboratorio" va vacío como arriba, salvo que haya una parte cuantificable real (entonces, FORMAL).`;
@@ -22,6 +22,9 @@ const CLUSTER_DESC = `RAMA ACADÉMICA ESPECÍFICA y breve (máximo 3 palabras, n
 const FUENTES_BIBLIO = `Al final de tu explicación, incluye obligatoriamente un apartado detallando las fuentes bibliográficas y referencias académicas primarias (papers fundacionales, autores y manuales canónicos) de donde bebes la información. **Junto a cada referencia, debes añadir una nota o comentario explicativo que aclare con exactitud qué concepto, teorema, fórmula o desarrollo has sacado de esa fuente específica.** Para localizar y contrastar esas fuentes consulta como mínimo **Google Scholar** (https://scholar.google.com), además de arXiv, DOI/Crossref y las páginas de las editoriales: si tienes búsqueda web, úsala ahí y apóyate en los resultados y en el número de citas de Scholar para priorizar los trabajos fundacionales y más citados; si no puedes consultar la web, dilo expresamente en lugar de suponer. ANTES de escribir cada fuente, cuestiónate a ti mismo y verifica con rigor crítico si de verdad existen dichas fuentes en la literatura académica real (está estrictamente prohibido alucinar o inventar títulos/autores), y proporciona los enlaces directos (URL oficial, enlace DOI o link a arXiv/repositorio académico) a esos papers o páginas de donde las has obtenido.`;
 
 const DOBLE_SALTO = '\n\n';
+
+// Campo «tipo» del JSON de ejemplo, solo en el prompt que decide el tipo (automático). El clásico no lo lleva: sus neuronas se deducen en el backend (limpieza.tipo_de).
+const CAMPO_TIPO_AUTO = `    "tipo": "formal, historico o teorico: el que hayas decidido en TIPO DE CONCEPTO (exactamente una de esas tres palabras, sin tildes)",\n`;
 
 // Frases que solo lleva el prompt flexible, dentro del campo «teoria» del JSON de ejemplo.
 const SI_FORMAL = (flexible: boolean) => flexible ? 'SI EL CONCEPTO ES FORMAL (ver «TIPO DE CONCEPTO» antes de las reglas): ' : '';
@@ -38,7 +41,7 @@ Para el concepto ${flexible ? 'más crítico' : 'matemático/analítico más cr�
 {
     "id": "identificador_unico_snake_case",
     "cluster": "${CLUSTER_DESC}",
-    "nombre": "Nombre Completo del Concepto",
+${flexible ? CAMPO_TIPO_AUTO : ''}    "nombre": "Nombre Completo del Concepto",
     "teoria": "${SI_FORMAL(flexible)}Explicación teórica EXTREMADAMENTE EXTENSA, profunda y rigurosa del concepto (mínimo 1000 palabras). Utiliza un lenguaje académico formal de nivel doctorado (PhD). DEBES estructurar el contenido con subtítulos Markdown (##) abarcando: 1. Introducción Histórica/Contextual, 2. Fundamentos y Axiomas, 3. Desarrollo Matemático Profundo, 4. Aplicaciones y Limitaciones (las referencias bibliográficas se colocan por separado en el campo 'referencias', NO dentro de este texto de teoría). Desglosa cada deducción paso a paso. ESTÁ ESTRICTAMENTE PROHIBIDO usar fórmulas apelmazadas dentro de los párrafos (inline con $). Absolutamente TODAS las fórmulas, ecuaciones y desarrollo matemático deben ir segregadas en bloques independientes usando $$ con líneas en blanco antes y después, y estar numeradas al estilo paper académico usando \\\\tag{n}, ejemplo:\\n\\n$$\\nf(x) = y \\\\tag{1}\\n$$\\n\\nUsa solo texto puro para explicar y manda toda la matemática a bloques $$.${SI_HISTORICO(flexible)}",
     "glosario": [
         {"termino": "Variable 1", "definicion": "Definición estricta y matemática usando LaTeX si es necesario."},
@@ -113,7 +116,7 @@ La Neurona JSON debe estar al final de tu respuesta, obligatoriamente envuelta e
 {
     "id": "identificador_unico_snake_case_del_tema",
     "cluster": "${CLUSTER_DESC}",
-    "nombre": "Nombre Formal del Concepto",
+${flexible ? CAMPO_TIPO_AUTO : ''}    "nombre": "Nombre Formal del Concepto",
     "teoria": "${SI_FORMAL(flexible)}Explicación teórica EXTREMADAMENTE EXTENSA, profunda y rigurosa del concepto (mínimo 1000 palabras). Basándote en tu explicación magistral anterior, debes estructurar el contenido con subtítulos Markdown (##) abarcando: 1. Introducción Histórica/Contextual, 2. Fundamentos y Axiomas, 3. Desarrollo Matemático Profundo, 4. Aplicaciones y Limitaciones (las referencias bibliográficas se colocan por separado en el campo 'referencias', NO dentro de este texto de teoría). ESTÁ ESTRICTAMENTE PROHIBIDO usar fórmulas apelmazadas dentro de los párrafos (inline con $). Absolutamente TODAS las fórmulas y desarrollos deben ir segregados en bloques independientes usando $$ con líneas en blanco antes y después, y numeradas con \\\\tag{n}. El texto solo para leer, las matemáticas separadas en bloques.${SI_HISTORICO(flexible)}",
     "glosario": [
         {"termino": "Término Clave 1", "definicion": "Definición matemática formal en LaTeX."},
@@ -187,10 +190,11 @@ export const MODOS_PROMPT: { id: ModoPrompt; etiqueta: string; ayuda: string }[]
     { id: 'teorico', etiqueta: 'Teórico no matemático', ayuda: 'Marcos conceptuales o argumentales (economía conceptual, filosofía de la ciencia, metodología): teoría argumentada, glosario, casos de análisis y referencias. Sin laboratorio.' },
 ];
 
-type NoFormal = { rol: string; nombre: string; explicacion: string; teoria: string; termino: string; definicion: string; ejercicios: string; reglaEjercicios: string };
+type NoFormal = { tipo: 'historico' | 'teorico'; rol: string; nombre: string; explicacion: string; teoria: string; termino: string; definicion: string; ejercicios: string; reglaEjercicios: string };
 
 const NO_FORMAL: Record<'historico' | 'teorico', NoFormal> = {
     historico: {
+        tipo: 'historico',
         rol: 'Historiador de la ciencia y Catedrático Universitario, experto en cómo nacen y evolucionan las ideas',
         nombre: 'Nombre Completo del Concepto, la Persona o la Escuela',
         explicacion: 'Cuéntame el concepto con el rigor de un historiador profesional y un nivel de detalle propio de una tesis doctoral: el problema de la época, las personas y escuelas implicadas, la cronología de cómo se formó la idea, las controversias y su influencia posterior. Distingue siempre lo documentado de lo que los historiadores aún discuten. Usa fórmulas ($$ y $) solo si de verdad aclaran una idea; no inventes desarrollo matemático. No escatimes en extensión.',
@@ -201,6 +205,7 @@ const NO_FORMAL: Record<'historico' | 'teorico', NoFormal> = {
         reglaEjercicios: 'El array "ejercicios" va vacío ([]), como en el ejemplo: un concepto histórico no tiene problemas que resolver.',
     },
     teorico: {
+        tipo: 'teorico',
         rol: 'Catedrático Universitario y tutor académico de nivel de Doctorado, experto en teoría y análisis conceptual',
         nombre: 'Nombre Completo del Concepto o del Marco Teórico',
         explicacion: 'Explícame el concepto con el rigor de una tesis doctoral: el problema que aborda, sus supuestos y definiciones, el desarrollo del argumento o del marco conceptual, las posturas enfrentadas con sus autores, las críticas y alternativas, y sus aplicaciones o casos. Distingue hechos, supuestos y valoraciones. Usa fórmulas ($$ y $) solo si de verdad aclaran una idea. No escatimes en extensión.',
@@ -220,6 +225,7 @@ const NO_FORMAL: Record<'historico' | 'teorico', NoFormal> = {
 const jsonNoFormal = (m: NoFormal) => `{
     "id": "identificador_unico_snake_case",
     "cluster": "${CLUSTER_DESC}",
+    "tipo": "${m.tipo}",
     "nombre": "${m.nombre}",
     "teoria": "${m.teoria}",
     "glosario": [
@@ -240,7 +246,7 @@ ${m.ejercicios}
 
 const SIN_LABORATORIO = 'El campo "laboratorio" va SIEMPRE vacío, tal como está en el ejemplo: este tipo de concepto no tiene simulación. No inventes controles ni código.';
 
-const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_LABORATORIO, JSON_SEGURO, IDIOMAS[IDIOMA_ACTUAL], VERIFICACION_OCULTA, SIN_MARCAS_CITA, ultima]
+const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_LABORATORIO, `El campo "tipo" vale siempre "${m.tipo}", tal como está en el ejemplo.`, JSON_SEGURO, IDIOMAS[IDIOMA_ACTUAL], VERIFICACION_OCULTA, SIN_MARCAS_CITA, ultima]
     .map((r, i) => `${i + 1}. ${r}`).join('\n');
 
 const noFormalFuentes = (m: NoFormal) => `Actúa como un ${m.rol}. Tu objetivo es procesar el material académico que te proporciono y estructurarlo con rigor y profundidad en un formato JSON diseñado para "Alejandría", una app de conocimiento interactiva.
@@ -288,6 +294,62 @@ export const conClustersExistentes = (prompt: string, clusters: string[]) =>
     clusters.length === 0 ? prompt : prompt.replace('### REGLAS DE ORO:', () => `CLÚSTERES EXISTENTES EN MI SISTEMA: ${clusters.join(', ')}
 
 ### REGLAS DE ORO:`);
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// «Pedir revisión»: el prompt que se copia desde el panel de una neurona para que una IA externa la revise. Lleva la neurona (sin laboratorio ni embedding),
+// los criterios de su tipo y las mismas reglas de formato que los prompts de creación; el resultado se pega en el editor (no pasa por «importar»).
+export interface NeuronaRevisable {
+    id: string; nombre: string; cluster?: string; tipo: 'formal' | 'historico' | 'teorico';
+    teoria?: string; glosario?: unknown[]; ejercicios?: unknown[]; referencias?: unknown[];
+}
+
+const REVISION: Record<NeuronaRevisable['tipo'], { rol: string; criterio: string }> = {
+    formal: {
+        rol: 'Catedrático Universitario e Investigador Postdoctoral, experto en rigor matemático y en bibliografía académica',
+        criterio: 'Es un concepto FORMAL: comprueba cada definición, fórmula, deducción, hipótesis y resultado (LaTeX con $ y $$), que los ejercicios y sus soluciones sean correctos y que no falte nada esencial. Si "ejercicios" tiene contenido, déjalo con contenido.',
+    },
+    historico: {
+        rol: 'Historiador de la ciencia y Catedrático Universitario, experto en cómo nacen y evolucionan las ideas',
+        criterio: 'Es un concepto HISTÓRICO O CONCEPTUAL: comprueba fechas, personas, obras, escuelas y cronología, y distingue lo documentado de lo que los historiadores aún discuten. NO añadas desarrollo matemático ni ejercicios que la neurona no tenga.',
+    },
+    teorico: {
+        rol: 'Catedrático Universitario y tutor académico de nivel de Doctorado, experto en teoría y análisis conceptual',
+        criterio: 'Es un concepto TEÓRICO NO MATEMÁTICO: comprueba que cada postura esté bien atribuida (autor y año), que los supuestos y las críticas sean fieles y que los casos de análisis de "ejercicios" sigan siendo razonados. NO fuerces formalismo matemático.',
+    },
+};
+
+export function promptRevision(n: NeuronaRevisable): string {
+    const r = REVISION[n.tipo];
+    const neurona = JSON.stringify({
+        id: n.id, cluster: n.cluster ?? '', tipo: n.tipo, nombre: n.nombre, teoria: n.teoria ?? '',
+        glosario: n.glosario ?? [], ejercicios: n.ejercicios ?? [], referencias: n.referencias ?? [],
+    }, null, 4);
+    return `Actúa como un ${r.rol}. Te paso una neurona de "Alejandría" (una app de conocimiento personal) escrita por una IA que puede haberse equivocado. Revísala a fondo y devuélveme el JSON corregido en EL MISMO FORMATO.
+
+TIPO DE LA NEURONA: ${n.tipo}. ${r.criterio} No cambies el valor del campo "tipo".
+
+QUÉ REVISAR, por orden de importancia:
+1. REFERENCIAS: cada una debe existir y estar bien atribuida (título exacto, autores, año y enlace). Si una está mal atribuida, corrígela; si no puedes confirmar que existe, ELIMÍNALA: nunca inventes una referencia ni la dejes con dudas. Contrasta como mínimo en **Google Scholar** y, si no tiene DOI, usa como url la ficha de la publicación en Google Scholar (https://scholar.google.com/...).
+2. CONTENIDO: errores de hechos, fechas, autores, fórmulas y atribuciones en la teoría, el glosario y los ejercicios.
+3. Cambia SOLO lo que esté mal o falte. Lo correcto déjalo tal cual: no lo reescribas ni lo acortes, y mantén la extensión, los subtítulos Markdown y las fórmulas con $ y $$.
+
+NEURONA ACTUAL:
+
+\`\`\`json
+${neurona}
+\`\`\`
+
+FORMATO DE LA RESPUESTA:
+- Primero, una lista breve (máximo 10 viñetas) de lo que has cambiado y por qué; incluye cada referencia que corrijas o quites.
+- Después, UN ÚNICO bloque \`\`\`json con la neurona corregida: los mismos campos que arriba (id, cluster, tipo, nombre, teoria, glosario, ejercicios, referencias) y el mismo "id". No incluyas "laboratorio" ni campos nuevos, y no uses ningún otro bloque de código.
+- Si no hay nada que corregir, dilo y devuelve igualmente el bloque con la neurona tal cual.
+
+### REGLAS DE ORO:
+1. ${JSON_SEGURO}
+2. ${IDIOMAS[IDIOMA_ACTUAL]}
+3. ${VERIFICACION_OCULTA}
+4. ${SIN_MARCAS_CITA}`;
+}
 
 const CLAVE_MODO = 'alejandria.modoPrompt';
 const esModo = (v: unknown): v is ModoPrompt => MODOS_PROMPT.some(m => m.id === v);

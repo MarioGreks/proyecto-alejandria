@@ -24,6 +24,8 @@ Function InstalarApp
   File "${BACKEND}\idioma.py"
   File "${BACKEND}\limpieza.py"
   File "${BACKEND}\sincronizacion.py"
+  File "${BACKEND}\papelera.py"
+  File "${BACKEND}\agenda.py"
   File "${BACKEND}\requirements.txt"
   SetOutPath "$RutaApp"
   File "..\..\LICENSE"                       ; licencia del proyecto y avisos de terceros (se generan con `npm run avisos`), junto a la app

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, MODOS_PROMPT, conClustersExistentes,
-    guardarModo, modoGuardado, promptExploracion, promptFuentes,
+    guardarModo, modoGuardado, promptExploracion, promptFuentes, promptRevision,
 } from './prompts.ts';
 
 test('la exploración libre obliga a consultar Google Scholar y ambos prompts admiten su ficha como URL de la referencia', () => {
@@ -153,4 +153,54 @@ test('el modo se recuerda por ordenador, vale «automático» por defecto y resp
     assert.equal(datos['alejandria.modoPrompt'], 'historico');
     assert.equal(modoGuardado({ getItem: () => { throw new Error('sin almacenamiento'); } }), 'auto');
     assert.doesNotThrow(() => guardarModo('formal', { setItem: () => { throw new Error('lleno'); } }));
+});
+
+test('el prompt formal clásico no lleva el campo «tipo» (sigue idéntico) y los demás sí lo fijan', () => {
+    for (const p of [promptFuentes('formal'), promptExploracion('formal')]) assert.ok(!bloquesJson(p).at(-1).includes('"tipo"'));
+    for (const modo of ['auto', 'historico', 'teorico']) for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+        const ejemplo = JSON.parse(bloquesJson(p).at(-1));
+        assert.ok(typeof ejemplo.tipo === 'string', `${modo}: falta tipo`);
+        if (modo !== 'auto') assert.equal(ejemplo.tipo, modo);                         // histórico y teórico lo fijan
+        else assert.match(ejemplo.tipo, /formal, historico o teorico/);               // el automático lo decide la IA
+        assert.match(p, /tipo/);
+    }
+    assert.match(promptFuentes('historico'), /El campo "tipo" vale siempre "historico"/);
+    assert.match(promptExploracion('teorico'), /El campo "tipo" vale siempre "teorico"/);
+    assert.match(PROMPT_FUENTES, /se anota solo en el campo "tipo" del JSON/);
+    assert.ok(!PROMPT_FUENTES.includes('añadas campos extra'));
+});
+
+const NEURONA = {
+    id: 'bayes', nombre: 'Teorema de Bayes', cluster: 'Estadística', tipo: 'formal', teoria: 'Sea $\\theta$ un parámetro... "cita"\nsegunda línea',
+    glosario: [{ termino: 'Prior', definicion: 'previa' }], ejercicios: [{ enunciado: 'e', solucion: 's' }],
+    referencias: [{ titulo: 'An Essay', autores: 'Bayes (1763)', url: 'https://doi.org/x', nota: 'n' }],
+};
+
+test('el prompt de revisión lleva la neurona exacta (sin laboratorio), su tipo y las reglas de formato', () => {
+    for (const tipo of ['formal', 'historico', 'teorico']) {
+        const p = promptRevision({ ...NEURONA, tipo, laboratorio: { codigo: 'secreto_del_lab' } });
+        const enviada = JSON.parse(bloquesJson(p)[0]);
+        assert.deepEqual(enviada, { ...NEURONA, tipo });                                // vuelve idéntica: comillas, saltos de línea y LaTeX incluidos
+        assert.ok(!p.includes('secreto_del_lab') && !p.includes('embedding'));
+        assert.match(p, new RegExp(`TIPO DE LA NEURONA: ${tipo}\\.`));
+        assert.match(p, /ELIMÍNALA: nunca inventes una referencia/);
+        assert.match(p, /Google Scholar/);
+        assert.match(p, /mismo "id"/);
+        assert.match(p, /JSON VÁLIDO/);
+        assert.match(p, /castellano de España/);
+        assert.match(p, /NO dejes las marcas de cita/);
+        assert.match(p, /VERIFICACIÓN DOBLE OCULTA/);
+        assert.ok(!p.includes('undefined') && !p.includes('[object'), tipo);
+    }
+});
+
+test('cada tipo se revisa con su criterio: el histórico no se matematiza y el teórico no se formaliza', () => {
+    assert.match(promptRevision({ ...NEURONA, tipo: 'formal' }), /Es un concepto FORMAL: comprueba cada definición, fórmula/);
+    assert.match(promptRevision({ ...NEURONA, tipo: 'historico' }), /NO añadas desarrollo matemático ni ejercicios/);
+    assert.match(promptRevision({ ...NEURONA, tipo: 'teorico' }), /NO fuerces formalismo matemático/);
+});
+
+test('una neurona sin glosario ni referencias también produce un prompt válido', () => {
+    const p = promptRevision({ id: 'x', nombre: 'X', tipo: 'historico' });
+    assert.deepEqual(JSON.parse(bloquesJson(p)[0]), { id: 'x', cluster: '', tipo: 'historico', nombre: 'X', teoria: '', glosario: [], ejercicios: [], referencias: [] });
 });

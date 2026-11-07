@@ -398,7 +398,17 @@ class TestBorrarNeurona(unittest.TestCase):
         with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
             json.dump({"nombre": nid, "teoria": "t"}, f)
 
-    def test_borrar_una_neurona_quita_sus_aristas_y_no_reviven_al_recrearla(self):
+    def en_papelera(self):
+        return {n["id"]: n for n in self.client.get("/api/papelera").json()["neuronas"]}
+
+    def limpiar(self):
+        """Deja la carpeta de datos sin neuronas (los demás tests parten de ahí): todo a la papelera y vaciarla."""
+        for f in os.listdir(os.path.join(DATA_DIR, "raw")):
+            if f.endswith(".json"):
+                self.client.delete(f"/api/node/{f[:-5]}")
+        self.client.delete("/api/papelera")
+
+    def test_borrar_manda_a_la_papelera_y_sus_conexiones_vuelven_al_restaurarla(self):
         for n in ("del_x", "del_y", "del_z"):
             self.nodo(n)
         db_conn.add_links([{"origen_id": "del_x", "destino_id": "del_y", "motivo": "m", "estado": "rechazada"},
@@ -406,21 +416,89 @@ class TestBorrarNeurona(unittest.TestCase):
                            {"origen_id": "del_y", "destino_id": "del_z", "motivo": "m", "estado": "aceptada"}])
         r = self.client.delete("/api/node/del_x")
         self.assertEqual(r.status_code, 200)
-        self.assertGreaterEqual(r.json()["aristas_quitadas"], 2)               # las dos suyas (y las huérfanas de otros tests, si las hay)
-        self.assertEqual({(p[0], p[1]) for p in db_conn.get_known_pairs()} & {("del_x", "del_y"), ("del_z", "del_x")}, set())
-        self.assertIn(("del_y", "del_z"), db_conn.get_known_pairs())            # las de otras neuronas se conservan
-        self.nodo("del_x")                                                     # se vuelve a crear con el mismo id
-        self.assertEqual([l for l in db_conn.get_links_metadata() if "del_x" in (l["origen_id"], l["destino_id"])], [])
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, "raw", "del_x.json")))            # el archivo sigue ahí, solo marcado
+        self.assertIn("del_x", self.en_papelera())
+        universo = self.client.get("/api/universe").json()
+        self.assertNotIn("del_x", {n["id"] for n in universo["nodes"]})                       # fuera del universo...
+        pares = {(l["origen_id"], l["destino_id"]) for l in universo["links"]}
+        self.assertEqual({p for p in pares if "del_x" in p}, set())                           # ...y sus conexiones no se ven
+        self.assertIn(("del_y", "del_z"), pares)                                              # las de otras neuronas, sí
+        self.assertIn(("del_x", "del_y"), db_conn.get_known_pairs())                          # pero siguen guardadas (también la rechazada)
+        self.assertEqual(self.en_papelera()["del_x"]["conexiones"], 1)                        # la rechazada no cuenta
+        self.assertEqual(self.client.delete("/api/node/del_x").status_code, 200)              # borrar dos veces no la vuelve a fechar
+        r = self.client.post("/api/papelera/del_x/restaurar")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("del_x", self.en_papelera())
+        universo = self.client.get("/api/universe").json()
+        self.assertIn("del_x", {n["id"] for n in universo["nodes"]})
+        self.assertIn(("del_z", "del_x"), {(l["origen_id"], l["destino_id"]) for l in universo["links"]})   # la conexión vuelve con ella
+        self.assertEqual(self.client.post("/api/papelera/del_x/restaurar").status_code, 404)  # ya no está en la papelera
+        self.limpiar()
 
-    def test_tambien_limpia_las_huerfanas_que_ya_hubiera_y_borrar_todas_deja_cero_aristas(self):
+    def test_borrar_para_siempre_solo_vale_para_lo_que_esta_en_la_papelera_y_se_lleva_sus_conexiones(self):
         self.nodo("del_p")
-        db_conn.add_links([{"origen_id": "del_p", "destino_id": "fantasma", "motivo": "m"}])   # "fantasma" no existe: huérfana de antes
-        self.assertEqual(self.client.delete("/api/node/del_p").json()["aristas_quitadas"] >= 1, True)
+        self.nodo("del_q")
+        db_conn.add_links([{"origen_id": "del_p", "destino_id": "del_q", "motivo": "m", "estado": "aceptada"},
+                           {"origen_id": "del_p", "destino_id": "fantasma", "motivo": "m"}])
+        self.assertEqual(self.client.delete("/api/papelera/del_p").status_code, 404)           # una neurona viva no se borra de verdad
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, "raw", "del_p.json")))
+        self.client.delete("/api/node/del_p")
+        self.assertEqual(self.client.delete("/api/papelera/del_p").status_code, 200)
+        self.assertFalse(os.path.exists(os.path.join(DATA_DIR, "raw", "del_p.json")))
+        self.assertEqual(db_conn.get_known_pairs() & {("del_p", "del_q"), ("del_p", "fantasma")}, set())
+        self.assertEqual(self.client.delete("/api/node/no_existe_nunca").status_code, 404)
+        self.assertEqual(self.client.delete("/api/node/..%5Cx").status_code, 400)
+        self.assertEqual(self.client.delete("/api/papelera/..%5Cx").status_code, 400)
+        self.limpiar()
+
+    def test_vaciar_borra_todo_y_lo_que_pasa_de_7_dias_se_purga_solo(self):
+        from datetime import datetime, timedelta, timezone
+        for n in ("pap_a", "pap_b", "pap_c"):
+            self.nodo(n)
+            self.client.delete(f"/api/node/{n}")
+        ruta = os.path.join(DATA_DIR, "raw", "pap_a.json")
+        with open(ruta, encoding="utf-8") as f:
+            d = json.load(f)
+        d["papelera"]["fecha"] = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        lista = self.en_papelera()                                                            # listar purga antes
+        self.assertEqual(set(lista) & {"pap_a", "pap_b", "pap_c"}, {"pap_b", "pap_c"})
+        self.assertFalse(os.path.exists(ruta))
+        self.assertEqual(lista["pap_b"]["dias_restantes"], 7)
+        n = len(lista)
+        self.assertEqual(self.client.delete("/api/papelera").json()["borradas"], n)
+        self.assertEqual(self.en_papelera(), {})
+        self.nodo("pap_d")                                                                    # una marca sin fecha legible no se borra a ciegas: se fecha ahora
+        with open(os.path.join(DATA_DIR, "raw", "pap_d.json"), "w", encoding="utf-8") as f:
+            json.dump({"nombre": "d", "papelera": {"fecha": "ayer"}}, f)
+        self.assertIn("pap_d", self.en_papelera())
+        self.assertIn("pap_d", self.en_papelera())
+        self.limpiar()
+
+    def test_con_todo_en_la_papelera_el_universo_queda_vacio_y_no_se_recompila_sin_parar(self):
+        self.nodo("del_p")
+        db_conn.add_links([{"origen_id": "del_p", "destino_id": "fantasma", "motivo": "m"}])
         for f in os.listdir(os.path.join(DATA_DIR, "raw")):
             if f.endswith(".json"):
                 self.client.delete(f"/api/node/{f[:-5]}")
         self.assertEqual(db_conn.get_links_metadata(), [])
         self.assertEqual(self.client.get("/api/universe").json(), {"nodes": [], "links": []})
+        with patch.object(db_conn, "compile_raw_jsons", wraps=db_conn.compile_raw_jsons) as comp, patch("builtins.print") as imp:
+            self.client.get("/api/universe")
+            self.client.get("/api/universe")
+        self.assertFalse(any("recompilada" in str(c) for c in imp.call_args_list))           # la caché vale: no reescribe el Parquet en cada consulta
+        self.limpiar()
+
+    def test_lo_de_la_papelera_no_se_exporta_e_importar_una_neurona_con_su_id_la_reemplaza(self):
+        self.nodo("pap_e")
+        self.client.delete("/api/node/pap_e")
+        self.assertNotIn("pap_e", {n["id"] for n in self.client.get("/api/exportar").json()["neuronas"]})
+        archivo = {"formato": intercambio.FORMATO, "version": intercambio.VERSION, "neuronas": [{"id": "pap_e", "nombre": "Nueva", "teoria": "x"}], "aristas": []}
+        self.assertEqual(self.client.post("/api/importar", json={"contenido": archivo}).json()["añadidas"], 1)
+        self.assertNotIn("pap_e", self.en_papelera())
+        self.assertEqual(self.client.get("/node/pap_e").json()["nombre"], "Nueva")
+        self.limpiar()
 
     def test_sin_carpeta_de_nodos_no_borra_ninguna_arista(self):
         db_conn.add_links([{"origen_id": "keep_a", "destino_id": "keep_b", "motivo": "m"}])
@@ -779,6 +857,7 @@ class TestIntercambio(unittest.TestCase):
     def tearDown(self):
         for n in ("ix_a", "ix_b", "ix_c"):
             self.client.delete(f"/api/node/{n}")
+        self.client.delete("/api/papelera")        # borrar manda a la papelera: se vacía para no dejar neuronas ni conexiones de este test
 
     def crear(self, nid, teoria="t"):
         with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
@@ -941,6 +1020,243 @@ class TestSincronizacionEnLaApp(unittest.TestCase):
         shutil.rmtree(self.compartida)
         e = self.client.post("/api/sync/ahora").json()
         self.assertIn("FileNotFoundError", e["error"])
+
+
+class TestTipoDeNeurona(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def tearDown(self):
+        for f in os.listdir(os.path.join(DATA_DIR, "raw")):
+            if f.startswith("tipo_"):
+                self.client.delete(f"/api/node/{f[:-5]}")
+        self.client.delete("/api/papelera")
+
+    def test_se_respeta_el_que_pone_la_ia_con_o_sin_tildes_y_si_no_se_infiere(self):
+        from limpieza import tipo_de
+        lab = {"codigo": "print(1)", "controles": []}
+        self.assertEqual(tipo_de({"tipo": "histórico"}), "historico")
+        self.assertEqual(tipo_de({"tipo": " Teórico "}), "teorico")
+        self.assertEqual(tipo_de({"tipo": "FORMAL"}), "formal")
+        self.assertEqual(tipo_de({"tipo": "histórico", "laboratorio": lab}), "historico")      # lo que dice la neurona manda sobre lo que trae
+        self.assertEqual(tipo_de({"laboratorio": lab}), "formal")                              # sin campo (neuronas antiguas): con laboratorio ⇒ formal
+        self.assertEqual(tipo_de({"ejercicios": [{"enunciado": "caso"}], "laboratorio": {"codigo": " ", "controles": []}}), "teorico")
+        self.assertEqual(tipo_de({"glosario": [], "ejercicios": []}), "historico")             # sin laboratorio ni ejercicios ⇒ histórico
+        for malo in ("matematico", "", 3, None, ["formal"]):
+            self.assertEqual(tipo_de({"tipo": malo}), "historico", malo)                       # un valor que no es de los tres se ignora y se infiere
+
+    def test_al_inyectar_se_guarda_el_tipo_y_el_panel_lo_recibe(self):
+        casos = {"tipo_h": ({"tipo": "Histórico"}, "historico"), "tipo_t": ({"tipo": "teorico", "ejercicios": [{"enunciado": "a", "solucion": "b"}]}, "teorico"),
+                 "tipo_f": ({"laboratorio": {"codigo": "print(1)", "controles": []}}, "formal"), "tipo_x": ({"tipo": "raro"}, "historico")}
+        for nid, (extra, esperado) in casos.items():
+            r = self.client.post("/api/node", json={"raw_json": json.dumps({"id": nid, "nombre": nid, "teoria": "t", **extra})})
+            self.assertEqual(r.status_code, 200, r.text)
+            with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), encoding="utf-8") as f:
+                self.assertEqual(json.load(f)["tipo"], esperado, nid)
+            self.assertEqual(self.client.get(f"/node/{nid}").json()["tipo"], esperado, nid)
+
+    def test_una_neurona_antigua_sin_el_campo_recibe_el_tipo_inferido_sin_tocar_su_archivo(self):
+        with open(os.path.join(DATA_DIR, "raw", "tipo_viejo.json"), "w", encoding="utf-8") as f:
+            json.dump({"nombre": "V", "teoria": "t", "laboratorio": {"codigo": "print(1)", "controles": []}}, f)
+        self.assertEqual(self.client.get("/node/tipo_viejo").json()["tipo"], "formal")
+        with open(os.path.join(DATA_DIR, "raw", "tipo_viejo.json"), encoding="utf-8") as f:
+            self.assertNotIn("tipo", json.load(f))
+
+
+class TestEditarNeurona(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        cls.ruta = os.path.join(DATA_DIR, "raw", "edit1.json")
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def setUp(self):
+        with open(self.ruta, "w", encoding="utf-8") as f:
+            json.dump({"id": "edit1", "nombre": "Vieja", "cluster": "Mates", "teoria": "teoría vieja", "origen": "ingesta_automatica", "embedding": [0.1, 0.2],
+                       "laboratorio": {"explicacion": "e", "controles": [], "codigo": "print(0)"}, "extra": {"se": "conserva"},
+                       "glosario": [{"termino": "a", "definicion": "b"}], "ejercicios": [], "referencias": ["Una referencia suelta"]}, f)
+
+    def tearDown(self):
+        self.client.delete("/api/node/edit1")
+        self.client.delete("/api/papelera")
+
+    def cuerpo(self, **cambios):
+        return {"nombre": "Nueva", "teoria": "teoría nueva con $x^2$", "tipo": "formal",
+                "glosario": [{"termino": "t", "definicion": "d"}], "ejercicios": [{"enunciado": "e", "solucion": "s"}],
+                "referencias": [{"titulo": "Libro", "autores": "Ito (1951)", "url": "https://doi.org/x", "nota": "n"}], **cambios}
+
+    def put(self, cuerpo, node="edit1"):
+        return self.client.put(f"/api/node/{node}", json=cuerpo)
+
+    def leer(self):
+        with open(self.ruta, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_guarda_los_campos_editados_conservando_el_resto_del_json(self):
+        r = self.put(self.cuerpo())
+        self.assertEqual(r.status_code, 200, r.text)
+        n = self.leer()
+        self.assertEqual((n["nombre"], n["teoria"], n["tipo"]), ("Nueva", "teoría nueva con $x^2$", "formal"))
+        self.assertEqual(n["glosario"], [{"termino": "t", "definicion": "d"}])
+        self.assertEqual(n["ejercicios"], [{"enunciado": "e", "solucion": "s"}])
+        self.assertEqual(n["referencias"], [{"titulo": "Libro", "autores": "Ito (1951)", "url": "https://doi.org/x", "nota": "n"}])
+        self.assertEqual((n["id"], n["cluster"], n["origen"], n["extra"]), ("edit1", "Mates", "ingesta_automatica", {"se": "conserva"}))   # lo demás, intacto
+        self.assertEqual(n["laboratorio"]["codigo"], "print(0)")
+        self.assertFalse(os.path.exists(self.ruta + ".tmp"))
+        devuelta = r.json()                                                                   # el panel recibe la neurona ya guardada y recompilada
+        self.assertEqual((devuelta["nombre"], devuelta["tipo"], devuelta["glosario"]), ("Nueva", "formal", [{"termino": "t", "definicion": "d"}]))
+        self.assertEqual(self.client.get("/node/edit1").json()["teoria"], "teoría nueva con $x^2$")
+
+    def test_las_referencias_vacias_no_dejan_claves_sobrantes_y_se_limpian_las_marcas_de_cita(self):
+        self.put(self.cuerpo(teoria="Stirling[reference:25]. Fin", referencias=[{"titulo": "Solo título"}],
+                             glosario=[{"termino": "t", "definicion": "d [ref 2]"}]))
+        n = self.leer()
+        self.assertEqual((n["teoria"], n["glosario"][0]["definicion"]), ("Stirling. Fin", "d"))
+        self.assertEqual(n["referencias"], [{"titulo": "Solo título"}])
+
+    def test_el_embedding_se_recalcula_solo_si_cambia_el_nombre_o_la_teoria(self):
+        self.put(self.cuerpo(nombre="Vieja", teoria="teoría vieja", glosario=[], referencias=[]))      # mismo texto: el embedding se conserva
+        self.assertEqual(self.leer()["embedding"], [0.1, 0.2])
+        self.put(self.cuerpo(nombre="Vieja", teoria="teoría vieja corregida"))                         # teoría distinta: se descarta (compile lo recalcula)
+        self.assertNotIn("embedding", self.leer())
+
+    def test_valida_lo_que_llega_y_no_toca_el_archivo_si_falla(self):
+        antes = self.leer()
+        for malo in (self.cuerpo(nombre="   "), self.cuerpo(tipo="matematico"), self.cuerpo(teoria="x" * 400001),
+                     self.cuerpo(referencias=[{"titulo": "T", "url": "javascript:alert(1)"}]), self.cuerpo(referencias=[{"titulo": ""}]),
+                     {"nombre": "solo nombre"}):
+            self.assertEqual(self.put(malo).status_code, 422, malo)
+        self.assertEqual(self.leer(), antes)
+        self.assertEqual(self.put(self.cuerpo(), node="no_existe").status_code, 404)
+        self.assertEqual(self.put(self.cuerpo(), node="..%5Cx").status_code, 400)
+
+    def test_una_neurona_en_la_papelera_no_se_edita_hasta_restaurarla(self):
+        self.client.delete("/api/node/edit1")
+        self.assertEqual(self.put(self.cuerpo()).status_code, 409)
+        self.client.post("/api/papelera/edit1/restaurar")
+        self.assertEqual(self.put(self.cuerpo()).status_code, 200)
+
+
+class TestInterpretarJson(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def interpretar(self, texto):
+        return self.client.post("/api/json/interpretar", json={"texto": texto})
+
+    def test_lee_el_bloque_json_de_una_respuesta_con_texto_y_los_defectos_habituales_de_las_ia(self):
+        respuesta = ("Cambios:\n- Corregí una referencia\n\n```json\n"
+                     '{"id": "bayes", "nombre": "Bayes", "teoria": "Sea $\\theta$ y \\frac{a}{b} y "cita" aquí",\n'
+                     '"referencias": [{"titulo": "T", "autores": "A (1763)"}]\n}\n```\nFin.')
+        r = self.interpretar(respuesta)
+        self.assertEqual(r.status_code, 200, r.text)
+        d = r.json()["datos"]
+        self.assertEqual((d["id"], d["nombre"]), ("bayes", "Bayes"))
+        self.assertIn("\\theta", d["teoria"])                       # la barra de LaTeX sin duplicar se repara
+        self.assertIn('"cita"', d["teoria"])                         # y la comilla sin escapar también
+        self.assertEqual(d["referencias"][0]["titulo"], "T")
+
+    def test_sin_bloque_vale_el_texto_entero_y_no_devuelve_el_embedding(self):
+        r = self.interpretar('{"nombre": "X", "embedding": [0.1, 0.2]}')
+        self.assertEqual(r.json()["datos"], {"nombre": "X"})
+
+    def test_rechaza_lo_que_no_es_una_neurona_sin_guardar_nada(self):
+        for malo in ("no es json", "```json\n[1, 2]\n```", "3", "```json\n{roto\n```"):
+            self.assertEqual(self.interpretar(malo).status_code, 400, malo)
+
+
+class TestAgenda(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+        cls.archivo = os.path.join(DATA_DIR, "agenda.json")
+
+    def setUp(self):
+        if os.path.exists(self.archivo):
+            os.remove(self.archivo)
+
+    tearDown = setUp
+
+    PROFE = {"quien": "Profesora Ficticia (Universidad de Ejemplo, Sídney)", "correo": "ficticia@example.org", "tipo": "Académico",
+             "necesito": "Preguntarle por el programa de intercambio de 2027"}
+
+    def alta(self, **cambios):
+        return self.client.post("/api/agenda", json={**self.PROFE, **cambios})
+
+    def test_alta_listado_edicion_y_borrado(self):
+        self.assertEqual(self.client.get("/api/agenda").json(), {"contactos": []})
+        c = self.alta().json()
+        self.assertEqual((c["quien"], c["tipo"], c["tipo_otro"], c["telefono"]), (self.PROFE["quien"], "Académico", "", ""))
+        self.assertTrue(c["id"] and c["creado"] and c["modificado"])
+        self.alta(quien="Ana Empresa", telefono="+34 600 000 000", correo="", tipo="Corporativo", necesito="Presupuesto")
+        self.assertEqual([x["quien"] for x in self.client.get("/api/agenda").json()["contactos"]], ["Ana Empresa", self.PROFE["quien"]])   # por nombre
+        r = self.client.put(f"/api/agenda/{c['id']}", json={**self.PROFE, "necesito": "Ya me contestó"})
+        self.assertEqual((r.status_code, r.json()["necesito"], r.json()["id"], r.json()["creado"]), (200, "Ya me contestó", c["id"], c["creado"]))
+        self.assertEqual(self.client.delete(f"/api/agenda/{c['id']}").status_code, 200)
+        self.assertEqual(len(self.client.get("/api/agenda").json()["contactos"]), 1)
+        self.assertEqual(self.client.delete(f"/api/agenda/{c['id']}").status_code, 404)
+        self.assertEqual(self.client.put("/api/agenda/no_existe", json=self.PROFE).status_code, 404)
+
+    def test_otro_pide_que_el_usuario_escriba_el_tipo_y_los_demas_lo_descartan(self):
+        self.assertEqual(self.alta(tipo="Otro").status_code, 422)
+        self.assertEqual(self.alta(tipo="Otro", tipo_otro="   ").status_code, 422)
+        c = self.alta(tipo="Otro", tipo_otro="  Fontanero ").json()
+        self.assertEqual((c["tipo"], c["tipo_otro"]), ("Otro", "Fontanero"))
+        self.assertEqual(self.alta(tipo="Corporativo", tipo_otro="residuo").json()["tipo_otro"], "")
+
+    def test_valida_los_datos(self):
+        for malo in ({"correo": ""}, {"correo": "sin-arroba"}, {"quien": "  "}, {"necesito": ""}, {"tipo": "Familiar"}, {"telefono": "1" * 61}, {"quien": "x" * 201}):
+            self.assertEqual(self.alta(**malo).status_code, 422, malo)
+        self.assertEqual(self.alta(correo="", telefono="+61 2 0000 0000").status_code, 200)       # con teléfono basta
+        self.assertFalse(os.path.exists(self.archivo + ".tmp"))
+
+    def test_exportar_e_importar_no_pisa_lo_que_ya_tienes_y_cuenta_lo_invalido(self):
+        a = self.alta().json()
+        b = self.alta(quien="Ana Empresa", correo="ana@example.com", tipo="Corporativo", necesito="Presupuesto").json()
+        export = self.client.get("/api/agenda/exportar").json()
+        self.assertEqual((export["formato"], export["version"], len(export["contactos"])), ("alejandria-agenda", 1, 2))
+        self.client.delete(f"/api/agenda/{b['id']}")
+        archivo = {**export, "contactos": export["contactos"] + [{"quien": "", "tipo": "Académico"}, "no es un contacto", {**self.PROFE, "id": "otro", "tipo": "Otro"}]}
+        r = self.client.post("/api/agenda/importar", json={"contenido": archivo}).json()
+        self.assertEqual((r["añadidos"], r["omitidos"], r["invalidos"]), (1, 1, 3))               # vuelve «Ana», la que tenías no se duplica
+        lista = {c["id"]: c for c in self.client.get("/api/agenda").json()["contactos"]}
+        self.assertEqual(set(lista), {a["id"], b["id"]})
+        self.assertEqual(lista[b["id"]]["necesito"], "Presupuesto")
+        for malo in ({}, {"formato": "alejandria-neuronas", "version": 1, "contactos": []}, {"formato": "alejandria-agenda", "version": 9, "contactos": []},
+                     {"formato": "alejandria-agenda", "version": 1, "contactos": "x"}):
+            self.assertEqual(self.client.post("/api/agenda/importar", json={"contenido": malo}).status_code, 400, malo)
+
+    def test_un_archivo_danado_no_se_sobrescribe(self):
+        with open(self.archivo, "w", encoding="utf-8") as f:
+            f.write('{"formato": "alejandria-agenda", "contactos": [{"quien": "importante"')      # a medias
+        self.assertEqual(self.client.get("/api/agenda").status_code, 500)
+        self.assertEqual(self.alta().status_code, 500)
+        with open(self.archivo, encoding="utf-8") as f:
+            self.assertIn("importante", f.read())
+
+    def test_la_agenda_es_privada_ni_se_exporta_con_las_neuronas_ni_viaja_por_la_sincronizacion(self):
+        import sincronizacion
+        self.alta(quien="Zorzal Ñandú (dato privado de prueba)", correo="zorzal@example.org")
+        self.assertNotIn("Zorzal", json.dumps(self.client.get("/api/exportar").json()))
+        compartida = tempfile.mkdtemp(prefix="ap-agenda-sync-")
+
+        class SinAristas:
+            def listar(self): return []
+            def guardar(self, a): pass
+            def borrar(self, o, d): pass
+        try:
+            sincronizacion.Sincronizador(DATA_DIR, compartida, SinAristas(), host="pc-prueba").sincronizar()
+            for raiz, _, archivos in os.walk(compartida):
+                for a in archivos:
+                    self.assertNotIn("agenda", a.lower())
+                    with open(os.path.join(raiz, a), encoding="utf-8") as f:
+                        self.assertNotIn("Zorzal", f.read())
+        finally:
+            sincronizacion.olvidar(DATA_DIR)
+            shutil.rmtree(compartida, ignore_errors=True)
 
 
 class TestEmpaquetado(unittest.TestCase):

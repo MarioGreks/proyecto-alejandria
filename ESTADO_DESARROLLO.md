@@ -424,3 +424,49 @@ Decisiones (grill-me): estilo terminal como Ajustes en todo; paleta verde `#00ff
 - **La app la encuentra:** `ollama_service.get_ollama_path` mira primero `ruta_ollama` de `%APPDATA%\dev.alejandria.app\instalacion.json` (o la variable `ALEJANDRIA_INSTALACION`, para las pruebas) y, si falla o no existe, sigue con el PATH y las rutas de siempre. Hace falta porque el PATH del proceso con el que se abre la app justo después de instalar puede no incluir la carpeta nueva.
 - **Probado:** 2 tests nuevos (112 en el backend: la elegida gana al PATH, y archivo ausente, roto, clave ausente, carpeta borrada o dato que no es texto vuelven al PATH; y el cableado del instalador de punta a punta en el texto de los archivos), el PowerShell se interpreta bien, la validación y la construcción de `/DIR` se probaron con 12 entradas buenas y malas, NSIS compila (solo los 4 avisos de siempre) y el instalador real en modo prueba enseña el campo nuevo en componentes y las líneas nuevas en el resumen (capturas de la ventana, sin instalar nada).
 - **No probado:** que el instalador de Ollama respete `/DIR` dentro de nuestro flujo, porque instalar de verdad otra copia de Ollama (~1,6 GB) pisaría la del usuario (misma identidad de aplicación en Inno Setup); tampoco la instalación completa con una carpeta nueva ni los avisos de ruta no válida con el ratón (la lógica está en el texto y en `instalar.ps1`, probada aparte). Un Ollama ya instalado no se mueve: el campo solo aparece si se va a instalar.
+
+## ✎ Editor de neuronas, «Pedir revisión», papelera, tipo y agenda (rama `editor-papelera-agenda`, sin versión ni commit)
+Cinco mejoras sobre la 0.3.4, decididas una a una con el usuario. Todo en `C:\Github\alejandria-publico`; nada se ha commiteado, ni subido, ni lanzado.
+
+**Decisiones tomadas**
+- **Tipo:** el prompt formal clásico queda byte a byte idéntico (se comprobó contra `main`: `PROMPT_FUENTES_CLASICO` y `PROMPT_EXPLORACION_CLASICO` iguales). Automático, histórico y teórico llevan el campo `tipo`; sus neuronas lo traen y las del clásico (y las anteriores) se deducen. Solo se ve una insignia en el panel, nada en el 3D (decisión explícita del usuario).
+- **Reimportar una revisión:** se pega en el editor («Pegar JSON revisado»); no se toca el importador, que sigue sin pisar neuronas existentes. Aplica nombre, tipo, teoría, glosario, ejercicios y referencias; ignora id, clúster y laboratorio (avisa).
+- **Papelera:** 7 días + vaciar a mano; las conexiones se guardan y vuelven al restaurar; la papelera SÍ se sincroniza entre PCs.
+- **Agenda:** solo local, nunca en la sincronización; exportar/importar propios.
+
+**1. Editor de neuronas (`EditorNeurona.tsx`, `PUT /api/node/{id}`)**
+- Edita nombre, tipo, teoría (Markdown con vista previa KaTeX en vivo), glosario, ejercicios y referencias. El resto del JSON (id, clúster, laboratorio, embedding, origen, campos extra) se conserva; se aplica `limpiar_neurona`; se recompila la base; si cambia el nombre o la teoría se borra el embedding y `compile_raw_jsons` lo recalcula. Escritura atómica. 409 si la neurona está en la papelera. Los enlaces de las referencias deben ser `http(s)://` (el backend los valida también).
+- Sincronización: guardar es una edición normal del archivo, así que `sincronizacion.py` le asigna versión (t/rev/pc) y los conflictos van a `datos/conflictos/` como siempre. No se tocó `sincronizacion.py`.
+- Lógica pura y testeada en `utils/neurona.ts` (formulario, filas vacías, validación, `aplicarRevision`) y `utils/errorApi.ts` (mensajes del 422 de pydantic). Cerrar el panel con cambios sin guardar pide confirmación.
+
+**2. «Pedir revisión» (`promptRevision` en `prompts.ts`, `POST /api/json/interpretar`)**
+- El botón copia al portapapeles un prompt con la neurona (sin laboratorio ni embedding), los criterios de su tipo, referencias primero (corregir o ELIMINAR, nunca inventar; Google Scholar), mismo `id`, JSON válido, castellano de España, citas sin marcas y verificación oculta. Pide un único bloque ```json.
+- `/api/json/interpretar` lee lo pegado con la tolerancia del Sintetizador (bloque ```json, barras de LaTeX sin duplicar, comillas sin escapar, comas) y devuelve el objeto sin guardar nada. `extraer_bloque_json` se comparte con `/api/node`.
+
+**3. Papelera (`papelera.py`, `Papelera.tsx`)**
+- `DELETE /api/node/{id}` ya no borra: marca el archivo con `"papelera": {"fecha": ISO}` y se queda en `raw/`. `database.compile_raw_jsons` ignora las marcadas (con su contador `_n_papelera` para no recompilar en cada consulta, y parquet vacío si todo está en la papelera) y `get_links_metadata` solo devuelve conexiones entre neuronas vivas: las de una neurona en la papelera siguen en `aristas.parquet` y reaparecen al restaurar.
+- Sincronización: como la marca viaja dentro del JSON, mover a la papelera y restaurar son ediciones normales (el otro PC la ve en su papelera; restaurar la revive en todos). Borrar de verdad (`DELETE /api/papelera/{id}`, solo si ya está en la papelera, o vaciar) borra el archivo y se propaga como la tumba de siempre. La purga a los 7 días se hace al arrancar y al abrir la papelera; cada PC la hace por su cuenta (idempotente). `exportar` no incluye lo de la papelera; `importar` trata una neurona de la papelera como inexistente y la reemplaza.
+- Endpoints: `GET /api/papelera`, `POST /api/papelera/{id}/restaurar`, `DELETE /api/papelera/{id}`, `DELETE /api/papelera`.
+- Efecto colateral buscado: borrar ya no limpia las conexiones huérfanas; solo lo hace el borrado definitivo.
+
+**4. Tipo de neurona (`limpieza.tipo_de`)**
+- `formal`, `historico` o `teorico` en el JSON de la neurona. Sin campo: con laboratorio ⇒ formal; sin laboratorio y con ejercicios ⇒ teórico; sin ninguno ⇒ histórico (un valor no válido se ignora; admite tildes y mayúsculas). `/api/node` lo guarda al inyectar; `GET /node/{id}` lo devuelve (inferido si falta, sin tocar el archivo). Insignia `[F]/[H]/[T]` en la cabecera del panel y en la papelera.
+- Límite conocido: una neurona formal sin laboratorio pero con ejercicios (de antes del campo) se infiere «teórica» hasta que se edite y se fije el tipo.
+
+**5. Agenda (`agenda.py`, `Agenda.tsx`, botón `[ Agenda ]` en la barra superior)**
+- `<carpeta de datos>/agenda.json` (en desarrollo `backend/data/`, que está en `.gitignore`). Por contacto: quién es, correo y/o teléfono (al menos uno), tipo (Académico, Corporativo u Otro con texto propio) y «qué necesito de este contacto en el futuro» (obligatorio). Alta, edición, borrado, búsqueda (palabras sueltas, sin tildes, en todos los campos) y filtro por tipo (incluye cada «Otro» escrito).
+- Privacidad: no entra en `sincronizacion.py`, ni en `/api/exportar`, ni en el repositorio; un test ejecuta una sincronización real y comprueba que nada de la agenda llega a la carpeta compartida. Un `agenda.json` ilegible no se sobrescribe (error 500 con el motivo). Los tests usan contactos inventados.
+- Exportar/importar: `alejandria-agenda` v1; importar añade los ids nuevos, no pisa y cuenta los inválidos.
+
+**Módulos nuevos del backend:** `papelera.py` y `agenda.py`, añadidos a `instalacion.nsh` y a `tauri.conf.json` (el test de empaquetado lo comprueba).
+
+**Probado**
+- Backend: `test_backend` + `test_sincronizacion` (133 en `test_backend`, antes 112, y 19 en `test_sincronizacion`, antes 18): tipo, editor (campos, embedding, validaciones, 409), interpretar JSON, papelera (restaurar con conexiones, borrar de verdad, vaciar, caducidad, marca sin fecha, universo vacío sin recompilar sin parar), agenda (CRUD, «Otro», validación, export/import, archivo dañado, privacidad frente a la sincronización) y la papelera viajando entre dos PCs simulados.
+- Frontend: `npm test` 85 (antes 68): prompts con `tipo` y `promptRevision` (la neurona vuelve idéntica dentro del prompt), `neurona.test.mjs`, `agenda.test.mjs`; `tsc --noEmit` limpio.
+- De punta a punta (navegador integrado, backend en el 8123 con datos temporales y la IA apagada; Vite en el 1420 con las llamadas redirigidas al 8123; se verificó que contestaba el de prueba y no hubo ninguna petición al 8000): prompt de revisión copiado (15.951 caracteres); respuesta de IA con 160 barras de LaTeX sin duplicar y un clúster/laboratorio de más: pegada, aplicada, guardada, teoría idéntica byte a byte, clúster y laboratorio intactos, tipo y referencia nuevos, embedding recalculado con fastembed real; errores al pegar un texto sin JSON y un JSON de otra neurona; papelera desde el panel (conexión oculta, vuelve al restaurar), borrado definitivo con confirmación; agenda: alta con validaciones, tipo «Otro», búsqueda sin tilde, borrado con confirmación, importación con un duplicado y un inválido.
+
+**No probado**
+- Sincronización real entre dos instalaciones con una carpeta de nube (solo PCs simulados en los tests); la purga a los 7 días en un PC mientras el otro tiene la neurona en la papelera.
+- El `.exe` de Tauri (portapapeles real en WebView2, instalador reconstruido con los dos módulos nuevos), `vite build` y el 3D (la insignia no toca el universo).
+- Una IA externa real devolviendo la revisión con el prompt nuevo (calidad de la corrección), y los prompts automático/histórico/teórico generando `tipo` con una IA real.
+- Riesgo: una versión anterior de la app que abra una carpeta de datos con neuronas en la papelera las mostraría como vivas (no conoce la marca).

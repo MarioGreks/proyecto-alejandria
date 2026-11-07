@@ -5,6 +5,9 @@ DeepSeek escribe «...fórmula de Stirling[reference:25].», ChatGPT «:contentR
 La misma lista está en frontend/src/utils/markdown.tsx (`limpiarCitas`), que limpia también al pintar las neuronas antiguas.
 """
 import re
+import unicodedata
+
+TIPOS = ("formal", "historico", "teorico")
 
 _MARCAS = [
     r":?contentReference\[oaicite:\d+\]\{index=\d+\}",
@@ -19,6 +22,20 @@ _PATRON = re.compile(r"[ \t]*(?:" + "|".join(_MARCAS) + r")", re.IGNORECASE)
 # Campos de texto que se leen en el panel. No se tocan id, nombre, cluster, url ni el código del laboratorio
 # (en Python, `x[ref]` o `d["cite"]` son código válido).
 _CAMPOS_TEXTO = ("teoria", "explicacion", "enunciado", "solucion", "definicion", "termino", "nota", "titulo", "autores")
+
+
+def tipo_de(datos: dict) -> str:
+    """Tipo de una neurona: formal, historico o teorico. Si el JSON lo trae (con o sin tildes) se respeta; si no (neuronas anteriores al campo, o del prompt
+    formal clásico) se infiere: con laboratorio ⇒ formal; sin laboratorio pero con ejercicios (casos de análisis) ⇒ teórico; sin ninguno ⇒ histórico."""
+    t = datos.get("tipo")
+    if isinstance(t, str):
+        t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().strip().lower()
+        if t in TIPOS:
+            return t
+    lab = datos.get("laboratorio")
+    if isinstance(lab, dict) and str(lab.get("codigo") or "").strip():
+        return "formal"
+    return "teorico" if datos.get("ejercicios") else "historico"
 
 
 def limpiar_texto(texto: str) -> str:
