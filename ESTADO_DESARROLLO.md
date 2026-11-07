@@ -425,8 +425,8 @@ Decisiones (grill-me): estilo terminal como Ajustes en todo; paleta verde `#00ff
 - **Probado:** 2 tests nuevos (112 en el backend: la elegida gana al PATH, y archivo ausente, roto, clave ausente, carpeta borrada o dato que no es texto vuelven al PATH; y el cableado del instalador de punta a punta en el texto de los archivos), el PowerShell se interpreta bien, la validación y la construcción de `/DIR` se probaron con 12 entradas buenas y malas, NSIS compila (solo los 4 avisos de siempre) y el instalador real en modo prueba enseña el campo nuevo en componentes y las líneas nuevas en el resumen (capturas de la ventana, sin instalar nada).
 - **No probado:** que el instalador de Ollama respete `/DIR` dentro de nuestro flujo, porque instalar de verdad otra copia de Ollama (~1,6 GB) pisaría la del usuario (misma identidad de aplicación en Inno Setup); tampoco la instalación completa con una carpeta nueva ni los avisos de ruta no válida con el ratón (la lógica está en el texto y en `instalar.ps1`, probada aparte). Un Ollama ya instalado no se mueve: el campo solo aparece si se va a instalar.
 
-## ✎ Editor de neuronas, «Pedir revisión», papelera, tipo y agenda (rama `editor-papelera-agenda`, sin versión ni commit)
-Cinco mejoras sobre la 0.3.4, decididas una a una con el usuario. Todo en `C:\Github\alejandria-publico`; nada se ha commiteado, ni subido, ni lanzado.
+## ✎ Editor de neuronas, «Pedir revisión», papelera, tipo y agenda (0.4.0)
+Cinco mejoras sobre la 0.3.4, decididas una a una con el usuario. Publicadas en la 0.4.0.
 
 **Decisiones tomadas**
 - **Tipo:** el prompt formal clásico queda byte a byte idéntico (se comprobó contra `main`: `PROMPT_FUENTES_CLASICO` y `PROMPT_EXPLORACION_CLASICO` iguales). Automático, histórico y teórico llevan el campo `tipo`; sus neuronas lo traen y las del clásico (y las anteriores) se deducen. Solo se ve una insignia en el panel, nada en el 3D (decisión explícita del usuario).
