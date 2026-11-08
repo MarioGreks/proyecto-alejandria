@@ -6,6 +6,7 @@ La misma lista está en frontend/src/utils/markdown.tsx (`limpiarCitas`), que li
 """
 import re
 import unicodedata
+from typing import List
 
 TIPOS = ("formal", "historico", "teorico")
 
@@ -63,3 +64,25 @@ def limpiar_neurona(datos: dict) -> int:
 
     limpiar(datos)
     return cambios
+
+
+# Subredes: su nombre y la lista que lleva cada neurona. Viven aquí (y no en subredes.py) porque database.py también las necesita y subredes.py importa database.
+MAX_NOMBRE = 60
+MAX_POR_NEURONA = 30
+
+
+def normalizar(nombre) -> str:
+    """Nombre limpio: sin espacios de más y con un máximo de longitud. Vacío si no es un texto usable."""
+    return " ".join(nombre.split())[:MAX_NOMBRE].strip() if isinstance(nombre, str) else ""
+
+
+def normalizar_lista(valor) -> List[str]:
+    """Lo que trae un JSON (de la IA, de un archivo importado) en `subredes`, saneado: solo textos, sin repetidos (mayúsculas aparte), ordenado."""
+    if not isinstance(valor, list):
+        return []
+    vistos = {}
+    for v in valor:
+        n = normalizar(v)
+        if n:
+            vistos.setdefault(n.casefold(), n)
+    return sorted(vistos.values(), key=str.casefold)[:MAX_POR_NEURONA]

@@ -150,6 +150,11 @@ Se renderiza un *Force Graph* biológico donde las conexiones (links) se dibujan
   - **Pestaña "Referencias" en el HUD (`KnowledgePanel.tsx`):** Tarjetas estilo glassmorphism con acento cian (`#00ccff`), enlaces directos que abren el paper en el navegador nativo y una caja de llamada con acento esmeralda (`#00ffaa`) que renderiza con KaTeX la nota de conceptos y axiomas extraídos de cada obra.
   - **Actualización de Prompts (`prompts.ts` y `prompt_maestro.md`):** Ambas modalidades del Prompt Maestro instruyen a la IA a verificar la existencia de las fuentes, acompañar cada una de su comentario explicativo de aportación teórica e inyectarlas en el nuevo array `referencias` del bloque JSON.
 
+### [Fase 10.6] Subredes y transición animada ✅ Hecha (sin publicar, rama `subredes`)
+- **Subredes**: una neurona guarda `"subredes": ["TFM", ...]` en su JSON (backend/subredes.py); todas siguen en la red general. La lista se deduce de las neuronas, viaja con la sincronización y con exportar/importar (exportar dentro de una subred saca solo esa). Selector `[ Red: ... ]` en la barra superior, gestión (crear, renombrar, borrar, elegir neuronas con casillas) y fila «Subredes» en el panel de cada neurona, con «+N vecinas». Dentro de una subred, borrar una neurona solo la quita de ella.
+- **Animación**: red general ⇄ subred (y subred ⇄ subred) interpolada vértice a vértice en la GPU (shaders en Universe.tsx, fórmulas en utils/transicion.ts); la disposición compacta de la subred sale de un layout de fuerzas (utils/distribucionSubred.ts) calculado en un Web Worker y recordado por subred. Interrumpible a mitad.
+- Probado con 2.025 neuronas y 4.270 conexiones: mediana de 6 ms por fotograma durante la transición. Sin probar: el .exe empaquetado (Worker bajo la CSP de Tauri) y la sincronización real entre dos PCs con subredes.
+
 ### [Fase 11 - Futura] Fine-Tuning y Modelfile (Cerebro Dedicado) ⏳ Pendiente
 - **Recolección de Feedback:** Se ha implementado un sistema *Human-in-the-loop* en el panel de sinapsis de la UI. El usuario puede validar (✅) o rechazar (❌) las relaciones propuestas por el LLM.
 - **Creación del Dataset (Pendiente):** Cuando se alcance una masa crítica de validaciones (ej. 200-300 aristas aceptadas/rechazadas), se desarrollará un script (`generar_dataset.py`) para extraer y formatear estos datos en JSONL (formato ShareGPT/Alpaca).

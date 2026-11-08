@@ -12,6 +12,7 @@ import intercambio
 import sincronizacion
 import papelera
 import agenda
+import subredes
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
@@ -204,6 +205,7 @@ def raw_path(node_id) -> str:
 
 class NodeInjectionRequest(BaseModel):
     raw_json: str
+    subred: Optional[str] = None     # la subred activa al inyectar: la neurona entra en ella además de en la red general
 
 # Comandos LaTeX que empiezan por b, f, n, r o t: sin esta lista, \theta se leería como TAB + "heta".
 _LATEX_AMBIGUO = (r"bar|beta|begin|binom|big|bigg|bigl|bigr|bigcup|bigcap|bmod|boldsymbol|bot|bullet|backslash|because|breve|"
@@ -306,6 +308,10 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
             raise ValueError("El JSON no contiene el campo 'id'.")
         filepath = raw_path(node_id)  # valida el id antes de gastar embeddings/LLM
         limpiar_neurona(data)         # «[reference:25]» y demás marcas de cita de la IA: ni se guardan ni llegan al clasificador
+        conocidas = subredes.existentes()      # lo que traiga la IA se sanea (solo textos válidos) y usa la grafía de las subredes que ya existen
+        data["subredes"] = subredes.normalizar_lista([subredes.canonico(s, conocidas) for s in subredes.normalizar_lista(data.get("subredes")) + [req.subred]])
+        if not data["subredes"]:
+            data.pop("subredes")
         data["tipo"] = tipo_de(data)  # el que fijó la IA (formal, historico o teorico) o, si no lo puso, el que se deduce de lo que trae
 
         # 🧠 PASO CLAVE: CLASIFICACIÓN LOCAL
@@ -592,6 +598,43 @@ def delete_node(node_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al enviar la neurona a la papelera: {str(e)}")
 
+class AsignarSubredesRequest(BaseModel):
+    ids: list[str] = Field(max_length=5000)
+    añadir: list[str] = Field(default=[], max_length=30)
+    quitar: list[str] = Field(default=[], max_length=30)
+
+class NombreSubredRequest(BaseModel):
+    nombre: str = Field(max_length=200)
+
+class RenombrarSubredRequest(BaseModel):
+    viejo: str = Field(max_length=200)
+    nuevo: str = Field(max_length=200)
+
+@app.get("/api/subredes")
+def ver_subredes():
+    """Las subredes que hay (las deducen las neuronas) con cuántas neuronas vivas tiene cada una."""
+    return {"subredes": subredes.listar()}
+
+@app.post("/api/subredes/asignar")
+def asignar_subredes(req: AsignarSubredesRequest):
+    """Añade y/o quita subredes a esas neuronas (una o muchas a la vez). Quitar de una subred no borra la neurona: sigue en la general."""
+    try:
+        return {"status": "success", "cambiadas": subredes.asignar(req.ids, req.añadir, req.quitar)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudieron cambiar las subredes: {e}")
+
+@app.post("/api/subredes/renombrar")
+def renombrar_subred(req: RenombrarSubredRequest):
+    try:
+        return {"status": "success", "cambiadas": subredes.renombrar(req.viejo, req.nuevo)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/subredes/borrar")
+def borrar_subred(req: NombreSubredRequest):
+    """Borra la subred (la etiqueta): las neuronas siguen en la red general."""
+    return {"status": "success", "cambiadas": subredes.borrar(req.nombre)}
+
 @app.get("/api/papelera")
 def ver_papelera():
     """Las neuronas en la papelera (antes de listar se borran las que ya caducaron)."""
@@ -733,17 +776,18 @@ def arrancar_ollama():
     return {"estado": arrancar_en_segundo_plano()}
 
 @app.get("/api/exportar")
-def exportar_neuronas():
-    """Todas las neuronas y sus conexiones en un solo JSON (sin embeddings)."""
-    return intercambio.exportar()
+def exportar_neuronas(subred: str = ""):
+    """Todas las neuronas y sus conexiones en un solo JSON (sin embeddings). Con `subred`, solo las de esa subred."""
+    return intercambio.exportar(subred)
 
 class ImportarRequest(BaseModel):
     contenido: dict
+    subred: Optional[str] = None     # la subred activa: todo lo importado entra también en ella
 
 @app.post("/api/importar")
 def importar_neuronas(req: ImportarRequest):
     """Añade las neuronas de un archivo exportado que aún no existan; nunca pisa las que ya tienes."""
     try:
-        return {"status": "success", **intercambio.importar(req.contenido)}
+        return {"status": "success", **intercambio.importar(req.contenido, req.subred or "")}
     except intercambio.ArchivoInvalido as e:
         raise HTTPException(status_code=400, detail=str(e))

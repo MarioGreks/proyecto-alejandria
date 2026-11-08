@@ -9,6 +9,8 @@ import type { LaboratorioData } from './LaboratorioWidget';
 import { API } from '../utils/api';
 import { precalentarLaboratorios } from '../labs/labRunner';
 import { Dialogo, Seccion } from './terminal';
+import { FilaSubredes } from './Subredes';
+import type { InfoSubred } from '../utils/subredes';
 
 type Tab = 'teoria' | 'glosario' | 'laboratorio' | 'ejercicios' | 'referencias' | 'sinapsis';
 
@@ -82,12 +84,20 @@ export default function KnowledgePanel({
     nodeId,
     onClose,
     universeNodes = [],
-    universeLinks = []
+    universeLinks = [],
+    todosLosEnlaces = [],
+    subredes = [],
+    subredActiva = null,
+    onSubredes
 }: {
     nodeId: string | null;
     onClose: () => void;
-    universeNodes?: any[];
+    universeNodes?: any[];           // las neuronas de la red que se está viendo (la general o una subred)
     universeLinks?: any[];
+    todosLosEnlaces?: any[];         // las conexiones de la red general: «+vecinas» añade a la subred también las neuronas conectadas fuera de ella
+    subredes?: InfoSubred[];
+    subredActiva?: string | null;
+    onSubredes?: (ids: string[], añadir: string[], quitar: string[]) => Promise<void>;
 }) {
     const [activeTab, setActiveTab] = useState<Tab>('teoria');
     const [data, setData] = useState<NodeData | null>(null);
@@ -97,7 +107,7 @@ export default function KnowledgePanel({
     const [newEdgeReason, setNewEdgeReason] = useState<string>('');
 
     // Diálogos propios (en vez de prompt/confirm/alert del sistema) y mensaje de error de la cabecera
-    const [dialogo, setDialogo] = useState<'cluster' | 'borrar' | 'descartar' | null>(null);
+    const [dialogo, setDialogo] = useState<'cluster' | 'borrar' | 'quitar' | 'descartar' | null>(null);
     const [clusterNuevo, setClusterNuevo] = useState('');
     const [aviso, setAviso] = useState('');
     const [info, setInfo] = useState('');                 // mensaje en verde (copiado, guardado...)
@@ -178,6 +188,13 @@ export default function KnowledgePanel({
         }
     };
 
+    /** Dentro de una subred, «destruir» solo la saca de esa subred: sigue en la red general. */
+    const quitarDeLaSubred = async () => {
+        setDialogo(null);
+        if (!subredActiva || !onSubredes) return;
+        try { await onSubredes([nodeId!], [], [subredActiva]); onClose(); } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo quitar de la subred.'}`); }
+    };
+
     /** Copia al portapapeles el prompt para que una IA externa revise esta neurona (el resultado se pega en el editor). */
     const pedirRevision = async () => {
         if (!data) return;
@@ -231,10 +248,17 @@ export default function KnowledgePanel({
                     <button className="t-btn" title="Editar el nombre, la teoría, el glosario, los ejercicios y las referencias" disabled={loading || !data || editando} onClick={() => { setInfo(''); setAviso(''); setEditando(true); }}>[ Editar ]</button>
                     <button className="t-btn" title="Copiar un prompt para que una IA externa revise esta neurona" disabled={loading || !data} onClick={pedirRevision}>[ Pedir revisión ]</button>
                     <button className="t-btn" title="Corregir el clúster a mano" onClick={() => { setClusterNuevo(''); setDialogo('cluster'); }}>[ Editar clúster ]</button>
-                    <button className="t-btn peligro" title="Mandar la neurona a la papelera (se puede recuperar)" onClick={() => setDialogo('borrar')}>[ A la papelera ]</button>
+                    {subredActiva
+                        ? <button className="t-btn peligro" title={`Sacar la neurona de «${subredActiva}» (sigue en la red general)`} onClick={() => setDialogo('quitar')}>[ Quitar de la subred ]</button>
+                        : <button className="t-btn peligro" title="Mandar la neurona a la papelera (se puede recuperar)" onClick={() => setDialogo('borrar')}>[ A la papelera ]</button>}
                     <button className="t-btn plano" title="Cerrar" onClick={cerrar} style={{ fontSize: 16 }}>[x]</button>
                 </div>
             </div>
+
+            {/* Subredes de la neurona */}
+            {data && !loading && !editando && onSubredes && (
+                <FilaSubredes nodo={universeNodes.find(n => n.id === data.id) ?? data} subredes={subredes} enlaces={todosLosEnlaces} onSubredes={onSubredes} />
+            )}
 
             {/* Pestañas */}
             {!editando && <div style={{ display: 'flex', padding: '0 12px', borderBottom: '1px solid var(--t-linea)' }}>
@@ -425,6 +449,10 @@ export default function KnowledgePanel({
             {dialogo === 'borrar' && (
                 <Dialogo titulo="Mandar a la papelera" texto="Esta neurona irá a la papelera y desaparecerá del universo. Durante 7 días podrás recuperarla, con sus conexiones, desde [ Papelera ] en la barra superior; pasado ese tiempo se borra sola. Recargará la red."
                     aceptar="A la papelera" peligro onAceptar={destruir} onCancelar={() => setDialogo(null)} />
+            )}
+            {dialogo === 'quitar' && (
+                <Dialogo titulo="Quitar de la subred" texto={`Esta neurona dejará de formar parte de «${subredActiva}». No se borra: sigue en la red general con todas sus conexiones.`}
+                    aceptar="Quitar" peligro onAceptar={quitarDeLaSubred} onCancelar={() => setDialogo(null)} />
             )}
             {dialogo === 'descartar' && (
                 <Dialogo titulo="Descartar cambios" texto="Estás editando esta neurona y hay cambios sin guardar. Si cierras ahora se pierden."

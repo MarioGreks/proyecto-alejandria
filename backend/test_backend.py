@@ -1259,6 +1259,139 @@ class TestAgenda(unittest.TestCase):
             shutil.rmtree(compartida, ignore_errors=True)
 
 
+class TestSubredes(unittest.TestCase):
+    """Una subred es una etiqueta dentro del JSON de la neurona: todas siguen en la red general, la lista se deduce de ellas."""
+    IDS = ("sr_a", "sr_b", "sr_c", "sr_d")
+
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def setUp(self):
+        for n in self.IDS:
+            self.escribir(n, {})
+
+    def tearDown(self):
+        for n in self.IDS:
+            self.client.delete(f"/api/node/{n}")
+        self.client.delete("/api/papelera")
+
+    def escribir(self, nid, extra):
+        with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
+            json.dump({"nombre": nid.upper(), "cluster": "X", "teoria": "t", **extra}, f)
+
+    def leer(self, nid):
+        with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def asignar(self, ids, añadir=(), quitar=()):
+        r = self.client.post("/api/subredes/asignar", json={"ids": list(ids), "añadir": list(añadir), "quitar": list(quitar)})
+        self.assertEqual(r.status_code, 200, r.text)
+        return r.json()["cambiadas"]
+
+    def mias(self):
+        """Neuronas de este test en cada subred, tal como las ve la interfaz (universo)."""
+        out = {}
+        for n in self.client.get("/api/universe").json()["nodes"]:
+            if n["id"] in self.IDS:
+                for s in n["subredes"]:
+                    out.setdefault(s, set()).add(n["id"])
+        return out
+
+    def test_incluir_una_neurona_en_varias_subredes_la_deja_tambien_en_la_general(self):
+        self.assertEqual(self.asignar(["sr_a"], ["TFM", "Tesis"]), 1)
+        self.assertEqual(self.asignar(["sr_b"], ["TFM"]), 1)
+        self.assertEqual(self.leer("sr_a")["subredes"], ["Tesis", "TFM"])
+        self.assertEqual(self.mias(), {"TFM": {"sr_a", "sr_b"}, "Tesis": {"sr_a"}})
+        universo = {n["id"] for n in self.client.get("/api/universe").json()["nodes"]}
+        self.assertTrue(set(self.IDS) <= universo)                                         # subred ⊆ general: ninguna sale de la red general
+        self.assertEqual(self.client.get("/node/sr_a").json()["subredes"], ["Tesis", "TFM"])
+        lista = {s["nombre"]: s["neuronas"] for s in self.client.get("/api/subredes").json()["subredes"]}
+        self.assertEqual((lista["TFM"], lista["Tesis"]), (2, 1))
+        self.assertEqual(self.asignar(["sr_a"], ["TFM"]), 0)                               # repetir no cambia nada
+        self.assertNotIn("subredes", self.leer("sr_c"))                                    # las demás no reciben el campo
+
+    def test_quitar_de_una_subred_no_borra_la_neurona_y_sin_subredes_se_quita_el_campo(self):
+        self.asignar(["sr_a", "sr_b"], ["TFM"])
+        self.assertEqual(self.asignar(["sr_a"], quitar=["tfm"]), 1)                        # sin distinguir mayúsculas
+        self.assertNotIn("subredes", self.leer("sr_a"))
+        self.assertEqual(self.mias(), {"TFM": {"sr_b"}})
+        self.assertIn("sr_a", {n["id"] for n in self.client.get("/api/universe").json()["nodes"]})
+
+    def test_el_nombre_se_limpia_y_no_se_repite_aunque_cambien_las_mayusculas(self):
+        self.asignar(["sr_a"], ["  Mi   Tesis "])
+        self.asignar(["sr_b"], ["mi tesis", "", "   "])                                    # usa la grafía que ya existía y ignora los vacíos
+        self.assertEqual(self.leer("sr_b")["subredes"], ["Mi Tesis"])
+        self.asignar(["sr_c"], ["x" * 200])
+        self.assertEqual(len(self.leer("sr_c")["subredes"][0]), 60)
+        self.assertEqual(self.asignar(["../x", "no_existe"], ["TFM"]), 0)                  # ids inválidos o inexistentes se saltan sin error
+
+    def test_renombrar_reescribe_los_miembros_fusiona_y_alcanza_a_la_papelera(self):
+        self.asignar(["sr_a", "sr_b", "sr_c"], ["Viejo"])
+        self.asignar(["sr_d"], ["Nuevo"])
+        self.client.delete("/api/node/sr_c")                                               # en la papelera: al restaurarla no debe volver el nombre viejo
+        r = self.client.post("/api/subredes/renombrar", json={"viejo": "Viejo", "nuevo": "Nuevo"})
+        self.assertEqual(r.json()["cambiadas"], 3)
+        self.assertEqual(self.mias(), {"Nuevo": {"sr_a", "sr_b", "sr_d"}})                 # se fusionó con la que ya existía
+        self.client.post("/api/papelera/sr_c/restaurar")
+        self.assertEqual(self.leer("sr_c")["subredes"], ["Nuevo"])
+        self.assertEqual(self.client.post("/api/subredes/renombrar", json={"viejo": "Nuevo", "nuevo": "  "}).status_code, 400)
+
+    def test_borrar_una_subred_solo_quita_la_etiqueta(self):
+        self.asignar(["sr_a", "sr_b"], ["TFM", "Tesis"])
+        self.assertEqual(self.client.post("/api/subredes/borrar", json={"nombre": "TFM"}).json()["cambiadas"], 2)
+        self.assertEqual(self.mias(), {"Tesis": {"sr_a", "sr_b"}})
+        self.assertTrue(set(self.IDS) <= {n["id"] for n in self.client.get("/api/universe").json()["nodes"]})
+
+    def test_la_papelera_conserva_las_subredes_y_una_en_la_papelera_no_cuenta_ni_se_etiqueta(self):
+        self.asignar(["sr_a", "sr_b"], ["TFM"])
+        self.client.delete("/api/node/sr_a")
+        self.assertEqual(self.mias(), {"TFM": {"sr_b"}})
+        self.assertEqual(self.asignar(["sr_a"], ["Tesis"]), 0)                             # una neurona en la papelera no se toca
+        self.client.post("/api/papelera/sr_a/restaurar")
+        self.assertEqual(self.mias(), {"TFM": {"sr_a", "sr_b"}})
+
+    def test_al_inyectar_dentro_de_una_subred_entra_en_ella_y_lo_que_traiga_la_ia_se_sanea(self):
+        self.asignar(["sr_a"], ["TFM"])
+        self.asignar(["sr_b"], ["Tesis"])
+        cuerpo = {"id": "sr_d", "nombre": "D", "teoria": "t", "subredes": ["tesis", 3, None, "  ", "Tesis"]}
+        self.assertEqual(self.client.post("/api/node", json={"raw_json": json.dumps(cuerpo), "subred": "tfm"}).status_code, 200)
+        self.assertEqual(self.leer("sr_d")["subredes"], ["Tesis", "TFM"])                  # canónica "TFM", sin repetidos ni basura
+        cuerpo2 = {"id": "sr_c", "nombre": "C", "teoria": "t", "subredes": "no es una lista"}
+        self.assertEqual(self.client.post("/api/node", json={"raw_json": json.dumps(cuerpo2)}).status_code, 200)
+        self.assertNotIn("subredes", self.leer("sr_c"))
+
+    def test_editar_una_neurona_conserva_sus_subredes(self):
+        self.asignar(["sr_a"], ["TFM"])
+        cuerpo = {"nombre": "Nueva", "teoria": "t", "tipo": "teorico", "glosario": [], "ejercicios": [], "referencias": []}
+        self.assertEqual(self.client.put("/api/node/sr_a", json=cuerpo).status_code, 200)
+        self.assertEqual(self.leer("sr_a")["subredes"], ["TFM"])
+
+    def test_exportar_una_subred_saca_solo_sus_neuronas_y_las_conexiones_entre_ellas(self):
+        self.asignar(["sr_a", "sr_b"], ["TFM"])
+        db_conn.add_links([{"origen_id": "sr_a", "destino_id": "sr_b", "motivo": "m", "estado": "aceptada"},
+                           {"origen_id": "sr_a", "destino_id": "sr_c", "motivo": "m", "estado": "aceptada"}])
+        archivo = self.client.get("/api/exportar", params={"subred": "tfm"}).json()
+        self.assertEqual(sorted(n["id"] for n in archivo["neuronas"]), ["sr_a", "sr_b"])
+        self.assertEqual([(a["origen_id"], a["destino_id"]) for a in archivo["aristas"]], [("sr_a", "sr_b")])
+        self.assertGreaterEqual(len(self.client.get("/api/exportar").json()["neuronas"]), 4)   # sin subred: todo
+
+    def test_importar_conserva_las_etiquetas_las_suma_a_las_existentes_y_las_sanea(self):
+        self.asignar(["sr_a"], ["TFM"])
+        archivo = {"formato": intercambio.FORMATO, "version": 1, "aristas": [], "neuronas": [
+            {"id": "sr_a", "nombre": "A", "subredes": ["Tesis"]},                          # ya existe: no se pisa, solo se le añade la etiqueta
+            {"id": "sr_x", "nombre": "X", "subredes": ["tfm", 7, "Otra"]}]}
+        try:
+            r = self.client.post("/api/importar", json={"contenido": archivo, "subred": "Investigación Y"}).json()
+            self.assertEqual((r["añadidas"], r["omitidas"]), (1, 1))
+            self.assertEqual(self.leer("sr_a")["subredes"], ["Investigación Y", "Tesis", "TFM"])
+            self.assertEqual(self.leer("sr_x")["subredes"], ["Investigación Y", "Otra", "TFM"])   # «tfm» se unió a la grafía existente
+            self.assertEqual(self.leer("sr_a")["nombre"], "SR_A")
+        finally:
+            self.client.delete("/api/node/sr_x")
+
+
 class TestEmpaquetado(unittest.TestCase):
     def test_todo_modulo_del_backend_que_otro_importa_va_en_el_instalador_y_en_tauri(self):
         """Los instaladores copian una lista fija de archivos: un módulo nuevo que se olvide ahí rompe el backend instalado (ImportError al arrancar)."""

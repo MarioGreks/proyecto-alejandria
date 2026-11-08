@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useCallback, useRef, useMemo, useEffect, useLayoutEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Text, Billboard } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -9,6 +9,7 @@ import { API } from '../utils/api';
 import Ajustes from './Ajustes';
 import Agenda from './Agenda';
 import Papelera from './Papelera';
+import GestionSubredes from './Subredes';
 import ProcesandoNeurona from './ProcesandoNeurona';
 import Seguro from './Seguro';
 import Hud from './Hud';
@@ -16,6 +17,9 @@ import { Cabecera, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
 import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionesRecordadas, rngDe } from '../utils/disposicion';
+import { DURACION_MS, FASE_MAX, avance, hornearEscalares, hornearPosiciones } from '../utils/transicion';
+import { asignarSubredes, borrarSubred, colorSubred, esMiembro, guardarSubredActiva, guardarVacias, listarSubredes, mismaSubred, normalizarNombre, renombrarSubred, subredActivaGuardada, vaciasGuardadas } from '../utils/subredes';
+import { calcularDisposicion, renombrarDisposicion } from '../utils/layoutSubred';
 // Fuente propia para los rótulos de los clústeres (DejaVu Sans Mono Bold, la de matplotlib, con licencia libre y todo el alfabeto latino con tildes):
 // sin `font`, troika baja una de un CDN, y con una fuente que no tenga alguna letra (la «Á» de MATEMÁTICAS) baja otra: no funciona sin internet y la CSP lo bloquea.
 const fuenteRotulos = `${import.meta.env.BASE_URL}fuentes/DejaVuSansMono-Bold.ttf`;
@@ -132,7 +136,9 @@ import KnowledgePanel from './KnowledgePanel';
 // Al acercarse mucho, cada neurona a la vista lleva su nombre, tenue (más claro cuanto más cerca), para saber cuál es cuál sin pasar el ratón por todas.
 const DIST_ROTULO_MAX = 30, DIST_ROTULO_MIN = 10, MAX_ROTULOS = 14;   // el universo mide ~50 de lado: con la cámara a 30 una neurona ya se ve de ~20 px
 
-const RotulosCercanos = ({ nodes, nombres, grupo, ocultar }: { nodes: THREE.Vector3[], nombres: string[], grupo: React.RefObject<THREE.Group | null>, ocultar: number | null }) => {
+const RotulosCercanos = ({ nodes, nombres, mascara, grupo, ocultar, pausa }: {
+    nodes: THREE.Vector3[], nombres: string[], mascara: Uint8Array, grupo: React.RefObject<THREE.Group | null>, ocultar: number | null, pausa: React.RefObject<boolean>
+}) => {
     const { camera } = useThree();
     const [visibles, setVisibles] = useState<{ i: number, a: number }[]>([]);
     const ultimo = useRef(0);
@@ -144,7 +150,8 @@ const RotulosCercanos = ({ nodes, nombres, grupo, ocultar }: { nodes: THREE.Vect
         if (t - ultimo.current < 0.15 || !grupo.current) return;   // ~7 veces por segundo bastan; el CSS suaviza el resto
         ultimo.current = t;
         const cercanas: { i: number, d: number }[] = [];
-        for (let i = 0; i < nodes.length; i++) {
+        for (let i = 0; i < nodes.length && !pausa.current; i++) {   // mientras las neuronas viajan de una red a otra no hay rótulos
+            if (!mascara[i]) continue;                               // las que no están en la red actual no se ven
             v.copy(nodes[i]).applyMatrix4(grupo.current.matrixWorld);   // el grupo gira: hay que comparar en coordenadas del mundo
             const d = v.distanceTo(camera.position);
             if (d > DIST_ROTULO_MAX) continue;
@@ -168,233 +175,370 @@ const RotulosCercanos = ({ nodes, nombres, grupo, ocultar }: { nodes: THREE.Vect
     </>);
 };
 
-const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onNodeClick: (id: string) => void, searchQuery: string, realNodes: any[], realLinks: any[], activeNodeId: string | null, onTargetFound: (pos: THREE.Vector3 | null) => void }) => {
-    const baseColors = [
-        new THREE.Color('#33ff00'), 
-        new THREE.Color('#ff3300'), 
-        new THREE.Color('#00ccff'), 
-        new THREE.Color('#ff00aa'),
-        new THREE.Color('#ffff00'),
-        new THREE.Color('#ff00ff'),
-        new THREE.Color('#00ffff')
-    ];
-
-    const { nodes, lineGeometry, nodeColors, clusterCenters, nodeIds, clusterKeys, totalNodes, originalLineColors, lineNodeIndices } = useMemo(() => {
-        if (realNodes.length === 0) {
-            return {
-                nodes: [], lineGeometry: new THREE.BufferGeometry(),
-                nodeColors: new Float32Array(0), clusterCenters: [], nodeIds: [], clusterKeys: [], totalNodes: 0,
-                originalLineColors: new Float32Array(0), lineNodeIndices: []
-            };
+/** Rótulo «[ CLÚSTER ]» sobre su isla: se desvanece al entrar en una subred (allí no hay islas) y vuelve al regresar a la general. */
+const RotuloCluster = ({ posicion, texto, visible }: { posicion: [number, number, number], texto: string, visible: boolean }) => {
+    const opacidad = useRef(visible ? 1 : 0);
+    const texto3d = useRef<any>(null);
+    const grupo = useRef<THREE.Group>(null);
+    const asignar = useCallback((t: any) => { texto3d.current = t; if (t) t.fillOpacity = opacidad.current; }, []);
+    useFrame((_, dt) => {
+        const objetivo = visible ? 1 : 0;
+        if (Math.abs(opacidad.current - objetivo) >= 0.004) {
+            opacidad.current += (objetivo - opacidad.current) * Math.min(1, dt * 5);
+            if (texto3d.current) texto3d.current.fillOpacity = opacidad.current;
         }
+        if (grupo.current) grupo.current.visible = opacidad.current > 0.03;     // casi apagado: se oculta del todo (un resto tenue seguía viéndose)
+    });
+    return (
+        <Seguro><Billboard ref={grupo} position={posicion} follow={true}>
+            <Text ref={asignar} font={fuenteRotulos} fontSize={0.9} letterSpacing={0.05} color="#5fbf9f" material-toneMapped={false}>[ {texto.toUpperCase()} ]</Text>
+        </Billboard></Seguro>
+    );
+};
 
-        const clusterMap = new Map<string, any[]>();
-        realNodes.forEach(n => {
-            const cId = n.cluster_id || "Desconocido";
-            if (!clusterMap.has(cId)) clusterMap.set(cId, []);
-            clusterMap.get(cId)!.push(n);
+// ───────────── Escenas: una disposición completa del universo (red general o una subred) ─────────────
+// La geometría (todas las neuronas, sus dendritas y todas las conexiones) tiene SIEMPRE los mismos vértices en el mismo orden; lo que cambia de una red a otra es
+// dónde está cada uno, su color y si se ve. Así pasar de una a otra es interpolar vértice a vértice en la GPU (ver `materialLinea` y `materialNucleo`).
+
+export interface Vista { nombre: string | null; layout: Record<string, [number, number, number]> | null; color: string }
+export const VISTA_GENERAL: Vista = { nombre: null, layout: null, color: '#ffffff' };
+
+interface Base {
+    ids: string[]; indicePorId: Map<string, number>; posGen: THREE.Vector3[]; coloresGen: Float32Array;
+    enlaces: [number, number, string, string][];            // índice de origen y de destino, y sus ids
+    arcos: Float32Array;                                     // 4 por neurona: desvío en arco al viajar (xyz) y retraso de salida (w)
+    clusterCenters: THREE.Vector3[]; clusterKeys: string[];
+    nombres: string[]; nombreN: string[]; clusterN: string[]; busqueda: string[];   // nombre, y textos normalizados donde buscar (el nombre, el clúster, y los dos con los términos del glosario)
+}
+
+interface Escena {
+    pos: THREE.Vector3[]; vis: Uint8Array;                   // dónde está cada neurona y si es de esta red (1) o no (0)
+    lineaPos: Float32Array; lineaCol: Float32Array; lineaVis: Float32Array; lineaArco: Float32Array; lineaNodo: Int32Array;
+    rangoNodo: Int32Array; rangoEnlace: Int32Array;           // primer y último vértice (sin incluir) de las dendritas de cada neurona y de la curva de cada conexión
+}
+
+const COLORES_CLUSTER = ['#33ff00', '#ff3300', '#00ccff', '#ff00aa', '#ffff00', '#ff00ff', '#00ffff'].map(c => new THREE.Color(c));
+const normalizarTexto = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function construirBase(realNodes: any[], realLinks: any[]): Base | null {
+    if (realNodes.length === 0) return null;
+    const clusterMap = new Map<string, any[]>();
+    realNodes.forEach(n => {
+        const cId = n.cluster_id || "Desconocido";
+        if (!clusterMap.has(cId)) clusterMap.set(cId, []);
+        clusterMap.get(cId)!.push(n);
+    });
+    // Orden alfabético (no el de llegada): el mismo universo da siempre los mismos índices.
+    const clusterKeys = Array.from(clusterMap.keys()).sort();
+    const casillas = casillasRecordadas(clusterKeys);
+    // Cada clúster en su casilla fija (el primero, en el centro) y con el color de su casilla.
+    const clusterCenters = clusterKeys.map(c => new THREE.Vector3(...centroDeCasilla(casillas[c])));
+    // Sitio de cada neurona dentro de su clúster: con distancia mínima y recordado, así una neurona nueva nunca mueve a otra.
+    const desplazamientos = posicionesRecordadas(Object.fromEntries(clusterKeys.map(c => [c, clusterMap.get(c)!.map(n => String(n.id))])));
+    const posGen: THREE.Vector3[] = [], ids: string[] = [], nombres: string[] = [], nombreN: string[] = [], clusterN: string[] = [], busqueda: string[] = [];
+    const coloresGen = new Float32Array(realNodes.length * 3);
+    clusterKeys.forEach((cId, idx) => {
+        const center = clusterCenters[idx];
+        const color = COLORES_CLUSTER[casillas[cId] % COLORES_CLUSTER.length];
+        [...clusterMap.get(cId)!].sort((a, b) => String(a.id).localeCompare(String(b.id))).forEach(node => {
+            const d = desplazamientos[String(node.id)];
+            const i = ids.length;
+            posGen.push(new THREE.Vector3(center.x + d[0], center.y + d[1], center.z + d[2]));
+            coloresGen.set([color.r, color.g, color.b], i * 3);
+            ids.push(node.id);
+            nombres.push(String(node.nombre ?? ''));
+            nombreN.push(normalizarTexto(String(node.nombre ?? '')));
+            clusterN.push(normalizarTexto(String(node.cluster_id ?? '')));
+            let glosario = "";
+            if (typeof node.glosario === 'string') { try { glosario = JSON.parse(node.glosario).map((g: any) => g.termino).join(" "); } catch { /* glosario ilegible: no se busca en él */ } }
+            else if (Array.isArray(node.glosario)) glosario = node.glosario.map((g: any) => g.termino).join(" ");
+            busqueda.push(normalizarTexto(`${node.nombre ?? ''} ${node.cluster_id ?? ''} ${glosario}`));   // búsqueda restrictiva: no la teoría gigante
         });
-        
-        // Orden alfabético (no el de llegada): el mismo universo da siempre los mismos índices.
-        const clusterKeys = Array.from(clusterMap.keys()).sort();
-        const casillas = casillasRecordadas(clusterKeys);
-        // Cada clúster en su casilla fija (el primero, en el centro) y con el color de su casilla.
-        const clusterCenters = clusterKeys.map(c => new THREE.Vector3(...centroDeCasilla(casillas[c])));
-        // Sitio de cada neurona dentro de su clúster: con distancia mínima y recordado, así una neurona nueva nunca mueve a otra.
-        const desplazamientos = posicionesRecordadas(Object.fromEntries(clusterKeys.map(c => [c, clusterMap.get(c)!.map(n => String(n.id))])));
-        const allNodes: THREE.Vector3[] = [];
-        const totalNodes = realNodes.length;
-        const colors = new Float32Array(totalNodes * 3);
-        const ids: string[] = [];
+    });
+    const indicePorId = new Map(ids.map((id, i) => [id, i]));
+    const enlaces: [number, number, string, string][] = [];
+    for (const l of realLinks ?? []) {
+        const a = indicePorId.get(l.origen_id), b = indicePorId.get(l.destino_id);
+        if (a === undefined || b === undefined) { console.warn(`Enlace fallido: ${l.origen_id} (${a}) -> ${l.destino_id} (${b})`); continue; }
+        enlaces.push([a, b, l.origen_id, l.destino_id]);
+    }
+    const arcos = new Float32Array(ids.length * 4);
+    ids.forEach((id, i) => {
+        const r = rngDe(`a:${id}`);
+        const u = r() * 2 - 1, fi = r() * Math.PI * 2, s = Math.sqrt(1 - u * u), mag = 3 + r() * 5;
+        arcos.set([s * Math.cos(fi) * mag, u * mag, s * Math.sin(fi) * mag, r()], i * 4);
+    });
+    return { ids, indicePorId, posGen, coloresGen, enlaces, arcos, clusterCenters, clusterKeys, nombres, nombreN, clusterN, busqueda };
+}
 
-        let globalIdx = 0;
+/** Dendritas de una neurona (siempre las mismas: salen de su id): añade sus vértices a los arrays. */
+function dendritasDe(base: Base, i: number, pos: THREE.Vector3, color: THREE.Color, lp: number[], lc: number[], nodoDe: number[]) {
+    const rnd = rngDe(`d:${base.ids[i]}`);
+    const numPrimaryDendrites = 2 + Math.floor(rnd() * 2);
+    for (let d = 0; d < numPrimaryDendrites; d++) {
+        const dir = new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();
+        const initialLength = 0.5 + rnd() * 1.0;
+        generateDendriteTree(pos, dir, initialLength, 0, 2, color, lp, lc, i, nodoDe, rnd);
+    }
+}
 
-        clusterKeys.forEach((cId, idx) => {
-            const center = clusterCenters[idx];
-            const cNodes = [...clusterMap.get(cId)!].sort((a, b) => String(a.id).localeCompare(String(b.id)));
-            const color = baseColors[casillas[cId] % baseColors.length];
+/** Curva de una conexión entre dos neuronas (siempre la misma curva para el mismo par): añade sus vértices a los arrays. */
+function curvaDe(enlace: [number, number, string, string], pa: THREE.Vector3, pb: THREE.Vector3, ca: THREE.Color, cb: THREE.Color, lp: number[], lc: number[], nodoDe: number[]) {
+    const [a, , origen, destino] = enlace;
+    const dir = new THREE.Vector3().subVectors(pb, pa);
+    const dist = dir.length();
+    dir.normalize();
+    const perp = new THREE.Vector3(1, 0, 0).cross(dir);
+    if (perp.lengthSq() < 0.1) perp.set(0, 1, 0).cross(dir);
+    perp.normalize();
+    const rnd = rngDe(`l:${origen}>${destino}`);   // cada conexión, siempre con la misma curva
+    perp.applyAxisAngle(dir, rnd() * Math.PI * 2);
+    const midPoint = new THREE.Vector3().addVectors(pa, pb).multiplyScalar(0.5);
+    midPoint.add(perp.multiplyScalar(dist * (0.2 + rnd() * 0.2)));
+    addSmoothCurve(pa, pb, midPoint, ca, cb, lp, lc, SEGMENTOS_ENLACE, a, nodoDe);
+}
+const SEGMENTOS_ENLACE = 12;
 
-            cNodes.forEach((node) => {
-                const d = desplazamientos[String(node.id)];
-                allNodes.push(new THREE.Vector3(center.x + d[0], center.y + d[1], center.z + d[2]));
-                colors[globalIdx * 3] = color.r;
-                colors[globalIdx * 3 + 1] = color.g;
-                colors[globalIdx * 3 + 2] = color.b;
-                ids.push(node.id);
-                globalIdx++;
-            });
+/**
+ * Una escena de esa base: la red general (vista sin subred) o la subred (sus neuronas en su disposición compacta y de su color; las demás, invisibles en su sitio).
+ * La de una subred parte de la general (`general`): las dendritas y conexiones que no son de la subred se copian tal cual (no se ven) y solo se generan las de sus
+ * miembros, así que el coste depende del tamaño de la subred y no del de toda la red.
+ */
+function construirEscena(base: Base, vista: Vista, general?: Escena): Escena {
+    const n = base.ids.length;
+    const layout = vista.nombre !== null && vista.layout ? vista.layout : null;
+    const colorSub = new THREE.Color(vista.color);
+    const pos = base.posGen.map((p, i) => { const l = layout?.[base.ids[i]]; return l ? new THREE.Vector3(l[0], l[1], l[2]) : p; });
+    const vis = new Uint8Array(n);
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+        const miembro = !layout || !!layout[base.ids[i]];
+        vis[i] = miembro ? 1 : 0;
+        if (layout && miembro) col.set([colorSub.r, colorSub.g, colorSub.b], i * 3); else col.set(base.coloresGen.subarray(i * 3, i * 3 + 3), i * 3);
+    }
+    const color = (i: number) => new THREE.Color(col[i * 3], col[i * 3 + 1], col[i * 3 + 2]);
+
+    if (layout && general) {
+        const lineaPos = general.lineaPos.slice(), lineaCol = general.lineaCol.slice(), lineaVis = new Float32Array(general.lineaVis.length);
+        const rangoNodo = general.rangoNodo, rangoEnlace = general.rangoEnlace;
+        const volcar = (lp: number[], lc: number[], ini: number, fin: number) => {
+            if (lp.length / 3 !== fin - ini) throw new Error('la geometría de la subred no coincide con la de la red general');
+            lineaPos.set(lp, ini * 3); lineaCol.set(lc, ini * 3); lineaVis.fill(1, ini, fin);
+        };
+        for (let i = 0; i < n; i++) {
+            if (!vis[i]) continue;
+            const lp: number[] = [], lc: number[] = [], nodoDe: number[] = [];
+            dendritasDe(base, i, pos[i], color(i), lp, lc, nodoDe);
+            volcar(lp, lc, rangoNodo[i * 2], rangoNodo[i * 2 + 1]);
+        }
+        base.enlaces.forEach((enlace, k) => {
+            const [a, b] = enlace;
+            if (!vis[a] || !vis[b]) return;
+            const lp: number[] = [], lc: number[] = [], nodoDe: number[] = [];
+            curvaDe(enlace, pos[a], pos[b], color(a), color(b), lp, lc, nodoDe);
+            volcar(lp, lc, rangoEnlace[k * 2], rangoEnlace[k * 2 + 1]);
         });
-        
-        const linePositions: number[] = [];
-        const lineColors: number[] = [];
-        const lineNodeIndices: number[] = [];
-        
-        for (let i = 0; i < totalNodes; i++) {
-            const baseColor = new THREE.Color(colors[i*3], colors[i*3+1], colors[i*3+2]);
+        return { pos, vis, lineaPos, lineaCol, lineaVis, lineaArco: general.lineaArco, lineaNodo: general.lineaNodo, rangoNodo, rangoEnlace };
+    }
 
-            const rnd = rngDe(`d:${ids[i]}`);
-            const numPrimaryDendrites = 2 + Math.floor(rnd() * 2);
-            for (let d = 0; d < numPrimaryDendrites; d++) {
-                const dir = new THREE.Vector3(rnd()-0.5, rnd()-0.5, rnd()-0.5).normalize();
-                const initialLength = 0.5 + rnd() * 1.0;
-                generateDendriteTree(allNodes[i], dir, initialLength, 0, 2, baseColor, linePositions, lineColors, i, lineNodeIndices, rnd);
-            }
+    const lp: number[] = [], lc: number[] = [], nodoDe: number[] = [];
+    const lineaVis: number[] = [], lineaArco: number[] = [];
+    const rangoNodo = new Int32Array(n * 2), rangoEnlace = new Int32Array(base.enlaces.length * 2);
+    const cerrarTramo = (desde: number, a: number, b: number) => {     // vértices añadidos desde `desde`: su visibilidad y su arco/retraso
+        const nuevos = lp.length / 3 - desde;
+        for (let k = 0; k < nuevos; k++) {
+            const t = b < 0 ? 0 : Math.floor(k / 2 + (k % 2)) / SEGMENTOS_ENLACE;     // dentro de una conexión, de un extremo (0) al otro (1)
+            lineaVis.push(b < 0 ? vis[a] : Math.min(vis[a], vis[b]));
+            for (let q = 0; q < 4; q++) lineaArco.push(b < 0 ? base.arcos[a * 4 + q] : base.arcos[a * 4 + q] * (1 - t) + base.arcos[b * 4 + q] * t);
         }
-        
-        // Conexiones Reales (Aristas de la BD RAG)
-        if (realLinks && realLinks.length > 0) {
-            for (const link of realLinks) {
-                const idxA = ids.indexOf(link.origen_id);
-                const idxB = ids.indexOf(link.destino_id);
-                
-                if (idxA === -1 || idxB === -1) {
-                    console.warn(`Enlace fallido: ${link.origen_id} (${idxA}) -> ${link.destino_id} (${idxB})`);
-                }
-                
-                if (idxA !== -1 && idxB !== -1) {
-                    const baseColor = new THREE.Color(colors[idxA*3], colors[idxA*3+1], colors[idxA*3+2]);
-                    const tColor = new THREE.Color(colors[idxB*3], colors[idxB*3+1], colors[idxB*3+2]);
-                    
-                    const dir = new THREE.Vector3().subVectors(allNodes[idxB], allNodes[idxA]);
-                    const dist = dir.length();
-                    dir.normalize();
-                    
-                    const perp = new THREE.Vector3(1,0,0).cross(dir);
-                    if(perp.lengthSq() < 0.1) perp.set(0,1,0).cross(dir);
-                    perp.normalize();
-                    const rnd = rngDe(`l:${link.origen_id}>${link.destino_id}`);   // cada conexión, siempre con la misma curva
-                    perp.applyAxisAngle(dir, rnd() * Math.PI * 2);
+    };
+    for (let i = 0; i < n; i++) {
+        const desde = lp.length / 3;
+        dendritasDe(base, i, pos[i], color(i), lp, lc, nodoDe);
+        rangoNodo.set([desde, lp.length / 3], i * 2);
+        cerrarTramo(desde, i, -1);
+    }
+    // Conexiones reales (aristas de la BD): se dibujan todas, también las que no son de esta red (invisibles), para que la geometría sea siempre la misma
+    base.enlaces.forEach((enlace, k) => {
+        const [a, b] = enlace;
+        const desde = lp.length / 3;
+        curvaDe(enlace, pos[a], pos[b], color(a), color(b), lp, lc, nodoDe);
+        rangoEnlace.set([desde, lp.length / 3], k * 2);
+        cerrarTramo(desde, a, b);
+    });
+    return { pos, vis, lineaPos: new Float32Array(lp), lineaCol: new Float32Array(lc), lineaVis: new Float32Array(lineaVis), lineaArco: new Float32Array(lineaArco), lineaNodo: new Int32Array(nodoDe), rangoNodo, rangoEnlace };
+}
 
-                    const midPoint = new THREE.Vector3().addVectors(allNodes[idxA], allNodes[idxB]).multiplyScalar(0.5);
-                    const arcHeight = dist * (0.2 + rnd() * 0.2);
-                    midPoint.add(perp.multiplyScalar(arcHeight));
-                    
-                    addSmoothCurve(allNodes[idxA], allNodes[idxB], midPoint, baseColor, tColor, linePositions, lineColors, 12, idxA, lineNodeIndices);
-                }
-            }
-        }
+// ───────────── Shaders de la transición ─────────────
+// Mismas fórmulas que utils/transicion.ts (marcadas GLSL allí): cada vértice sale de `aAnt` (dónde estaba), llega a su sitio de ahora con un retraso propio
+// (aArco.w) y un desvío en arco (aArco.xyz), y su visibilidad/color pasa de `aVisAnt`/`aColAnt` a `aVis`/`color`.
+const GLSL_COMUN = `
+attribute vec3 aAnt; attribute float aVis; attribute float aVisAnt; attribute vec4 aArco; uniform float uT;
+float avanceT(float w) { float e = clamp((uT - w * ${FASE_MAX.toFixed(2)}) / ${(1 - FASE_MAX).toFixed(2)}, 0.0, 1.0); return e * e * e * (e * (e * 6.0 - 15.0) + 10.0); }
+`;
 
-        const geometry = new THREE.BufferGeometry();
-        if (linePositions.length > 0) {
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(lineColors, 3));
-        }
+function materialLinea(uniformes: { uT: { value: number } }) {
+    const m = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+    m.onBeforeCompile = shader => {
+        shader.uniforms.uT = uniformes.uT;
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', `#include <common>\n${GLSL_COMUN}\nattribute vec3 aColAnt;`)
+            .replace('#include <color_vertex>', `float e_ = avanceT(aArco.w);\n${THREE.ShaderChunk.color_vertex.replace('vColor.rgb *= color;', 'vColor.rgb *= mix(aColAnt, color, e_) * mix(aVisAnt, aVis, e_);')}`)
+            .replace('#include <begin_vertex>', 'vec3 transformed = mix(aAnt, position, e_) + aArco.xyz * sin(3.14159265 * e_);');
+    };
+    m.customProgramCacheKey = () => 'alejandria-linea';
+    return m;
+}
 
-        const originalLineColors = new Float32Array(lineColors);
+function materialNucleo(uniformes: { uT: { value: number } }) {
+    const m = new THREE.MeshBasicMaterial({ toneMapped: false, transparent: true, opacity: 1.0 });
+    m.onBeforeCompile = shader => {
+        shader.uniforms.uT = uniformes.uT;
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', `#include <common>\n${GLSL_COMUN}`)
+            .replace('#include <begin_vertex>', '#include <begin_vertex>\nfloat e_ = avanceT(aArco.w);\ntransformed *= mix(aVisAnt, aVis, e_);')
+            .replace('#include <project_vertex>', THREE.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;',
+                'mvPosition.xyz += (1.0 - e_) * (aAnt - instanceMatrix[3].xyz) + aArco.xyz * sin(3.14159265 * e_);\nmvPosition = modelViewMatrix * mvPosition;'));
+    };
+    m.customProgramCacheKey = () => 'alejandria-nucleo';
+    return m;
+}
 
-        return { nodes: allNodes, lineGeometry: geometry, nodeColors: colors, clusterCenters, nodeIds: ids, clusterKeys, totalNodes, originalLineColors, lineNodeIndices };
-    }, [realNodes, realLinks]);
+const reducirMovimiento = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+const atributo = (g: THREE.BufferGeometry, nombre: string) => g.getAttribute(nombre) as THREE.BufferAttribute | undefined;
+const dinamico = <T extends THREE.BufferAttribute>(a: T): T => { a.setUsage(THREE.DynamicDrawUsage); return a; };
+
+const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista }: { onNodeClick: (id: string) => void, searchQuery: string, realNodes: any[], realLinks: any[], vista: Vista }) => {
+    const base = useMemo(() => construirBase(realNodes, realLinks), [realNodes, realLinks]);
+    const cacheGeneral = useRef<{ base: Base, escena: Escena } | null>(null);
+    // La escena a la que se va. La de la red general se recuerda mientras no cambie el universo (volver a ella no cuesta nada) y la de una subred parte de ella.
+    const destino = useMemo(() => {
+        if (!base) return null;
+        if (cacheGeneral.current?.base !== base) cacheGeneral.current = { base, escena: construirEscena(base, VISTA_GENERAL) };
+        const general = cacheGeneral.current.escena;
+        return vista.nombre !== null && vista.layout ? construirEscena(base, vista, general) : general;
+    }, [base, vista]);
+    const totalNodes = base?.ids.length ?? 0;
 
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const groupRef = useRef<THREE.Group>(null);
-    const nombres = useMemo(() => { const porId = new Map(realNodes.map(n => [n.id, String(n.nombre ?? '')])); return nodeIds.map(id => porId.get(id) ?? ''); }, [realNodes, nodeIds]);
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+    const uniformes = useMemo(() => ({ uT: { value: 1 } }), []);
+    const matLinea = useMemo(() => materialLinea(uniformes), [uniformes]);
+    const matNucleo = useMemo(() => materialNucleo(uniformes), [uniformes]);
+    const lineGeometry = useMemo(() => new THREE.BufferGeometry(), [base]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const marcha = useRef({ t: 1, t0: 0, dur: 0 });                              // avance de la transición (1 = en reposo)
+    const aplicado = useRef<{ base: Base, destino: Escena, geometria: THREE.BufferGeometry } | null>(null);
+    const moviendose = useRef(false);
 
-    useEffect(() => {
-        if (meshRef.current && totalNodes > 0) {
-            const dummy = new THREE.Object3D();
-            const query = searchQuery ? searchQuery.toLowerCase() : "";
-            
-            const nodeMatched = new Array(totalNodes).fill(true);
+    // Cada vez que cambia la escena de destino: la geometría pasa a ella. Si es la misma base (solo cambió de red), se anima desde donde estaba; si la base cambió
+    // (hay neuronas o conexiones nuevas) se dibuja directamente.
+    useLayoutEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh || !base || !destino) return;
+        if (aplicado.current?.base === base && aplicado.current.destino === destino && aplicado.current.geometria === lineGeometry && atributo(lineGeometry, 'position')) return;   // ya aplicado (StrictMode repite los efectos)
+        aplicado.current = { base, destino, geometria: lineGeometry };
+        const nGeo = mesh.geometry, n = totalNodes, nv = destino.lineaPos.length / 3;
+        const pos = atributo(lineGeometry, 'position');
+        const primera = !pos || pos.count !== nv || atributo(nGeo, 'aAnt')?.count !== n;
+        const dur = reducirMovimiento() ? 0 : DURACION_MS;
+        const animar = !primera && dur > 0;
+        const nodoVis = Float32Array.from(destino.vis);
 
-            nodes.forEach((pos, i) => {
-                dummy.position.copy(pos);
-                const rnd = rngDe(`s:${nodeIds[i]}`);   // tamaño y giro de cada soma: fijos (antes cambiaban con cada letra de la búsqueda)
-                let scaleVal = 0.2 + rnd() * 0.1;
-                
-                const realNode = realNodes.find(n => n.id === nodeIds[i]);
-                const nodeName = realNode ? realNode.nombre || "" : "";
-                const clusterId = realNode ? realNode.cluster_id || "" : "";
-
-                let glosarioTermsOnly = "";
-                if (realNode && typeof realNode.glosario === 'string') {
-                    try { glosarioTermsOnly = JSON.parse(realNode.glosario).map((g: any) => g.termino).join(" "); } 
-                    catch(e) {}
-                } else if (realNode && Array.isArray(realNode.glosario)) {
-                    glosarioTermsOnly = realNode.glosario.map((g: any) => g.termino).join(" ");
+        if (primera) {
+            const colAnt = new Float32Array(destino.lineaCol.length);
+            for (let v = 0; v < nv; v++) for (let k = 0; k < 3; k++) colAnt[v * 3 + k] = destino.lineaCol[v * 3 + k] * destino.lineaVis[v];
+            lineGeometry.setAttribute('position', dinamico(new THREE.BufferAttribute(destino.lineaPos.slice(), 3)));
+            lineGeometry.setAttribute('color', dinamico(new THREE.BufferAttribute(destino.lineaCol.slice(), 3)));
+            lineGeometry.setAttribute('aAnt', dinamico(new THREE.BufferAttribute(destino.lineaPos.slice(), 3)));
+            lineGeometry.setAttribute('aColAnt', dinamico(new THREE.BufferAttribute(colAnt, 3)));
+            lineGeometry.setAttribute('aVis', dinamico(new THREE.BufferAttribute(destino.lineaVis.slice(), 1)));
+            lineGeometry.setAttribute('aVisAnt', dinamico(new THREE.BufferAttribute(new Float32Array(nv).fill(1), 1)));
+            lineGeometry.setAttribute('aArco', new THREE.BufferAttribute(destino.lineaArco.slice(), 4));
+            nGeo.setAttribute('aAnt', dinamico(new THREE.InstancedBufferAttribute(Float32Array.from(destino.pos.flatMap(p => [p.x, p.y, p.z])), 3)));
+            nGeo.setAttribute('aVis', dinamico(new THREE.InstancedBufferAttribute(nodoVis.slice(), 1)));
+            nGeo.setAttribute('aVisAnt', dinamico(new THREE.InstancedBufferAttribute(nodoVis.slice(), 1)));
+            nGeo.setAttribute('aArco', new THREE.InstancedBufferAttribute(base.arcos.slice(), 4));
+        } else {
+            // 1) lo que se ve AHORA (puede ser a mitad de una transición anterior) pasa a ser el punto de partida
+            const t = marcha.current.t;
+            const g = (nombre: string) => atributo(lineGeometry, nombre)!;
+            const lAnt = g('aAnt').array as Float32Array, lPos = g('position').array as Float32Array, lArco = g('aArco').array as Float32Array;
+            const lColAnt = g('aColAnt').array as Float32Array, lCol = g('color').array as Float32Array, lVis = g('aVis').array as Float32Array, lVisAnt = g('aVisAnt').array as Float32Array;
+            if (t < 1) {
+                for (let v = 0; v < nv; v++) {
+                    const e = avance(t, lArco[v * 4 + 3]);
+                    const visAhora = lVisAnt[v] + (lVis[v] - lVisAnt[v]) * e;
+                    for (let k = 0; k < 3; k++) lColAnt[v * 3 + k] = (lColAnt[v * 3 + k] + (lCol[v * 3 + k] - lColAnt[v * 3 + k]) * e) * visAhora;
                 }
-
-                // El núcleo siempre es blanco en estado normal (como pidió el usuario)
-                let r = 1.0;
-                let g = 1.0;
-                let b = 1.0;
-                
-                let isMatch = true;
-                
-                if (query) {
-                    const normalizeStr = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                    const q = normalizeStr(query);
-                    
-                    if (q.length < 3) {
-                        const regex = new RegExp(`\\b${q}`, 'i');
-                        isMatch = regex.test(normalizeStr(nodeName)) || regex.test(normalizeStr(clusterId));
-                    } else {
-                        // Búsqueda profunda pero RESTRICTIVA: solo Título, Categoría, y Términos del Glosario (NO la teoría gigante)
-                        const searchStr = normalizeStr(`${nodeName} ${clusterId} ${glosarioTermsOnly}`);
-                        isMatch = searchStr.includes(q);
-                    }
-                    
-                    if (!isMatch) {
-                        // Neuronas fantasma
-                        r = 0.05; g = 0.05; b = 0.05;
-                    } else {
-                        // Neuronas activas súper brillantes (Bloom blanco)
-                        r = 2.5; g = 2.5; b = 2.5;
-                    }
-                }
-                
-                nodeMatched[i] = isMatch;
-                
-                dummy.scale.set(scaleVal, scaleVal, scaleVal);
-                dummy.rotation.set(rnd()*Math.PI, rnd()*Math.PI, rnd()*Math.PI);
-                dummy.updateMatrix();
-                meshRef.current!.setMatrixAt(i, dummy.matrix);
-                
-                meshRef.current!.setColorAt(i, new THREE.Color(r, g, b));
-            });
-            meshRef.current.instanceMatrix.needsUpdate = true;
-            if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
-            
-            // Actualizar el color de los bracitos individualmente
-            if (lineGeometry && originalLineColors && lineNodeIndices) {
-                const colorAttr = lineGeometry.getAttribute('color') as THREE.BufferAttribute;
-                if (colorAttr) {
-                    const colors = colorAttr.array as Float32Array;
-                    for (let v = 0; v < lineNodeIndices.length; v++) {
-                        const nIdx = lineNodeIndices[v];
-                        if (query && !nodeMatched[nIdx]) {
-                            colors[v * 3] = 0.05;
-                            colors[v * 3 + 1] = 0.05;
-                            colors[v * 3 + 2] = 0.05;
-                        } else {
-                            colors[v * 3] = originalLineColors[v * 3];
-                            colors[v * 3 + 1] = originalLineColors[v * 3 + 1];
-                            colors[v * 3 + 2] = originalLineColors[v * 3 + 2];
-                        }
-                    }
-                    colorAttr.needsUpdate = true;
-                }
+                hornearPosiciones(lAnt, lPos, lArco, t, lAnt);
+            } else {
+                for (let v = 0; v < nv; v++) for (let k = 0; k < 3; k++) lColAnt[v * 3 + k] = lCol[v * 3 + k] * lVis[v];
+                lAnt.set(lPos);
             }
-            
-            // IMPORTANTE: Recalcular la esfera límite para que funcione el Raycaster y los clicks
-            if (meshRef.current.computeBoundingSphere) {
-                meshRef.current.computeBoundingSphere();
-            } else if (meshRef.current.geometry) {
-                meshRef.current.geometry.computeBoundingSphere();
-            }
+            lVisAnt.fill(1);
+            const m = (nombre: string) => atributo(nGeo, nombre)!;
+            const nAnt = m('aAnt').array as Float32Array, nArco = m('aArco').array as Float32Array, nVis = m('aVis').array as Float32Array, nVisAnt = m('aVisAnt').array as Float32Array;
+            const nPosActual = new Float32Array(n * 3);
+            for (let i = 0; i < n; i++) { const p = new THREE.Matrix4().fromArray(mesh.instanceMatrix.array as Float32Array, i * 16); nPosActual[i * 3] = p.elements[12]; nPosActual[i * 3 + 1] = p.elements[13]; nPosActual[i * 3 + 2] = p.elements[14]; }
+            if (t < 1) { hornearPosiciones(nAnt, nPosActual, nArco, t, nAnt); hornearEscalares(nVisAnt, nVis, nArco, t, nVisAnt); }
+            else { nAnt.set(nPosActual); nVisAnt.set(nVis); }
+            // 2) y los vértices pasan a su sitio de destino
+            lPos.set(destino.lineaPos); lCol.set(destino.lineaCol); lVis.set(destino.lineaVis); nVis.set(nodoVis);
+            for (const nombre of ['position', 'color', 'aAnt', 'aColAnt', 'aVis', 'aVisAnt']) g(nombre).needsUpdate = true;
+            for (const nombre of ['aAnt', 'aVis', 'aVisAnt']) m(nombre).needsUpdate = true;
         }
-    }, [nodes, nodeColors, searchQuery, totalNodes, realNodes, nodeIds]);
 
-    // Efecto desactivado a petición del usuario: ya no hace zoom al hacer click
-    // useEffect(() => {
-    //     if (activeNodeId) {
-    //         const idx = nodeIds.indexOf(activeNodeId);
-    //         if (idx !== -1) {
-    //             const pos = nodes[idx].clone();
-    //             onTargetFound(pos);
-    //         }
-    //     }
-    // }, [activeNodeId, nodeIds, nodes, onTargetFound]);
+        const dummy = new THREE.Object3D();
+        destino.pos.forEach((p, i) => {
+            const rnd = rngDe(`s:${base.ids[i]}`);   // tamaño y giro de cada soma: fijos (antes cambiaban con cada letra de la búsqueda)
+            dummy.position.copy(p);
+            dummy.scale.setScalar(0.2 + rnd() * 0.1);
+            dummy.rotation.set(rnd() * Math.PI, rnd() * Math.PI, rnd() * Math.PI);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.computeBoundingSphere();      // IMPORTANTE: sin ella el Raycaster no encuentra las neuronas y no funcionan los clics
+        marcha.current = { t: animar ? 0 : 1, t0: performance.now(), dur };
+        uniformes.uT.value = animar ? 0 : 1;
+        moviendose.current = animar;
+        if (animar) setHoveredIdx(null);
+    }, [base, destino]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Búsqueda: las que no coinciden se apagan y las que sí brillan (solo cambia el color; la posición y el tamaño no se tocan)
+    useEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh || !base || !destino) return;
+        const q = normalizarTexto(searchQuery.trim());
+        const coincide = base.busqueda.map((texto, i) => {
+            if (!q) return true;
+            if (q.length < 3) { const inicio = new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`); return inicio.test(base.nombreN[i]) || inicio.test(base.clusterN[i]); }   // 1-2 letras: al principio de palabra, solo en nombre y clúster
+            return texto.includes(q);
+        });
+        const color = new THREE.Color();
+        for (let i = 0; i < totalNodes; i++) {
+            const v = !q ? 1.0 : coincide[i] ? 2.5 : 0.05;     // el núcleo es blanco; con búsqueda, fantasma (apagado) o súper brillante (bloom)
+            mesh.setColorAt(i, color.setRGB(v, v, v));
+        }
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        const colAttr = atributo(lineGeometry, 'color');
+        if (colAttr) {
+            const arr = colAttr.array as Float32Array;
+            for (let v = 0; v < destino.lineaNodo.length; v++) {
+                const apagada = q && !coincide[destino.lineaNodo[v]];
+                for (let k = 0; k < 3; k++) arr[v * 3 + k] = apagada ? 0.05 : destino.lineaCol[v * 3 + k];
+            }
+            colAttr.needsUpdate = true;
+        }
+    }, [base, destino, searchQuery, totalNodes, lineGeometry]);
+
+    // En reposo, solo se pueden tocar las neuronas de la red actual (las demás siguen en la geometría, pero encogidas a nada)
+    const raycastDeLaRed = useMemo(() => function (this: THREE.InstancedMesh, rc: THREE.Raycaster, hits: THREE.Intersection[]) {
+        const todas: THREE.Intersection[] = [];
+        THREE.InstancedMesh.prototype.raycast.call(this, rc, todas);
+        for (const h of todas) if (h.instanceId !== undefined && destino?.vis[h.instanceId]) hits.push(h);
+    }, [destino]);
 
     useFrame((state) => {
         if (groupRef.current) {
@@ -402,35 +546,32 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
             groupRef.current.rotation.y = time * 0.03;
             groupRef.current.rotation.x = Math.sin(time * 0.01) * 0.05;
         }
+        const m = marcha.current;
+        if (m.t < 1) {
+            m.t = m.dur > 0 ? Math.min(1, (performance.now() - m.t0) / m.dur) : 1;
+            uniformes.uT.value = m.t;
+            if (m.t >= 1) moviendose.current = false;
+        }
     });
 
     return (
         <group ref={groupRef}>
-            {totalNodes > 0 && (
-                <lineSegments geometry={lineGeometry}>
-                    <lineBasicMaterial 
-                        vertexColors 
-                        transparent 
-                        opacity={0.4} 
-                        blending={THREE.AdditiveBlending} 
-                        depthWrite={false}
-                    />
-                </lineSegments>
-            )}
+            {totalNodes > 0 && <lineSegments geometry={lineGeometry} material={matLinea} frustumCulled={false} />}
 
             {totalNodes > 0 && (
-                <instancedMesh 
-                    ref={meshRef} 
+                <instancedMesh
+                    ref={meshRef}
                     args={[undefined, undefined, totalNodes]}
+                    frustumCulled={false}
+                    raycast={raycastDeLaRed}
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (e.instanceId !== undefined) {
-                            const realId = nodeIds[e.instanceId];
-                            onNodeClick(realId);
-                        }
+                        if (moviendose.current) return;
+                        if (e.instanceId !== undefined) onNodeClick(base!.ids[e.instanceId]);
                     }}
                     onPointerMove={(e) => {
                         e.stopPropagation();
+                        if (moviendose.current) return;
                         if (e.instanceId !== undefined && e.instanceId !== hoveredIdx) {
                             setHoveredIdx(e.instanceId);
                             document.body.style.cursor = 'pointer';
@@ -443,51 +584,35 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
                     }}
                 >
                     <icosahedronGeometry args={[1, 0]} />
-                    <meshBasicMaterial 
-                        toneMapped={false}
-                        transparent
-                        opacity={1.0}
-                    />
+                    <primitive object={matNucleo} attach="material" />
                 </instancedMesh>
             )}
 
-            {hoveredIdx !== null && nodes[hoveredIdx] && (
-                (() => {
-                    const hoveredNode = realNodes.find(n => n.id === nodeIds[hoveredIdx]);
-                    if (!hoveredNode) return null;
-                    return (
-                        <Html position={nodes[hoveredIdx]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
-                            <div className="t-marco" style={{
-                                padding: '8px 12px',
-                                whiteSpace: 'nowrap',
-                                transform: 'translateY(-40px)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '3px',
-                                fontSize: 12,
-                            }}>
-                                <span style={{ color: 'var(--t-verde)' }}>&gt; {hoveredNode.nombre}</span>
-                                <span style={{ color: 'var(--t-ambar)' }}>cluster: {hoveredNode.cluster_id}</span>
-                            </div>
-                        </Html>
-                    );
-                })()
-            )}
+            {base && destino && hoveredIdx !== null && destino.pos[hoveredIdx] && (() => {
+                const hoveredNode = realNodes.find(n => n.id === base.ids[hoveredIdx]);
+                if (!hoveredNode) return null;
+                return (
+                    <Html position={destino.pos[hoveredIdx]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+                        <div className="t-marco" style={{
+                            padding: '8px 12px',
+                            whiteSpace: 'nowrap',
+                            transform: 'translateY(-40px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                            fontSize: 12,
+                        }}>
+                            <span style={{ color: 'var(--t-verde)' }}>&gt; {hoveredNode.nombre}</span>
+                            <span style={{ color: 'var(--t-ambar)' }}>cluster: {hoveredNode.cluster_id}</span>
+                        </div>
+                    </Html>
+                );
+            })()}
 
-            {totalNodes > 0 && <RotulosCercanos nodes={nodes} nombres={nombres} grupo={groupRef} ocultar={hoveredIdx} />}
+            {base && destino && <RotulosCercanos nodes={destino.pos} nombres={base.nombres} mascara={destino.vis} grupo={groupRef} ocultar={hoveredIdx} pausa={moviendose} />}
 
-            {totalNodes > 0 && clusterCenters.map((center, idx) => (
-                <Seguro key={idx}><Billboard position={[center.x, center.y + 3.5, center.z]} follow={true}>
-                    <Text
-                        font={fuenteRotulos}
-                        fontSize={0.9}
-                        letterSpacing={0.05}
-                        color="#5fbf9f"
-                        material-toneMapped={false}
-                    >
-                        [ {clusterKeys[idx].toUpperCase()} ]
-                    </Text>
-                </Billboard></Seguro>
+            {base && base.clusterCenters.map((center, idx) => (
+                <RotuloCluster key={base.clusterKeys[idx]} posicion={[center.x, center.y + 3.5, center.z]} texto={base.clusterKeys[idx]} visible={vista.nombre === null} />
             ))}
         </group>
     );
@@ -495,7 +620,7 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks }: { onN
 
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-const CameraController = ({ resetFlag, targetPosition }: { resetFlag: number, targetPosition: THREE.Vector3 | null }) => {
+const CameraController = ({ resetFlag, targetPosition, distancia }: { resetFlag: number, targetPosition: THREE.Vector3 | null, distancia: number }) => {
     const controlsRef = useRef<OrbitControlsImpl>(null);
     const { camera } = useThree();
 
@@ -506,10 +631,10 @@ const CameraController = ({ resetFlag, targetPosition }: { resetFlag: number, ta
     useEffect(() => {
         if (resetFlag > 0) {
             targetRef.current.set(0, 0, 0);
-            camTargetRef.current.set(0, 0, 75);
+            camTargetRef.current.set(0, 0, distancia);
             isAnimating.current = true;
         }
-    }, [resetFlag]);
+    }, [resetFlag]);   // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (targetPosition) {
@@ -555,7 +680,6 @@ export default function Universe() {
     const [searchQuery, setSearchQuery] = useState('');
     const [realNodes, setRealNodes] = useState<any[]>([]);
     const [realLinks, setRealLinks] = useState<any[]>([]);
-    const [targetNodePosition, setTargetNodePosition] = useState<THREE.Vector3 | null>(null);
     
     // Estados para el Inyector Neuronal
     const [showInjector, setShowInjector] = useState(false);
@@ -589,12 +713,11 @@ export default function Universe() {
             .catch(err => console.error("Error fetching universe:", err));
     };
 
-    const recargar = () => {
+    const recargar = (): Promise<void> =>
         fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
             .then(res => res.json())
             .then(data => aplicarUniverso(data, true))
             .catch(err => console.error("Error fetching universe:", err));
-    };
 
     useEffect(() => {
         loadData();
@@ -633,13 +756,103 @@ export default function Universe() {
         [realNodes]
     );
 
+    // ───── Subredes: etiquetas dentro de cada neurona; todas siguen en la red general (ver backend/subredes.py) ─────
+    const [subredActiva, setSubredActiva] = useState<string | null>(() => subredActivaGuardada());
+    const [vacias, setVacias] = useState<string[]>(() => vaciasGuardadas());     // las que acabas de crear y aún no tienen neuronas: solo existen en este PC
+    const [vista, setVista] = useState<Vista>(VISTA_GENERAL);                      // lo que se dibuja: la general o una subred con su disposición ya calculada
+    const [calculando, setCalculando] = useState(false);
+    const [showSubredes, setShowSubredes] = useState(false);
+    const subredes = useMemo(() => listarSubredes(realNodes, vacias), [realNodes, vacias]);
+    const nodosVisibles = useMemo(() => (subredActiva ? realNodes.filter(n => esMiembro(n, subredActiva)) : realNodes), [realNodes, subredActiva]);
+    const enlacesVisibles = useMemo(() => {
+        if (!subredActiva) return realLinks;
+        const ids = new Set(nodosVisibles.map(n => n.id));
+        return realLinks.filter(l => ids.has(l.origen_id) && ids.has(l.destino_id));
+    }, [realLinks, nodosVisibles, subredActiva]);
+    const firmaRed = useMemo(() => (subredActiva ? JSON.stringify([nodosVisibles.map(n => n.id).sort(), enlacesVisibles.map(l => [l.origen_id, l.destino_id]).sort()]) : ''), [nodosVisibles, enlacesVisibles, subredActiva]);
+
+    const elegirSubred = (nombre: string | null) => {
+        setSubredActiva(nombre);
+        guardarSubredActiva(nombre);
+        const abierta = realNodes.find(n => n.id === activeNodeId);
+        if (nombre && abierta && !esMiembro(abierta, nombre)) setActiveNodeId(null);   // la neurona abierta no está en la red a la que vas
+    };
+
+    // Una subred que ya no existe (la borraste desde otro PC) devuelve a la general; si cambió la grafía (renombrada a una ya existente), se adopta la que hay
+    useEffect(() => {
+        if (!subredActiva || realNodes.length === 0) return;
+        const real = subredes.find(s => mismaSubred(s.nombre, subredActiva));
+        if (!real) elegirSubred(null);
+        else if (real.nombre !== subredActiva) { setSubredActiva(real.nombre); guardarSubredActiva(real.nombre); }
+    }, [subredes, subredActiva, realNodes.length === 0]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    // La disposición de la subred se calcula fuera del hilo principal; hasta que está lista se sigue viendo la red anterior
+    useEffect(() => {
+        if (!subredActiva) { setVista(v => (v.nombre === null ? v : VISTA_GENERAL)); setCalculando(false); return; }
+        if (realNodes.length === 0) return;
+        let vigente = true;
+        const poner = (layout: Vista['layout']) => { if (vigente) { setVista({ nombre: subredActiva, layout, color: colorSubred(subredActiva) }); setCalculando(false); } };
+        const ids = nodosVisibles.map(n => String(n.id));
+        if (ids.length === 0) { poner({}); return () => { vigente = false; }; }
+        setCalculando(true);
+        calcularDisposicion(subredActiva, ids, enlacesVisibles.map(l => [l.origen_id, l.destino_id] as [string, string]))
+            .then(poner).catch(() => { if (vigente) setCalculando(false); });
+        return () => { vigente = false; };
+    }, [subredActiva, firmaRed, realNodes.length === 0]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Al cambiar de red la cámara se recoloca para encuadrarla (el centro es siempre el origen: el universo gira alrededor de él)
+    const distanciaCamara = useMemo(() => {
+        if (!vista.layout || vista.nombre === null) return 75;
+        const radio = Math.max(0, ...Object.values(vista.layout).map(p => Math.hypot(p[0], p[1], p[2])));
+        return Math.max(25, radio * 2.4 + 12);
+    }, [vista]);
+    const primeraVista = useRef(true);
+    useEffect(() => {
+        if (primeraVista.current) { primeraVista.current = false; return; }
+        setResetCamera(prev => prev + 1);
+    }, [vista]);
+
+    const crearSubred = (nombre: string) => {
+        const n = normalizarNombre(nombre);
+        if (!n || subredes.some(s => mismaSubred(s.nombre, n))) return;
+        const v = [...vacias, n];
+        setVacias(v); guardarVacias(v);
+    };
+    const renombrar = async (viejo: string, nuevo: string) => {
+        const n = normalizarNombre(nuevo);
+        if (!n) throw new Error('El nombre de la subred no puede estar vacío.');
+        await renombrarSubred(viejo, n);
+        renombrarDisposicion(viejo, n);
+        const v = vacias.map(x => (mismaSubred(x, viejo) ? n : x));
+        setVacias(v); guardarVacias(v);
+        if (subredActiva && mismaSubred(subredActiva, viejo)) elegirSubred(n);
+        await recargar();
+    };
+    const borrarSubredes = async (nombre: string) => {
+        await borrarSubred(nombre);
+        const v = vacias.filter(x => !mismaSubred(x, nombre));
+        setVacias(v); guardarVacias(v);
+        if (subredActiva && mismaSubred(subredActiva, nombre)) elegirSubred(null);
+        await recargar();
+    };
+    /** Añade `añadir` y quita `quitar` (nombres de subred) a esas neuronas, y repinta. */
+    const cambiarSubredes = async (ids: string[], añadir: string[], quitar: string[]) => {
+        if (ids.length && (añadir.length || quitar.length)) await asignarSubredes(ids, añadir, quitar);
+        await recargar();
+    };
+    const guardarMiembros = async (subred: string, añadir: string[], quitar: string[]) => {
+        if (añadir.length) await asignarSubredes(añadir, [subred], []);
+        if (quitar.length) await asignarSubredes(quitar, [], [subred]);
+        await recargar();
+    };
+
     const searchResults = useMemo(() => {
         if (!searchQuery.trim()) return [];
         const normalizeStr = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         const q = normalizeStr(searchQuery);
         
         const results = [];
-        for (const node of realNodes) {
+        for (const node of nodosVisibles) {
             const name = normalizeStr(node.nombre || "");
             const cluster = normalizeStr(node.cluster_id || "");
             
@@ -662,7 +875,7 @@ export default function Universe() {
             }
         }
         return results.sort((a, b) => b.score - a.score).slice(0, 8);
-    }, [searchQuery, realNodes]);
+    }, [searchQuery, nodosVisibles]);
 
     return (
         <div style={{ position: 'absolute', inset: 0, background: '#000000', overflow: 'hidden' }}>
@@ -672,16 +885,15 @@ export default function Universe() {
                 
                 <ambientLight intensity={0.5} />
                 
-                <BiologicalWeb 
-                    onNodeClick={setActiveNodeId} 
-                    searchQuery={searchQuery} 
-                    realNodes={realNodes} 
+                <BiologicalWeb
+                    onNodeClick={setActiveNodeId}
+                    searchQuery={searchQuery}
+                    realNodes={realNodes}
                     realLinks={realLinks}
-                    activeNodeId={activeNodeId}
-                    onTargetFound={setTargetNodePosition}
+                    vista={vista}
                 />
-                
-                <CameraController resetFlag={resetCamera} targetPosition={targetNodePosition} />
+
+                <CameraController resetFlag={resetCamera} targetPosition={null} distancia={distanciaCamara} />
 
                 <EffectComposer>
                     {/* Bloom sutil para que imite la fluorescencia del microscopio */}
@@ -695,8 +907,13 @@ export default function Universe() {
                 onBusqueda={setSearchQuery}
                 resultados={searchResults}
                 onElegir={setActiveNodeId}
-                nodos={realNodes.length}
-                aristas={realLinks.length}
+                nodos={nodosVisibles.length}
+                aristas={enlacesVisibles.length}
+                subredes={subredes}
+                subredActiva={subredActiva}
+                calculando={calculando}
+                onSubred={elegirSubred}
+                onGestionar={() => setShowSubredes(true)}
                 sinapsis={sinapsis}
                 aviso={avisoSinapsis}
                 onAjustes={() => setShowAjustes(true)}
@@ -757,6 +974,8 @@ export default function Universe() {
                             Pega aquí la respuesta cruda en JSON (o bloque markdown) generada por tu Prompt Maestro. El núcleo lo asimilará y reconfigurará la red neuronal.
                         </p>
 
+                        {subredActiva && <p style={{ margin: 0, fontSize: 12, color: 'var(--t-ambar)' }}>Estás en la subred «{subredActiva}»: la neurona nueva entrará en ella y en la red general.</p>}
+
                         <textarea
                             className="t-input"
                             value={injectionData}
@@ -783,7 +1002,7 @@ export default function Universe() {
                                         const res = await fetch(`${API}/api/node`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ raw_json: injectionData })
+                                            body: JSON.stringify({ raw_json: injectionData, subred: subredActiva })
                                         });
                                         const result = await res.json();
                                         if (!res.ok) {
@@ -819,14 +1038,27 @@ export default function Universe() {
             {showAjustes && <Ajustes onCerrar={() => setShowAjustes(false)} onTutorial={() => { setShowAjustes(false); setShowTutorial(true); }} />}
             {showAgenda && <Agenda onCerrar={() => setShowAgenda(false)} />}
             {showPapelera && <Papelera onCerrar={() => setShowPapelera(false)} onCambio={recargar} />}
+            {showSubredes && <GestionSubredes subredes={subredes} nodos={realNodes} onCrear={crearSubred} onRenombrar={renombrar} onBorrar={borrarSubredes}
+                onGuardarMiembros={guardarMiembros} onCerrar={() => setShowSubredes(false)} />}
             {showTutorial && <Tutorial onCerrar={() => setShowTutorial(false)} />}
+
+            {subredActiva && !calculando && realNodes.length > 0 && nodosVisibles.length === 0 && (
+                <div className="t-marco" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '18px 24px', maxWidth: 420, textAlign: 'center', lineHeight: 1.6, fontSize: 13, zIndex: 5 }}>
+                    <div style={{ color: 'var(--t-verde)' }}>&gt; «{subredActiva}» está vacía</div>
+                    <div style={{ color: 'var(--t-suave)', marginTop: 6 }}>Vuelve a la red general y, en el panel de una neurona, márcala en «Subredes»; o usa «gestionar subredes…» → [ Neuronas ] para elegir varias a la vez.</div>
+                </div>
+            )}
 
             {/* Panel de Conocimiento Desplegable */}
             <KnowledgePanel 
                 nodeId={activeNodeId} 
                 onClose={() => setActiveNodeId(null)} 
-                universeNodes={realNodes}
-                universeLinks={realLinks}
+                universeNodes={nodosVisibles}
+                universeLinks={enlacesVisibles}
+                todosLosEnlaces={realLinks}
+                subredes={subredes}
+                subredActiva={subredActiva}
+                onSubredes={cambiarSubredes}
             />
         </div>
     );

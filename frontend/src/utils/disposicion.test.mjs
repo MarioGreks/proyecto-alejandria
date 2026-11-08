@@ -55,6 +55,8 @@ test('firmaUniverso cambia con clúster o estado y no con el orden', () => {
     assert.equal(firmaUniverso([...n].reverse(), l), f);
     assert.notEqual(firmaUniverso([{ ...n[0], cluster_id: 'Y' }, n[1]], l), f);
     assert.notEqual(firmaUniverso(n, [{ ...l[0], estado: 'aceptada' }]), f);
+    assert.notEqual(firmaUniverso([{ ...n[0], subredes: ['TFM'] }, n[1]], l), f);                  // meter una neurona en una subred también repinta
+    assert.equal(firmaUniverso([{ ...n[0], subredes: ['b', 'a'] }, n[1]], l), firmaUniverso([{ ...n[0], subredes: ['a', 'b'] }, n[1]], l));
 });
 
 const minimaEntre = (puntos) => {

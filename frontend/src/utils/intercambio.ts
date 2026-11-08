@@ -8,33 +8,33 @@ const errorDe = async (res: Response): Promise<string> => {
     return typeof cuerpo?.detail === 'string' ? cuerpo.detail : `El servidor respondió ${res.status}`;
 };
 
-/** Descarga todas tus neuronas como un archivo .json. */
-export async function exportarNeuronas(): Promise<void> {
-    const res = await fetch(`${API}/api/exportar`);
+/** Descarga tus neuronas como un archivo .json: todas, o solo las de una subred. */
+export async function exportarNeuronas(subred?: string): Promise<void> {
+    const res = await fetch(`${API}/api/exportar${subred ? `?subred=${encodeURIComponent(subred)}` : ''}`);
     if (!res.ok) throw new Error(await errorDe(res));
     const url = URL.createObjectURL(new Blob([JSON.stringify(await res.json(), null, 1)], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `alejandria-neuronas-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `alejandria-${subred ? `${subred.replace(/[^\w-]+/g, '_')}-` : 'neuronas-'}${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-/** Importa el contenido ya leído de un archivo exportado; nunca pisa neuronas que ya existan. */
-export async function importarNeuronas(contenido: unknown): Promise<ResumenImportacion> {
+/** Importa el contenido ya leído de un archivo exportado; nunca pisa neuronas que ya existan. Con `subred`, todo lo del archivo entra además en esa subred. */
+export async function importarNeuronas(contenido: unknown, subred?: string | null): Promise<ResumenImportacion> {
     const res = await fetch(`${API}/api/importar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contenido }),
+        body: JSON.stringify({ contenido, subred: subred ?? null }),
     });
     if (!res.ok) throw new Error(await errorDe(res));
     return res.json();
 }
 
-export const importarArchivo = async (archivo: File): Promise<ResumenImportacion> => {
+export const importarArchivo = async (archivo: File, subred?: string | null): Promise<ResumenImportacion> => {
     let contenido: unknown;
     try { contenido = JSON.parse(await archivo.text()); } catch { throw new Error('El archivo no es un JSON válido.'); }
-    return importarNeuronas(contenido);
+    return importarNeuronas(contenido, subred);
 };
 
 /** Las 3 neuronas de ejemplo que van con la app (public/ejemplos/ejemplos.json). */

@@ -4,7 +4,8 @@ import os
 import re
 
 from database import DATA_DIR, db_conn
-from limpieza import limpiar_neurona
+import subredes
+from limpieza import limpiar_neurona, normalizar_lista
 
 FORMATO = "alejandria-neuronas"
 VERSION = 1
@@ -32,9 +33,11 @@ def _existe_viva(ruta: str) -> bool:
         return True
 
 
-def exportar() -> dict:
-    """Todas las neuronas (sin embedding: se regenera al importar, y pesa mucho) y las conexiones que no se hayan rechazado."""
+def exportar(subred: str = "") -> dict:
+    """Todas las neuronas (sin embedding: se regenera al importar, y pesa mucho) y las conexiones que no se hayan rechazado.
+    Con `subred`, solo las neuronas de esa subred y las conexiones entre ellas."""
     neuronas = []
+    clave = subredes.normalizar(subred).casefold()
     if os.path.isdir(_raw_dir()):
         for f in sorted(os.listdir(_raw_dir())):
             if not f.endswith(".json"):
@@ -46,16 +49,21 @@ def exportar() -> dict:
                 continue
             if n.get("papelera"):
                 continue
+            if clave and clave not in {s.casefold() for s in normalizar_lista(n.get("subredes"))}:
+                continue
             n.pop("embedding", None)
             n["id"] = f[:-5]
             neuronas.append(n)
-    aristas = [{k: a.get(k, "") for k in ("origen_id", "destino_id", "motivo", "estado")} for a in db_conn.get_links_metadata()]
+    ids = {n["id"] for n in neuronas}
+    aristas = [{k: a.get(k, "") for k in ("origen_id", "destino_id", "motivo", "estado")} for a in db_conn.get_links_metadata()
+               if not clave or (a.get("origen_id") in ids and a.get("destino_id") in ids)]
     return {"formato": FORMATO, "version": VERSION, "neuronas": neuronas, "aristas": aristas}
 
 
-def importar(contenido) -> dict:
+def importar(contenido, subred: str = "") -> dict:
     """Añade las neuronas del archivo que aún no existan (nunca pisa las tuyas) y las conexiones entre neuronas que existan.
-    Devuelve cuántas añadió y cuántas omitió. Lanza ArchivoInvalido, sin haber escrito nada, si el archivo no es válido."""
+    Las subredes del archivo se suman a las de cada neurona (también a las que ya tenías: solo se les añade la etiqueta); con `subred`, todas las del archivo
+    entran además en esa. Devuelve cuántas añadió y cuántas omitió. Lanza ArchivoInvalido, sin haber escrito nada, si el archivo no es válido."""
     if not isinstance(contenido, dict) or contenido.get("formato") != FORMATO:
         raise ArchivoInvalido("No es un archivo de neuronas de Alejandría.")
     if contenido.get("version") != VERSION:
@@ -70,18 +78,37 @@ def importar(contenido) -> dict:
             raise ArchivoInvalido("Hay una neurona sin 'id' válido o sin 'nombre'.")
 
     os.makedirs(_raw_dir(), exist_ok=True)
-    nuevas, omitidas = [], 0
+    conocidas = subredes.existentes()
+
+    def etiquetas(n: dict) -> list:
+        """Subredes que lleva la neurona del archivo (saneadas) más la activa, con la grafía de las que ya existen."""
+        out = []
+        for s in normalizar_lista(n.get("subredes")) + [subred]:
+            c = subredes.canonico(s, conocidas)
+            if c:
+                out.append(c)
+                if c not in conocidas:
+                    conocidas.append(c)
+        return normalizar_lista(out)
+
+    nuevas, omitidas, etiquetadas = [], 0, False
     for n in neuronas:
         ruta = os.path.join(_raw_dir(), n["id"] + ".json")
+        tags = etiquetas(n)
         if _existe_viva(ruta) or n["id"] in nuevas:
             omitidas += 1
+            if tags and n["id"] not in nuevas and subredes.fusionar(n["id"], tags):
+                etiquetadas = True
             continue
         n = {k: v for k, v in n.items() if k != "embedding"}
+        n.pop("subredes", None)
+        if tags:
+            n["subredes"] = tags
         limpiar_neurona(n)                    # marcas de cita «[reference:3]» que dejan las IA en los textos
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(n, f, ensure_ascii=False, indent=2)
         nuevas.append(n["id"])
-    if nuevas:
+    if nuevas or etiquetadas:
         db_conn.compile_raw_jsons(force=True)
 
     ids = {f[:-5] for f in os.listdir(_raw_dir()) if f.endswith(".json")}

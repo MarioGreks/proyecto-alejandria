@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { API } from '../utils/api';
 import { exportarNeuronas, importarArchivo, importarEjemplos, textoResumen } from '../utils/intercambio';
+import { subredActivaGuardada } from '../utils/subredes';
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 import SincronizacionPcs from './SincronizacionPcs';
@@ -13,6 +14,7 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
     const [e, setE] = useState<Estado | null>(() => leerCache<Estado>('ajustes'));      // con lo último que se supo: se abre al instante
     const [mensaje, setMensaje] = useState('');
     const archivo = useRef<HTMLInputElement>(null);
+    const subredActiva = subredActivaGuardada();     // la red en la que estás: exportar e importar pueden trabajar solo con ella
     const [avisos, setAvisos] = useState<string | null>(null);   // texto de THIRD-PARTY-NOTICES.md; se carga solo al pedirlo (va en un trozo aparte del paquete)
     const verAvisos = () => import('../../../THIRD-PARTY-NOTICES.md?raw').then(m => setAvisos(m.default)).catch(() => setMensaje('Error: no se pudieron cargar las licencias de terceros.'));
 
@@ -79,12 +81,13 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
                         <div style={{ fontSize: 12, color: '#7aa', marginBottom: 10, wordBreak: 'break-all' }}>Carpeta: {e.carpeta_datos}</div>
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <button className="t-btn" onClick={() => intentar(async () => { await exportarNeuronas(); setMensaje('Exportadas: mira tu carpeta de Descargas.'); })}>Exportar todo</button>
+                            {subredActiva && <button className="t-btn" onClick={() => intentar(async () => { await exportarNeuronas(subredActiva); setMensaje(`Exportada la subred «${subredActiva}»: mira tu carpeta de Descargas.`); })}>Exportar solo «{subredActiva}»</button>}
                             <button className="t-btn" onClick={() => archivo.current?.click()}>Importar archivo...</button>
                             <button className="t-btn" onClick={() => intentar(async () => tras(await importarEjemplos()))}>Cargar ejemplos</button>
                         </div>
                         <input ref={archivo} type="file" accept=".json,application/json" style={{ display: 'none' }}
-                            onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) intentar(async () => tras(await importarArchivo(f))); }} />
-                        <div style={{ fontSize: 12, color: '#7aa', marginTop: 8 }}>Importar nunca pisa una neurona que ya tengas con el mismo id.</div>
+                            onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) intentar(async () => tras(await importarArchivo(f, subredActiva))); }} />
+                        <div style={{ fontSize: 12, color: '#7aa', marginTop: 8 }}>Importar nunca pisa una neurona que ya tengas con el mismo id.{subredActiva && ` Estás en la subred «${subredActiva}»: lo que importes entrará también en ella.`}</div>
                     </Seccion>
 
                     {mensaje && <div style={{ marginTop: 14, color: mensaje.startsWith('Error') ? 'var(--t-error)' : 'var(--t-verde)', fontSize: 13 }}>{mensaje}</div>}

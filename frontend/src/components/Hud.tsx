@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { API } from '../utils/api';
 import { MONO } from './terminal';
 import { guardarCache } from '../utils/cacheEstado';
+import { SelectorSubred } from './Subredes';
+import type { InfoSubred } from '../utils/subredes';
 
 interface Resultado { node: { id: string; nombre: string }; type: string }
 interface Sinapsis { activo: boolean; nodo: string | null; hecho: number; total: number }
@@ -15,6 +17,11 @@ interface Props {
     aristas: number;
     sinapsis: Sinapsis | null;
     aviso: string | null;
+    subredes: InfoSubred[];
+    subredActiva: string | null;
+    calculando: boolean;
+    onSubred: (nombre: string | null) => void;
+    onGestionar: () => void;
     onAjustes: () => void;
     onAgenda: () => void;
     onPapelera: () => void;
@@ -94,6 +101,7 @@ export default function Hud(p: Props) {
             <button className="t-btn" onClick={p.onAjustes}>[ Ajustes ]</button>
             <button className="t-btn" onClick={p.onAgenda} title="Contactos privados y para qué los guardaste">[ Agenda ]</button>
             <button className="t-btn" onClick={p.onPapelera} title="Neuronas destruidas, recuperables unos días">[ Papelera ]</button>
+            <SelectorSubred subredes={p.subredes} activa={p.subredActiva} calculando={p.calculando} onElegir={p.onSubred} onGestionar={p.onGestionar} />
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                 <div style={{ position: 'relative', width: 'min(520px, 100%)' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--t-linea)', padding: '4px 10px', background: 'var(--t-fondo)' }}>
@@ -131,7 +139,7 @@ export default function Hud(p: Props) {
         <div style={{ ...barra, bottom: 0, borderTop: '1px solid var(--t-linea)' }}>
             <button className="t-btn" onClick={p.onInyector}>[ + Inyectar neurona ]</button>
             <div style={{ flex: 1, textAlign: 'center', color: 'var(--t-suave)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                {p.nodos} nodos | {p.aristas} aristas | {ia}
+                {p.subredActiva ? `«${p.subredActiva}»: ` : ''}{p.nodos} nodos | {p.aristas} aristas | {ia}
                 {p.sinapsis?.activo && <span style={{ color: 'var(--t-ambar)' }}> | buscando conexiones de «{p.sinapsis.nodo}»{p.sinapsis.total > 0 ? ` ${p.sinapsis.hecho}/${p.sinapsis.total}` : '...'}</span>}
                 {!p.sinapsis?.activo && p.aviso && <span style={{ color: 'var(--t-verde)' }}> | {p.aviso}</span>}
             </div>

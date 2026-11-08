@@ -3,7 +3,7 @@ import os
 import threading
 import pandas as pd
 from pydantic import BaseModel
-from limpieza import tipo_de
+from limpieza import normalizar_lista, tipo_de
 from typing import Optional
 
 # Definimos la ruta de datos de forma absoluta, referenciada al directorio actual.
@@ -14,6 +14,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("ALEJANDRIA_DATA_DIR", os.path.join(BASE_DIR, "data"))
 NODOS_FILE = os.path.join(DATA_DIR, "nodos.parquet")
 ARISTAS_FILE = os.path.join(DATA_DIR, "aristas.parquet")
+
+def _lista_json(valor) -> list:
+    """Lista de textos guardada como JSON en una celda del parquet; [] si falta o está mal."""
+    import json
+    try:
+        v = json.loads(valor) if isinstance(valor, str) else []
+    except ValueError:
+        v = []
+    return v if isinstance(v, list) else []
+
 
 class Concepto(BaseModel):
     id: str
@@ -141,7 +151,8 @@ class LocalGraphDB:
                     "referencias": json.dumps(data.get("referencias", [])),
                     "embedding": data.get("embedding", []),
                     "origen": data.get("origen", ""),
-                    "tipo": tipo_de(data)
+                    "tipo": tipo_de(data),
+                    "subredes": json.dumps(normalizar_lista(data.get("subredes")), ensure_ascii=False)
                 })
             except Exception as e:
                 self._n_fallidos += 1
@@ -186,7 +197,11 @@ class LocalGraphDB:
             if "glosario" in df.columns: cols.append("glosario")
             if "ejercicios" in df.columns: cols.append("ejercicios")
             if "referencias" in df.columns: cols.append("referencias")
-            return df[cols].to_dict(orient="records")
+            out = df[cols].to_dict(orient="records")
+            subredes = df["subredes"] if "subredes" in df.columns else [None] * len(out)     # una base compilada con una versión anterior aún no tiene la columna
+            for r, s in zip(out, subredes):
+                r["subredes"] = _lista_json(s)
+            return out
         return []
 
     @_locked
@@ -345,6 +360,7 @@ class LocalGraphDB:
                 "glosario": json.loads(row.get("glosario", "[]")),
                 "ejercicios": ejercicios,
                 "laboratorio": laboratorio,
+                "subredes": _lista_json(row.get("subredes")),
                 "referencias": json.loads(row.get("referencias", "[]")) if isinstance(row.get("referencias"), str) else (row.get("referencias") if isinstance(row.get("referencias"), list) else [])
             }
         except Exception as e:

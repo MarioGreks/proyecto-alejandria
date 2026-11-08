@@ -198,6 +198,6 @@ export function posicionesRecordadas(clusters: Record<string, string[]>): Record
 /** Firma de lo que cambia el dibujo del universo: si no cambia, no hace falta recalcular la geometría al consultar el backend. */
 export const firmaUniverso = (nodos: any[], aristas: any[]): string =>
     JSON.stringify([
-        nodos.map(n => [n.id, n.cluster_id ?? '', n.nombre ?? '']).sort(),
+        nodos.map(n => [n.id, n.cluster_id ?? '', n.nombre ?? '', Array.isArray(n.subredes) ? [...n.subredes].sort() : []]).sort(),
         aristas.map(a => [a.origen_id, a.destino_id, a.estado ?? '']).sort(),
     ]);
