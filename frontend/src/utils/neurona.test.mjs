@@ -23,7 +23,7 @@ test('el formulario sale de la neurona: referencias sueltas pasan a objeto y lo 
     assert.equal(f.nombre, 'Teorema de Bayes');
     assert.deepEqual(f.referencias[1], { titulo: 'Una referencia suelta', autores: '', url: '', nota: '' });
     assert.equal('laboratorio' in f, false);                       // el laboratorio y el clúster no se editan aquí
-    assert.deepEqual(formDesdeNeurona({}), { nombre: '', teoria: '', tipo: 'formal', glosario: [], ejercicios: [], referencias: [] });
+    assert.deepEqual(formDesdeNeurona({}), { nombre: '', teoria: '', tipo: 'formal', glosario: [], ejercicios: [], referencias: [], sugerencias: [] });
     assert.equal(formDesdeNeurona({ glosario: 'no es lista', ejercicios: [null, 3] }).ejercicios.length, 2);   // datos rotos no tiran el editor
 });
 
@@ -92,4 +92,20 @@ test('el mensaje de error del backend: texto, lista de validación de pydantic o
     assert.equal(await errorDe(res(422, { detail: [{ loc: ['body', 'nombre'], msg: 'String should have at least 1 character' }] })), 'nombre: String should have at least 1 character');
     assert.equal(await errorDe(res(500)), 'El servidor respondió 500');
     assert.equal(await errorDe(res(502, { detail: [] })), 'El servidor respondió 502');
+});
+
+test('las sugerencias pegadas en una revisión se aplican; si no vienen se dejan como estaban sin avisar, y si vienen mal se avisa', () => {
+    const actual = { ...formDesdeNeurona(API), sugerencias: [{ nombre: 'Vieja', motivo: 'm' }] };
+    const base = { id: 'bayes', nombre: 'B', teoria: 't', glosario: [], ejercicios: [], referencias: [] };
+    const con = aplicarRevision(actual, { ...base, sugerencias: [{ nombre: ' Inferencia bayesiana ', motivo: ' Aplicación ' }, 'Prior conjugada', { motivo: 'sin nombre' }, null] }, 'bayes');
+    assert.deepEqual(con.form.sugerencias, [{ nombre: 'Inferencia bayesiana', motivo: 'Aplicación' }, { nombre: 'Prior conjugada', motivo: '' }]);
+    assert.equal(con.avisos.length, 0);
+    const sin = aplicarRevision(actual, base, 'bayes');
+    assert.deepEqual(sin.form.sugerencias, actual.sugerencias);
+    assert.equal(sin.avisos.length, 0);
+    assert.deepEqual(aplicarRevision(actual, { ...base, sugerencias: [] }, 'bayes').form.sugerencias, []);       // lista vacía: la IA no propone nada
+    const mal = aplicarRevision(actual, { ...base, sugerencias: 'texto' }, 'bayes');
+    assert.deepEqual(mal.form.sugerencias, actual.sugerencias);
+    assert.match(mal.avisos.join(), /«sugerencias»/);
+    assert.equal(hayCambios(actual, con.form), true);
 });

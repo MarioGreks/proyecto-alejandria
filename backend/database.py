@@ -3,7 +3,7 @@ import os
 import threading
 import pandas as pd
 from pydantic import BaseModel
-from limpieza import normalizar_lista, tipo_de
+from limpieza import activas as sugerencias_activas, normalizar_lista, tipo_de
 from typing import Optional
 
 # Definimos la ruta de datos de forma absoluta, referenciada al directorio actual.
@@ -152,7 +152,8 @@ class LocalGraphDB:
                     "embedding": data.get("embedding", []),
                     "origen": data.get("origen", ""),
                     "tipo": tipo_de(data),
-                    "subredes": json.dumps(normalizar_lista(data.get("subredes")), ensure_ascii=False)
+                    "subredes": json.dumps(normalizar_lista(data.get("subredes")), ensure_ascii=False),
+                    "sugerencias": json.dumps(sugerencias_activas(data.get("sugerencias")), ensure_ascii=False)
                 })
             except Exception as e:
                 self._n_fallidos += 1
@@ -361,6 +362,7 @@ class LocalGraphDB:
                 "ejercicios": ejercicios,
                 "laboratorio": laboratorio,
                 "subredes": _lista_json(row.get("subredes")),
+                "sugerencias": _lista_json(row.get("sugerencias")),
                 "referencias": json.loads(row.get("referencias", "[]")) if isinstance(row.get("referencias"), str) else (row.get("referencias") if isinstance(row.get("referencias"), list) else [])
             }
         except Exception as e:

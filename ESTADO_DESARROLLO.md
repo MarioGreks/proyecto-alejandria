@@ -156,6 +156,12 @@ Se renderiza un *Force Graph* biológico donde las conexiones (links) se dibujan
 - Probado con 2.025 neuronas y 4.270 conexiones: mediana de 6 ms por fotograma durante la transición. Sin probar: el .exe empaquetado (Worker bajo la CSP de Tauri) y la sincronización real entre dos PCs con subredes.
 - **0.5.1**: barra superior redistribuida (red a la izquierda, búsqueda en el centro, Agenda/Papelera/Ajustes a la derecha); Recargar pasa a la barra inferior.
 
+### [Fase 10.7] Temas relacionados sugeridos ✅ Publicados en la 0.6.0
+- Cada neurona puede traer `"sugerencias": [{nombre, motivo}]` (backend/sugerencias.py; saneado en limpieza.py). Las pide a la IA externa el prompt de crear neuronas (3-5 temas) y el de «Pedir revisión» (que completa las de las neuronas antiguas); se pegan con «Pegar JSON revisado».
+- El panel tiene una pestaña «Relacionados (N)»: compara cada tema con las neuronas existentes (palabras clave sin tildes, mayúsculas ni palabras vacías; utils/sugerencias.ts) y solo enseña los que aún no están. Dentro de una subred ofrece añadir las que existen pero no están en ella; las de la papelera, restaurarlas. «Crear neurona» abre el inyector con el tema ya puesto en el prompt de exploración; [ × ] descarta para siempre (queda marcado en el JSON y sincroniza).
+- Probado en navegador con backend aislado (crear la neurona la quita sola; descartar, restaurar, subred, editor). Tests: backend 168, frontend 110.
+- Arreglo incluido: los nombres de las neuronas (HTML sobre el lienzo) tenían z-index 50/100 y se veían por encima del panel; ahora 9 (`Z_ROTULOS`), por debajo de las barras (10) y del panel (20).
+
 ### [Fase 11 - Futura] Fine-Tuning y Modelfile (Cerebro Dedicado) ⏳ Pendiente
 - **Recolección de Feedback:** Se ha implementado un sistema *Human-in-the-loop* en el panel de sinapsis de la UI. El usuario puede validar (✅) o rechazar (❌) las relaciones propuestas por el LLM.
 - **Creación del Dataset (Pendiente):** Cuando se alcance una masa crítica de validaciones (ej. 200-300 aristas aceptadas/rechazadas), se desarrollará un script (`generar_dataset.py`) para extraer y formatear estos datos en JSONL (formato ShareGPT/Alpaca).

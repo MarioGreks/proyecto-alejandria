@@ -170,12 +170,28 @@ export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, on
                 </div>
             </Seccion>
 
+            <Seccion titulo={`Temas relacionados sugeridos (${form.sugerencias.length})`}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <p style={{ margin: 0, color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: 'var(--t-mono)' }}>
+                        Los trae la IA al crear o revisar la neurona (pestaña «Relacionados» del panel). Aquí solo se ven y se pueden quitar; para renovarlos usa «Pegar JSON revisado».
+                    </p>
+                    {form.sugerencias.map((s, i) => (
+                        <div key={i} style={{ ...fila, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ minWidth: 0, fontSize: 13, lineHeight: 1.45 }}>
+                                <span style={{ color: 'var(--t-verde)' }}>{s.nombre}</span>{s.motivo && <span style={{ color: 'var(--t-suave)' }}> — {s.motivo}</span>}
+                            </div>
+                            <button className="t-btn peligro" style={{ flex: 'none' }} onClick={() => set({ sugerencias: form.sugerencias.filter((_, j) => j !== i) })}>[ Quitar ]</button>
+                        </div>
+                    ))}
+                </div>
+            </Seccion>
+
             {pegando && (
                 <Modal ancho={720} z={70}>
                     <Cabecera titulo="Pegar JSON revisado" onCerrar={leyendo ? undefined : () => setPegando(false)} />
                     <p style={{ margin: '12px 0', color: 'var(--t-texto)', fontSize: 13, lineHeight: 1.5 }}>
                         Pega la respuesta completa de la IA (vale con el texto de antes y el bloque ```json). Se leerá con las mismas tolerancias que el Sintetizador y se
-                        aplicará solo al formulario: nombre, tipo, teoría, glosario, ejercicios y referencias. No se guarda nada hasta que pulses «Guardar».
+                        aplicará solo al formulario: nombre, tipo, teoría, glosario, ejercicios, referencias y temas relacionados. No se guarda nada hasta que pulses «Guardar».
                     </p>
                     <textarea className="t-campo" autoFocus spellCheck={false} style={area(260)} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Pega aquí la respuesta de la IA..." />
                     {errorPegar && <div style={{ marginTop: 10, color: 'var(--t-error)', fontSize: 12 }}>[ERROR] {errorPegar}</div>}

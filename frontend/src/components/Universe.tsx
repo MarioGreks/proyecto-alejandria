@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Text, Billboard } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { MODOS_PROMPT, conClustersExistentes, guardarModo, modoGuardado, promptExploracion, promptFuentes } from '../utils/prompts';
+import { MODOS_PROMPT, conClustersExistentes, conTema, guardarModo, modoGuardado, promptExploracion, promptFuentes } from '../utils/prompts';
 import type { ModoPrompt } from '../utils/prompts';
 import { API } from '../utils/api';
 import Ajustes from './Ajustes';
@@ -134,6 +134,9 @@ function generateDendriteTree(
 import KnowledgePanel from './KnowledgePanel';
 
 // Al acercarse mucho, cada neurona a la vista lleva su nombre, tenue (más claro cuanto más cerca), para saber cuál es cuál sin pasar el ratón por todas.
+// Los nombres de las neuronas (y el del puntero) son HTML encima del lienzo: su z-index ha de quedar por debajo de las barras (10) y del panel de la neurona (20),
+// o al acercarse mucho se verían por encima de ellos.
+const Z_ROTULOS: [number, number] = [9, 0];
 const DIST_ROTULO_MAX = 30, DIST_ROTULO_MIN = 10, MAX_ROTULOS = 14;   // el universo mide ~50 de lado: con la cámara a 30 una neurona ya se ve de ~20 px
 
 const RotulosCercanos = ({ nodes, nombres, mascara, grupo, ocultar, pausa }: {
@@ -168,7 +171,7 @@ const RotulosCercanos = ({ nodes, nombres, mascara, grupo, ocultar, pausa }: {
 
     return (<>
         {visibles.filter(e => e.i !== ocultar && nombres[e.i]).map(({ i, a }) => (
-            <Html key={i} position={nodes[i]} center zIndexRange={[50, 0]} style={{ pointerEvents: 'none' }}>
+            <Html key={i} position={nodes[i]} center zIndexRange={Z_ROTULOS} style={{ pointerEvents: 'none' }}>
                 <div className="rotulo-neurona" style={{ opacity: 0.2 + a * 0.5 }}>{nombres[i]}</div>
             </Html>
         ))}
@@ -592,7 +595,7 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista }
                 const hoveredNode = realNodes.find(n => n.id === base.ids[hoveredIdx]);
                 if (!hoveredNode) return null;
                 return (
-                    <Html position={destino.pos[hoveredIdx]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+                    <Html position={destino.pos[hoveredIdx]} center zIndexRange={Z_ROTULOS} style={{ pointerEvents: 'none' }}>
                         <div className="t-marco" style={{
                             padding: '8px 12px',
                             whiteSpace: 'nowrap',
@@ -691,7 +694,9 @@ export default function Universe() {
     const [injectionStatus, setInjectionStatus] = useState('');
     const [procesando, setProcesando] = useState<EstadoProceso | null>(null);   // asimilando una neurona: se enseña el pilar girando
 
-    const cerrarInyector = () => { setShowInjector(false); setInjectionStatus(''); setInjectionData(''); };
+    const [temaInyector, setTemaInyector] = useState<string | null>(null);      // tema de una sugerencia («Crear neurona»): el prompt de exploración lo lleva ya puesto
+
+    const cerrarInyector = () => { setShowInjector(false); setInjectionStatus(''); setInjectionData(''); setTemaInyector(null); };
 
     // Solo se actualiza el estado si cambió algo que se dibuja (ids, clústeres, nombres, conexiones y su estado), para que React
     // Three Fiber no recalcule la geometría cada 5 s. Antes se comparaba solo el NÚMERO de neuronas y conexiones: cambiar de clúster
@@ -960,7 +965,7 @@ export default function Universe() {
                                 className="t-btn"
                                 onClick={(e) => {
                                     const btn = e.currentTarget;
-                                    copyToClipboard(conClustersExistentes(promptExploracion(modoPrompt), clustersExistentes));
+                                    copyToClipboard(conClustersExistentes(temaInyector ? conTema(promptExploracion(modoPrompt), temaInyector) : promptExploracion(modoPrompt), clustersExistentes));
                                     const originalText = btn.innerText;
                                     btn.innerText = "[ ¡Copiado! ]";
                                     setTimeout(() => { btn.innerText = originalText; }, 2000);
@@ -973,6 +978,13 @@ export default function Universe() {
                         <p style={{ color: 'var(--t-suave)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
                             Pega aquí la respuesta cruda en JSON (o bloque markdown) generada por tu Prompt Maestro. El núcleo lo asimilará y reconfigurará la red neuronal.
                         </p>
+
+                        {temaInyector && (
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--t-ambar)', lineHeight: 1.5 }}>
+                                Tema sugerido: «{temaInyector}». <b>[ Copiar: Exploración libre ]</b> ya lo lleva puesto; pégalo en tu IA y trae aquí su respuesta.{' '}
+                                <button className="t-btn plano" style={{ padding: '0 6px' }} onClick={() => setTemaInyector(null)}>[ Quitar tema ]</button>
+                            </p>
+                        )}
 
                         {subredActiva && <p style={{ margin: 0, fontSize: 12, color: 'var(--t-ambar)' }}>Estás en la subred «{subredActiva}»: la neurona nueva entrará en ella y en la red general.</p>}
 
@@ -1059,6 +1071,9 @@ export default function Universe() {
                 subredes={subredes}
                 subredActiva={subredActiva}
                 onSubredes={cambiarSubredes}
+                todasLasNeuronas={realNodes}
+                onTema={tema => { setTemaInyector(tema); setShowInjector(true); }}
+                onRecargar={recargar}
             />
         </div>
     );

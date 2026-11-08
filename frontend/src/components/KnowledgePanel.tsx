@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { handleOpenExternal } from '../utils/markdown';
 import { Md } from './Md';
 import EditorNeurona from './EditorNeurona';
@@ -11,8 +11,10 @@ import { precalentarLaboratorios } from '../labs/labRunner';
 import { Dialogo, Seccion } from './terminal';
 import { FilaSubredes } from './Subredes';
 import type { InfoSubred } from '../utils/subredes';
+import { descartarSugerencia, neuronasEnPapelera, restaurarNeurona, sugerenciasVisibles } from '../utils/sugerencias';
+import type { Sugerencia } from '../utils/sugerencias';
 
-type Tab = 'teoria' | 'glosario' | 'laboratorio' | 'ejercicios' | 'referencias' | 'sinapsis';
+type Tab = 'teoria' | 'glosario' | 'laboratorio' | 'ejercicios' | 'referencias' | 'relacionados' | 'sinapsis';
 
 export interface ReferenciaItem {
     titulo: string;
@@ -32,15 +34,17 @@ interface NodeData {
     ejercicios: { enunciado: string, solucion: string }[];
     referencias?: (ReferenciaItem | string)[];
     laboratorio?: LaboratorioData;
+    sugerencias?: Sugerencia[];     // temas relacionados que trae la neurona (sin los descartados)
 }
 
-const TABS: Tab[] = ['teoria', 'glosario', 'laboratorio', 'ejercicios', 'referencias', 'sinapsis'];
+const TABS: Tab[] = ['teoria', 'glosario', 'laboratorio', 'ejercicios', 'referencias', 'relacionados', 'sinapsis'];
 const TAB_LABELS: Record<Tab, string> = {
     teoria: 'Teoría',
     glosario: 'Glosario',
     laboratorio: 'Laboratorio',
     ejercicios: 'Ejercicios',
     referencias: 'Referencias',
+    relacionados: 'Relacionados',
     sinapsis: 'Sinapsis'
 };
 
@@ -88,7 +92,10 @@ export default function KnowledgePanel({
     todosLosEnlaces = [],
     subredes = [],
     subredActiva = null,
-    onSubredes
+    onSubredes,
+    todasLasNeuronas = [],
+    onTema,
+    onRecargar
 }: {
     nodeId: string | null;
     onClose: () => void;
@@ -98,6 +105,9 @@ export default function KnowledgePanel({
     subredes?: InfoSubred[];
     subredActiva?: string | null;
     onSubredes?: (ids: string[], añadir: string[], quitar: string[]) => Promise<void>;
+    todasLasNeuronas?: any[];        // TODAS las neuronas de la red general: lo que ya existe no se sugiere
+    onTema?: (nombre: string) => void;     // abre el inyector con ese tema (cuando una sugerencia aún no existe)
+    onRecargar?: () => void | Promise<void>;
 }) {
     const [activeTab, setActiveTab] = useState<Tab>('teoria');
     const [data, setData] = useState<NodeData | null>(null);
@@ -134,6 +144,17 @@ export default function KnowledgePanel({
                 });
         }
     }, [nodeId]);
+
+    // Temas relacionados sugeridos: solo se enseñan los que aún no son una neurona (y los de la papelera, para restaurarlos).
+    const [enPapelera, setEnPapelera] = useState<{ id: string; nombre: string }[]>([]);
+    const [ocupado, setOcupado] = useState('');
+    const hayPropuestas = (data?.sugerencias?.length ?? 0) > 0;
+    useEffect(() => {
+        let vivo = true;
+        if (hayPropuestas) neuronasEnPapelera().then(l => { if (vivo) setEnPapelera(l); }); else setEnPapelera([]);
+        return () => { vivo = false; };
+    }, [data?.id, hayPropuestas]);
+    const visibles = useMemo(() => sugerenciasVisibles(data?.sugerencias ?? [], todasLasNeuronas, enPapelera, subredActiva), [data?.sugerencias, todasLasNeuronas, enPapelera, subredActiva]);
 
     if (nodeId === null) return null;
 
@@ -199,7 +220,7 @@ export default function KnowledgePanel({
     const pedirRevision = async () => {
         if (!data) return;
         const prompt = promptRevision({ id: data.id, nombre: data.nombre, cluster: data.cluster ?? data.cluster_id, tipo: normalizarTipo(data.tipo) ?? 'formal',
-            teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias });
+            teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias, sugerencias: data.sugerencias });
         let copiado = false;
         try { await navigator.clipboard.writeText(prompt); copiado = true; } catch { /* sin permiso del portapapeles: se prueba con un campo temporal */ }
         if (!copiado) {
@@ -212,6 +233,34 @@ export default function KnowledgePanel({
         if (!copiado) { setInfo(''); setAviso('Error: no se pudo copiar al portapapeles.'); return; }
         setAviso('');
         setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`);
+    };
+
+    /** Descarta un tema sugerido para siempre (queda marcado en la neurona) y lo quita de la lista. */
+    const descartar = async (s: Sugerencia) => {
+        if (!data) return;
+        setOcupado(s.nombre);
+        try {
+            await descartarSugerencia(data.id, s.nombre);
+            setData(d => (d ? { ...d, sugerencias: (d.sugerencias ?? []).filter(x => x.nombre !== s.nombre) } : d));
+            setAviso('');
+        } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo descartar la sugerencia.'}`); }
+        setOcupado('');
+    };
+    const restaurarSugerida = async (s: Sugerencia, id: string) => {
+        setOcupado(s.nombre);
+        try {
+            await restaurarNeurona(id);
+            setEnPapelera(l => l.filter(x => x.id !== id));
+            await onRecargar?.();
+            setAviso('');
+        } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo restaurar la neurona.'}`); }
+        setOcupado('');
+    };
+    const añadirSugeridaALaSubred = async (s: Sugerencia, id: string) => {
+        if (!subredActiva || !onSubredes) return;
+        setOcupado(s.nombre);
+        try { await onSubredes([id], [subredActiva], []); setAviso(''); } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo añadir a la subred.'}`); }
+        setOcupado('');
     };
 
     const cerrar = () => (editando && editorSucio ? setDialogo('descartar') : onClose());
@@ -264,7 +313,7 @@ export default function KnowledgePanel({
             {!editando && <div style={{ display: 'flex', padding: '0 12px', borderBottom: '1px solid var(--t-linea)' }}>
                 {TABS.map(tab => (
                     <button key={tab} className={`t-tab${activeTab === tab ? ' activa' : ''}`} onClick={() => setActiveTab(tab)}>
-                        {activeTab === tab ? `[ ${TAB_LABELS[tab]} ]` : TAB_LABELS[tab]}
+                        {(() => { const nombre = tab === 'relacionados' && visibles.length > 0 ? `${TAB_LABELS[tab]} (${visibles.length})` : TAB_LABELS[tab]; return activeTab === tab ? `[ ${nombre} ]` : nombre; })()}
                     </button>
                 ))}
             </div>}
@@ -370,6 +419,39 @@ export default function KnowledgePanel({
                                 );
                             })
                         )}
+                    </div>
+                )}
+
+                {!loading && data && !editando && activeTab === 'relacionados' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                        {visibles.length === 0 && (
+                            <Vacio>
+                                {(data.sugerencias ?? []).length === 0
+                                    ? <>
+                                        <div style={{ color: 'var(--t-texto)', marginBottom: 8 }}>[ ] Esta neurona no trae temas relacionados</div>
+                                        Las neuronas nuevas los traen al crearlas con el prompt actual. Para esta: [ Pedir revisión ] y, con la respuesta de la IA, [ Editar ] → [ Pegar JSON revisado ].
+                                    </>
+                                    : 'Todo lo que sugiere esta neurona ya está en tu red.'}
+                            </Vacio>
+                        )}
+                        {visibles.map(({ sugerencia: s, estado }) => (
+                            <Tarjeta key={s.nombre} color={estado.tipo === 'nueva' ? 'var(--t-verde)' : 'var(--t-ambar)'}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                                    <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+                                        <div style={{ color: 'var(--t-verde)', fontSize: 16, fontWeight: 700 }}>{s.nombre}</div>
+                                        {s.motivo && <div style={{ marginTop: 6, fontSize: 14, color: '#c8d0d0', lineHeight: 1.5 }}>{s.motivo}</div>}
+                                        {estado.tipo === 'existe' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t-ambar)', fontFamily: MONO }}>Ya existe como «{estado.nombre}», pero no está en «{subredActiva}».</div>}
+                                        {estado.tipo === 'papelera' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t-ambar)', fontFamily: MONO }}>«{estado.nombre}» está en la papelera.</div>}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                                        {estado.tipo === 'nueva' && <button className="t-btn" disabled={!onTema || ocupado !== ''} title="Abre el sintetizador con este tema para generar su neurona" onClick={() => onTema?.(s.nombre)}>[ Crear neurona ]</button>}
+                                        {estado.tipo === 'existe' && <button className="t-btn" disabled={ocupado !== ''} onClick={() => añadirSugeridaALaSubred(s, estado.id)}>[ Añadir a «{subredActiva}» ]</button>}
+                                        {estado.tipo === 'papelera' && <button className="t-btn" disabled={ocupado !== ''} title="Saca la neurona de la papelera con sus conexiones" onClick={() => restaurarSugerida(s, estado.id)}>[ Restaurar ]</button>}
+                                        <button className="t-btn plano" disabled={ocupado !== ''} title="No volver a sugerir este tema en esta neurona" onClick={() => descartar(s)}>[ × ]</button>
+                                    </div>
+                                </div>
+                            </Tarjeta>
+                        ))}
                     </div>
                 )}
 

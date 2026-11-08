@@ -10,6 +10,7 @@ export const TIPOS_NEURONA: { id: TipoNeurona; etiqueta: string; sigla: string; 
 ];
 
 export interface ReferenciaForm { titulo: string; autores: string; url: string; nota: string }
+export interface SugerenciaForm { nombre: string; motivo: string }
 export interface NeuronaForm {
     nombre: string;
     teoria: string;
@@ -17,6 +18,7 @@ export interface NeuronaForm {
     glosario: { termino: string; definicion: string }[];
     ejercicios: { enunciado: string; solucion: string }[];
     referencias: ReferenciaForm[];
+    sugerencias: SugerenciaForm[];      // temas relacionados sugeridos (los que no se descartaron); se editan pegando una revisión
 }
 
 /** «histórico», «Historico », «TEÓRICO»... → el tipo; cualquier otra cosa → null. */
@@ -32,6 +34,9 @@ const referencia = (r: any): ReferenciaForm =>
     typeof r === 'string' ? { titulo: r, autores: '', url: '', nota: '' }          // las neuronas antiguas podían traer la referencia como texto suelto
         : { titulo: texto(r?.titulo), autores: texto(r?.autores), url: texto(r?.url), nota: texto(r?.nota) };
 
+const sugerencia = (s: any): SugerenciaForm => (typeof s === 'string' ? { nombre: s.trim(), motivo: '' } : { nombre: texto(s?.nombre).trim(), motivo: texto(s?.motivo).trim() });
+const sugerencias = (v: unknown): SugerenciaForm[] => lista(v).map(sugerencia).filter(s => s.nombre !== '');
+
 /** Lo que devuelve GET /node/{id} → el formulario del editor. */
 export function formDesdeNeurona(n: any): NeuronaForm {
     return {
@@ -41,6 +46,7 @@ export function formDesdeNeurona(n: any): NeuronaForm {
         glosario: lista(n?.glosario).map(g => ({ termino: texto(g?.termino), definicion: texto(g?.definicion) })),
         ejercicios: lista(n?.ejercicios).map(e => ({ enunciado: texto(e?.enunciado), solucion: texto(e?.solucion) })),
         referencias: lista(n?.referencias).map(referencia),
+        sugerencias: sugerencias(n?.sugerencias),
     };
 }
 
@@ -91,6 +97,9 @@ export function aplicarRevision(actual: NeuronaForm, datos: unknown, idEsperado:
         const t = normalizarTipo(d.tipo);
         if (t) form.tipo = t; else falta('tipo', 'no es formal, histórico ni teórico');
     }
+    // Las sugerencias son opcionales (un prompt anterior a ellas no las trae): si faltan se dejan como estaban, sin avisar.
+    if (Array.isArray(d.sugerencias)) form.sugerencias = sugerencias(d.sugerencias);
+    else if (d.sugerencias !== undefined) falta('sugerencias', 'no es una lista');
     const campos = formDesdeNeurona({ glosario: d.glosario, ejercicios: d.ejercicios, referencias: d.referencias });
     for (const campo of ['glosario', 'ejercicios', 'referencias'] as const) {
         if (Array.isArray(d[campo])) (form as any)[campo] = campos[campo]; else falta(campo, d[campo] === undefined ? 'no viene' : 'no es una lista');

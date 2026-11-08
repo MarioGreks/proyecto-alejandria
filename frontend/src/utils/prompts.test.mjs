@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, MODOS_PROMPT, conClustersExistentes,
-    guardarModo, modoGuardado, promptExploracion, promptFuentes, promptRevision,
+    conTema, guardarModo, modoGuardado, promptExploracion, promptFuentes, promptRevision,
 } from './prompts.ts';
 
 test('la exploración libre obliga a consultar Google Scholar y ambos prompts admiten su ficha como URL de la referencia', () => {
@@ -174,6 +174,7 @@ const NEURONA = {
     id: 'bayes', nombre: 'Teorema de Bayes', cluster: 'Estadística', tipo: 'formal', teoria: 'Sea $\\theta$ un parámetro... "cita"\nsegunda línea',
     glosario: [{ termino: 'Prior', definicion: 'previa' }], ejercicios: [{ enunciado: 'e', solucion: 's' }],
     referencias: [{ titulo: 'An Essay', autores: 'Bayes (1763)', url: 'https://doi.org/x', nota: 'n' }],
+    sugerencias: [{ nombre: 'Inferencia bayesiana', motivo: 'Es su aplicación estadística' }],
 };
 
 test('el prompt de revisión lleva la neurona exacta (sin laboratorio), su tipo y las reglas de formato', () => {
@@ -202,5 +203,29 @@ test('cada tipo se revisa con su criterio: el histórico no se matematiza y el t
 
 test('una neurona sin glosario ni referencias también produce un prompt válido', () => {
     const p = promptRevision({ id: 'x', nombre: 'X', tipo: 'historico' });
-    assert.deepEqual(JSON.parse(bloquesJson(p)[0]), { id: 'x', cluster: '', tipo: 'historico', nombre: 'X', teoria: '', glosario: [], ejercicios: [], referencias: [] });
+    assert.deepEqual(JSON.parse(bloquesJson(p)[0]), { id: 'x', cluster: '', tipo: 'historico', nombre: 'X', teoria: '', glosario: [], ejercicios: [], referencias: [], sugerencias: [] });
+});
+
+test('los prompts de crear una neurona piden 3-5 temas relacionados con nombre y motivo, en todos los modos y en las dos modalidades', () => {
+    for (const modo of MODOS_PROMPT.map(m => m.id)) {
+        for (const p of [promptFuentes(modo), promptExploracion(modo)]) {
+            assert.match(p, /"sugerencias": \[/, modo);
+            assert.match(p, /entre 3 y 5 temas relacionados/, modo);
+            assert.match(p, /"motivo" de una sola frase/, modo);
+        }
+    }
+});
+
+test('el prompt de revisión también pide completar las sugerencias y las devuelve en el mismo formato', () => {
+    const p = promptRevision({ ...NEURONA });
+    assert.match(p, /SUGERENCIAS: el campo "sugerencias"/);
+    assert.match(p, /referencias, sugerencias\) y el mismo "id"/);
+});
+
+test('conTema pone el concepto sugerido en el hueco del prompt de exploración y no toca un prompt sin hueco', () => {
+    const p = conTema(promptExploracion('auto'), 'Modelo de Gompertz');
+    assert.match(p, /siguiente concepto: \*\*Modelo de Gompertz\*\*/);
+    assert.ok(!p.includes('INSERTA EL CONCEPTO'));
+    assert.equal(conTema('sin hueco', 'X'), 'sin hueco');
+    assert.ok(conTema('[INSERTA EL CONCEPTO AQUÍ]', 'a $& b').includes('a $& b'), 'los símbolos especiales del tema se copian tal cual');
 });

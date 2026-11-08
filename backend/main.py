@@ -13,6 +13,7 @@ import sincronizacion
 import papelera
 import agenda
 import subredes
+import sugerencias
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
@@ -194,7 +195,7 @@ def get_node(node_id: str):
 import json
 import os
 import re
-from limpieza import limpiar_neurona, tipo_de
+from limpieza import fusionar_sugerencias, limpiar_neurona, normalizar_sugerencias, tipo_de
 
 def raw_path(node_id) -> str:
     """Ruta del JSON de un nodo dentro de DATA_DIR/raw. Rechaza ids que puedan salirse de esa carpeta."""
@@ -312,6 +313,9 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
         data["subredes"] = subredes.normalizar_lista([subredes.canonico(s, conocidas) for s in subredes.normalizar_lista(data.get("subredes")) + [req.subred]])
         if not data["subredes"]:
             data.pop("subredes")
+        data["sugerencias"] = normalizar_sugerencias(data.get("sugerencias"))     # temas relacionados que propone la IA: se sanean (nombre y motivo acotados, sin repetidos)
+        if not data["sugerencias"]:
+            data.pop("sugerencias")
         data["tipo"] = tipo_de(data)  # el que fijó la IA (formal, historico o teorico) o, si no lo puso, el que se deduce de lo que trae
 
         # 🧠 PASO CLAVE: CLASIFICACIÓN LOCAL
@@ -475,6 +479,10 @@ class ReferenciaItem(BaseModel):
     def enlace_web(cls, v):
         return _solo_http(v.strip())
 
+class SugerenciaItem(BaseModel):
+    nombre: str = Field(max_length=300)
+    motivo: str = Field("", max_length=2000)
+
 class NeuronaEditar(BaseModel):
     """Lo que se edita desde el panel. El resto del JSON de la neurona (id, clúster, laboratorio, embedding, origen...) no se toca."""
     nombre: str = Field(min_length=1, max_length=300)
@@ -483,6 +491,7 @@ class NeuronaEditar(BaseModel):
     ejercicios: list[EjercicioItem] = Field(max_length=200)
     referencias: list[ReferenciaItem] = Field(max_length=500)
     tipo: Literal["formal", "historico", "teorico"]
+    sugerencias: Optional[list[SugerenciaItem]] = Field(None, max_length=100)    # None = no tocar; lo descartado antes sigue descartado
 
     @field_validator("nombre")
     @classmethod
@@ -510,6 +519,12 @@ def editar_neurona(node_id: str, req: NeuronaEditar):
         data["glosario"] = [g.model_dump() for g in req.glosario]
         data["ejercicios"] = [e.model_dump() for e in req.ejercicios]
         data["referencias"] = [{k: v for k, v in r.model_dump().items() if k == "titulo" or v} for r in req.referencias]
+        if req.sugerencias is not None:
+            fusion = fusionar_sugerencias(data.get("sugerencias"), [s.model_dump() for s in req.sugerencias])
+            if fusion:
+                data["sugerencias"] = fusion
+            else:
+                data.pop("sugerencias", None)
         limpiar_neurona(data)
         if (data["nombre"], data["teoria"]) != antes:
             data.pop("embedding", None)        # compile_raw_jsons lo recalcula (si no hay modelo local, queda sin él hasta que lo haya)
@@ -523,6 +538,22 @@ def editar_neurona(node_id: str, req: NeuronaEditar):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"No se pudo guardar la neurona: {e}")
+
+class DescartarSugerenciaRequest(BaseModel):
+    nombre: str = Field(max_length=300)
+
+@app.post("/api/node/{node_id}/sugerencia/descartar")
+def descartar_sugerencia(node_id: str, req: DescartarSugerenciaRequest):
+    """El usuario descarta un tema relacionado sugerido: queda marcado en el JSON de la neurona y no vuelve."""
+    raw_path(node_id)
+    try:
+        if not sugerencias.descartar(node_id, req.nombre):
+            raise HTTPException(status_code=404, detail="Esa neurona no tiene esa sugerencia.")
+        return {"status": "success"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo descartar la sugerencia: {e}")
 
 class ClusterCorrectionRequest(BaseModel):
     nuevo_cluster: str

@@ -5,7 +5,7 @@ import re
 
 from database import DATA_DIR, db_conn
 import subredes
-from limpieza import limpiar_neurona, normalizar_lista
+from limpieza import limpiar_neurona, normalizar_lista, normalizar_sugerencias
 
 FORMATO = "alejandria-neuronas"
 VERSION = 1
@@ -104,7 +104,10 @@ def importar(contenido, subred: str = "") -> dict:
         n.pop("subredes", None)
         if tags:
             n["subredes"] = tags
-        limpiar_neurona(n)                    # marcas de cita «[reference:3]» que dejan las IA en los textos
+        sugeridas = normalizar_sugerencias(n.pop("sugerencias", None))     # temas relacionados: se sanean como los de una neurona inyectada
+        if sugeridas:
+            n["sugerencias"] = sugeridas
+        limpiar_neurona(n)                   # marcas de cita «[reference:3]» que dejan las IA en los textos
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(n, f, ensure_ascii=False, indent=2)
         nuevas.append(n["id"])

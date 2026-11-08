@@ -1478,6 +1478,91 @@ class TestEmpaquetado(unittest.TestCase):
         self.assertNotIn("Start-Process", "\n".join(l for l in sin_comentarios.splitlines() if "-WindowStyle Hidden" in l), "los hijos van con -NoNewWindow")
 
 
+class TestSugerencias(unittest.TestCase):
+    """Temas relacionados sugeridos: los trae el JSON de la neurona, se sanean al entrar y descartar uno lo deja marcado para que no vuelva."""
+    IDS = ("su_a", "su_b")
+
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def tearDown(self):
+        for n in self.IDS:
+            self.client.delete(f"/api/node/{n}")
+        self.client.delete("/api/papelera")
+
+    def escribir(self, nid, extra=None):
+        with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), "w", encoding="utf-8") as f:
+            json.dump({"nombre": nid.upper(), "cluster": "X", "teoria": "t", **(extra or {})}, f)
+
+    def leer(self, nid):
+        with open(os.path.join(DATA_DIR, "raw", f"{nid}.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def editar(self, nid, **extra):
+        cuerpo = {"nombre": nid.upper(), "teoria": "t", "glosario": [], "ejercicios": [], "referencias": [], "tipo": "formal", **extra}
+        r = self.client.put(f"/api/node/{nid}", json=cuerpo)
+        self.assertEqual(r.status_code, 200, r.text)
+        return r.json()
+
+    def test_se_sanean_nombre_motivo_repetidos_y_el_maximo(self):
+        from limpieza import normalizar_sugerencias
+        s = normalizar_sugerencias(["  Modelo   de Gompertz ", {"nombre": "MODELO DE GÓMPERTZ".replace("Ó", "O"), "motivo": "otra vez"},
+                                    {"nombre": "Dormoy", "motivo": "m" * 500}, {"nombre": ""}, {"motivo": "sin nombre"}, 7, None,
+                                    *[{"nombre": f"Tema {i}"} for i in range(10)]])
+        self.assertEqual(s[0], {"nombre": "Modelo de Gompertz", "motivo": "otra vez"})    # el primero manda (nombre) y los repetidos, sin mayúsculas ni espacios de más, se funden aportando el motivo que faltaba
+        self.assertEqual(len(s[1]["motivo"]), 160)
+        self.assertEqual(len(s), 5)                                                       # como mucho 5 sin descartar
+        self.assertEqual(normalizar_sugerencias("no es una lista"), [])
+        d = normalizar_sugerencias([{"nombre": "A", "descartada": True}, {"nombre": "a"}])
+        self.assertEqual(d, [{"nombre": "A", "motivo": "", "descartada": True}])          # si una copia está descartada, el tema queda descartado
+
+    def test_inyectar_guarda_las_sugerencias_saneadas_y_el_panel_las_recibe(self):
+        crudo = {"id": "su_a", "nombre": "Makeham", "cluster": "X", "teoria": "t",
+                 "sugerencias": [{"nombre": "Modelo de Gompertz", "motivo": "El caso sin constante"}, {"nombre": "modelo de GOMPERTZ"}, "Dormoy", 3]}
+        r = self.client.post("/api/node", json={"raw_json": json.dumps(crudo)})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual([s["nombre"] for s in self.leer("su_a")["sugerencias"]], ["Modelo de Gompertz", "Dormoy"])
+        self.assertEqual(self.client.get("/node/su_a").json()["sugerencias"][0], {"nombre": "Modelo de Gompertz", "motivo": "El caso sin constante"})
+        self.client.post("/api/node", json={"raw_json": json.dumps({"id": "su_b", "nombre": "Sin ideas", "cluster": "X", "teoria": "t"})})
+        self.assertNotIn("sugerencias", self.leer("su_b"))                                # las neuronas sin sugerencias no reciben el campo
+        self.assertEqual(self.client.get("/node/su_b").json()["sugerencias"], [])
+
+    def test_descartar_deja_marca_en_el_json_y_el_panel_ya_no_la_ve(self):
+        self.escribir("su_a", {"sugerencias": [{"nombre": "Gompertz", "motivo": "m"}, {"nombre": "Dormoy"}]})
+        r = self.client.post("/api/node/su_a/sugerencia/descartar", json={"nombre": "  gompertz "})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(self.leer("su_a")["sugerencias"][0]["descartada"])                # sigue en el JSON (sincroniza y no vuelve)
+        self.assertEqual([s["nombre"] for s in self.client.get("/node/su_a").json()["sugerencias"]], ["Dormoy"])
+        self.assertEqual(self.client.post("/api/node/su_a/sugerencia/descartar", json={"nombre": "Gompertz"}).status_code, 404)   # ya descartada
+        self.assertEqual(self.client.post("/api/node/su_a/sugerencia/descartar", json={"nombre": "Otra"}).status_code, 404)
+        self.assertEqual(self.client.post("/api/node/no_existe_su/sugerencia/descartar", json={"nombre": "x"}).status_code, 404)
+
+    def test_pegar_una_revision_reemplaza_las_sugerencias_pero_lo_descartado_no_vuelve(self):
+        self.escribir("su_a", {"sugerencias": [{"nombre": "Gompertz"}, {"nombre": "Dormoy"}]})
+        self.client.post("/api/node/su_a/sugerencia/descartar", json={"nombre": "Gompertz"})
+        n = self.editar("su_a", sugerencias=[{"nombre": "Gompertz", "motivo": "otra vez"}, {"nombre": "Lee-Carter", "motivo": "nuevo"}])
+        self.assertEqual([s["nombre"] for s in n["sugerencias"]], ["Lee-Carter"])         # Gompertz sigue descartado; Dormoy ya no estaba en la revisión
+        guardado = {s["nombre"]: s.get("descartada", False) for s in self.leer("su_a")["sugerencias"]}
+        self.assertEqual(guardado, {"Gompertz": True, "Lee-Carter": False})
+
+    def test_editar_sin_enviar_sugerencias_no_las_toca(self):
+        self.escribir("su_a", {"sugerencias": [{"nombre": "Gompertz"}]})
+        self.editar("su_a")
+        self.assertEqual([s["nombre"] for s in self.leer("su_a")["sugerencias"]], ["Gompertz"])
+        self.editar("su_a", sugerencias=[])                                                # lista vacía: se quita el campo
+        self.assertNotIn("sugerencias", self.leer("su_a"))
+
+    def test_importar_sanea_las_sugerencias_de_las_neuronas_nuevas(self):
+        archivo = {"formato": intercambio.FORMATO, "version": intercambio.VERSION, "aristas": [], "neuronas": [
+            {"id": "su_b", "nombre": "B", "cluster": "X", "teoria": "t", "sugerencias": ["Uno", {"nombre": "uno"}, {"nombre": "Dos", "motivo": "x" * 400}]}]}
+        self.assertEqual(intercambio.importar(archivo)["añadidas"], 1)
+        s = self.leer("su_b")["sugerencias"]
+        self.assertEqual([x["nombre"] for x in s], ["Uno", "Dos"])
+        self.assertEqual(len(s[1]["motivo"]), 160)
+
+
 from test_sincronizacion import TestSincronizacion  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
 
 

@@ -76,6 +76,68 @@ def normalizar(nombre) -> str:
     return " ".join(nombre.split())[:MAX_NOMBRE].strip() if isinstance(nombre, str) else ""
 
 
+# Temas relacionados sugeridos: `"sugerencias": [{"nombre": "Modelo de Gompertz", "motivo": "...", "descartada": true?}]`. Las que el usuario descarta se quedan con
+# `descartada` para que una revisión posterior de la IA no las vuelva a traer; solo las no descartadas llegan al panel.
+MAX_SUGERENCIAS = 5          # sin descartar, por neurona
+MAX_DESCARTADAS = 30
+MAX_TEMA = 80
+MAX_MOTIVO = 160
+
+
+def clave_tema(nombre) -> str:
+    """Nombre comparable: sin tildes, mayúsculas ni espacios de más."""
+    s = unicodedata.normalize("NFKD", str(nombre)).encode("ascii", "ignore").decode()
+    return " ".join(s.split()).casefold()
+
+
+def normalizar_sugerencias(valor) -> List[dict]:
+    """Lo que trae un JSON (de la IA, de un archivo) en `sugerencias`, saneado: solo objetos con nombre (o textos sueltos), sin repetidos, con nombre y motivo
+    acotados y un máximo de MAX_SUGERENCIAS activas. Si un tema aparece repetido y una de las copias está descartada, queda descartado."""
+    if not isinstance(valor, list):
+        return []
+    vistos = {}
+    for v in valor:
+        if isinstance(v, str):
+            v = {"nombre": v}
+        if not isinstance(v, dict) or not isinstance(v.get("nombre"), str):
+            continue
+        nombre = " ".join(v["nombre"].split())[:MAX_TEMA].strip()
+        if not nombre:
+            continue
+        motivo = " ".join(v["motivo"].split())[:MAX_MOTIVO].strip() if isinstance(v.get("motivo"), str) else ""
+        k = clave_tema(nombre)
+        previa = vistos.get(k)
+        descartada = v.get("descartada") is True or bool(previa and previa.get("descartada"))
+        item = {"nombre": previa["nombre"] if previa else nombre, "motivo": (previa or {}).get("motivo") or motivo}
+        if descartada:
+            item["descartada"] = True
+        vistos[k] = item
+    out, activas, descartadas = [], 0, 0
+    for item in vistos.values():
+        if item.get("descartada"):
+            descartadas += 1
+            if descartadas > MAX_DESCARTADAS:
+                continue
+        else:
+            activas += 1
+            if activas > MAX_SUGERENCIAS:
+                continue
+        out.append(item)
+    return out
+
+
+def activas(sugerencias) -> List[dict]:
+    """Las sugerencias que se enseñan: las no descartadas."""
+    return [s for s in normalizar_sugerencias(sugerencias) if not s.get("descartada")]
+
+
+def fusionar_sugerencias(previas, nuevas) -> List[dict]:
+    """Las `nuevas` (de un JSON revisado) mandan, pero lo que el usuario descartó antes sigue descartado y no se pierde."""
+    descartadas = {clave_tema(s["nombre"]): s for s in normalizar_sugerencias(previas) if s.get("descartada")}
+    fusion = [dict(descartadas[clave_tema(s["nombre"])]) if clave_tema(s["nombre"]) in descartadas else s for s in normalizar_sugerencias(nuevas)]
+    return normalizar_sugerencias(fusion + list(descartadas.values()))
+
+
 def normalizar_lista(valor) -> List[str]:
     """Lo que trae un JSON (de la IA, de un archivo importado) en `subredes`, saneado: solo textos, sin repetidos (mayúsculas aparte), ordenado."""
     if not isinstance(valor, list):

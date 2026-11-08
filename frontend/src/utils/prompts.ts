@@ -21,6 +21,12 @@ const JSON_SEGURO = `JSON VÁLIDO: el bloque tiene que poder leerse con un parse
 const CLUSTER_DESC = `RAMA ACADÉMICA ESPECÍFICA y breve (máximo 3 palabras, nunca una frase). Ej: 'Estadística' [para markov, splines, estocásticos], 'Biometría y Demografía' [para Lee-Carter, mortalidad, supervivencia], 'Finanzas' [para Black-Scholes, derivados], 'Economía' [Macro/Micro], 'Matemáticas Puras'. Sé preciso con la rama de especialidad, no uses 'Matemáticas' como cajón de sastre para todo. Si en este mensaje aparece una línea 'CLÚSTERES EXISTENTES', reutiliza EXACTAMENTE uno de esos nombres cuando el concepto encaje; crea uno nuevo solo si ninguno encaja.`;
 const FUENTES_BIBLIO = `Al final de tu explicación, incluye obligatoriamente un apartado detallando las fuentes bibliográficas y referencias académicas primarias (papers fundacionales, autores y manuales canónicos) de donde bebes la información. **Junto a cada referencia, debes añadir una nota o comentario explicativo que aclare con exactitud qué concepto, teorema, fórmula o desarrollo has sacado de esa fuente específica.** Para localizar y contrastar esas fuentes consulta como mínimo **Google Scholar** (https://scholar.google.com), además de arXiv, DOI/Crossref y las páginas de las editoriales: si tienes búsqueda web, úsala ahí y apóyate en los resultados y en el número de citas de Scholar para priorizar los trabajos fundacionales y más citados; si no puedes consultar la web, dilo expresamente en lugar de suponer. ANTES de escribir cada fuente, cuestiónate a ti mismo y verifica con rigor crítico si de verdad existen dichas fuentes en la literatura académica real (está estrictamente prohibido alucinar o inventar títulos/autores), y proporciona los enlaces directos (URL oficial, enlace DOI o link a arXiv/repositorio académico) a esos papers o páginas de donde las has obtenido.`;
 
+// Temas relacionados (campo «sugerencias»): la app los compara con las neuronas que ya existen y solo enseña los que aún no están (utils/sugerencias.ts).
+const CAMPO_SUGERENCIAS = `    "sugerencias": [
+        {"nombre": "Nombre formal de un tema relacionado, tal como se llama en la literatura (p. ej. Modelo de Gompertz)", "motivo": "Una frase: por qué conviene verlo después de este concepto"}
+    ],\n`;
+const REGLA_SUGERENCIAS = `SUGERENCIAS: en "sugerencias" pon entre 3 y 5 temas relacionados con este concepto que merezca la pena estudiar a continuación (casos particulares, generalizaciones, alternativas, prerrequisitos o aplicaciones). Cada uno lleva su "nombre" formal y habitual, sin paréntesis ni explicaciones (p. ej. «Modelo de Gompertz»), y un "motivo" de una sola frase. Han de ser conceptos reales y distintos de este mismo concepto: no repitas el que acabas de desarrollar ni inventes temas.`;
+
 const DOBLE_SALTO = '\n\n';
 
 // Campo «tipo» del JSON de ejemplo, solo en el prompt que decide el tipo (automático). El clásico no lo lleva: sus neuronas se deducen en el backend (limpieza.tipo_de).
@@ -61,7 +67,7 @@ ${flexible ? CAMPO_TIPO_AUTO : ''}    "nombre": "Nombre Completo del Concepto",
             "nota": "Comentario conciso explicando qué concepto, deducción matemática, fórmula o axioma concreto se ha extraído de esta fuente para este apunte. Si la localizaste o la contrastaste en Google Scholar, indícalo aquí."
         }
     ],
-    "laboratorio": {
+${CAMPO_SUGERENCIAS}    "laboratorio": {
         "explicacion": "Explicación detallada (soporta LaTeX con $$) sobre qué representa la simulación y qué parámetros modifica el usuario con los deslizables para experimentar.",
         "controles": [
             {
@@ -95,7 +101,8 @@ ${flexible ? TIPO_CONCEPTO + DOBLE_SALTO + JSON_SEGURO + DOBLE_SALTO : ''}### RE
 6. ${IDIOMAS[IDIOMA_ACTUAL]}
 7. ${VERIFICACION_OCULTA}
 8. ${SIN_MARCAS_CITA}
-9. Devuelve ÚNICAMENTE el bloque JSON.`;
+9. ${REGLA_SUGERENCIAS}
+10. Devuelve ÚNICAMENTE el bloque JSON.`;
 
 const exploracion = (flexible: boolean) => `Actúa como un Investigador Catedrático y tutor académico de nivel de Doctorado (PhD). 
 Quiero que me expliques a fondo y con extremo rigor el siguiente concepto: **[INSERTA EL CONCEPTO AQUÍ]**.
@@ -136,7 +143,7 @@ ${flexible ? CAMPO_TIPO_AUTO : ''}    "nombre": "Nombre Formal del Concepto",
             "nota": "Comentario detallado explicando qué concepto, deducción matemática, fórmula o axioma concreto se ha extraído de esta fuente para este apunte. Si la localizaste o la contrastaste en Google Scholar, indícalo aquí."
         }
     ],
-    "laboratorio": {
+${CAMPO_SUGERENCIAS}    "laboratorio": {
         "explicacion": "Explicación detallada (soporta LaTeX con $$) sobre qué representa la simulación y qué parámetros modifica el usuario con los deslizables para experimentar.",
         "controles": [
             {
@@ -170,7 +177,8 @@ ${flexible ? TIPO_CONCEPTO + DOBLE_SALTO + JSON_SEGURO + DOBLE_SALTO : ''}### RE
 6. SECUENCIA OBLIGATORIA: Tu respuesta DEBE contener AMBAS partes en este orden estricto. Primero escribe la PARTE 1 completa (la explicación magistral extensa en texto y LaTeX con sus fuentes verificadas, enlaces directos y la nota de extracción de cada una) y, solo al final, la PARTE 2 envuelta en su bloque \`\`\`json. Está TERMINANTEMENTE PROHIBIDO devolver únicamente el bloque JSON o saltarse la explicación magistral inicial.
 7. ${IDIOMAS[IDIOMA_ACTUAL]}
 8. ${VERIFICACION_OCULTA} Esto vale para la PARTE 1 y para el JSON de la PARTE 2.
-9. ${SIN_MARCAS_CITA}`;
+9. ${SIN_MARCAS_CITA}
+10. ${REGLA_SUGERENCIAS}`;
 
 
 export const PROMPT_FUENTES = fuentes(true);
@@ -241,12 +249,12 @@ ${m.ejercicios}
             "nota": "Comentario conciso explicando qué hecho, idea, postura o desarrollo concreto se ha extraído de esta fuente para este apunte. Si la localizaste o la contrastaste en Google Scholar, indícalo aquí."
         }
     ],
-    "laboratorio": {"explicacion": "", "controles": [], "codigo": ""}
+${CAMPO_SUGERENCIAS}    "laboratorio": {"explicacion": "", "controles": [], "codigo": ""}
 }`;
 
 const SIN_LABORATORIO = 'El campo "laboratorio" va SIEMPRE vacío, tal como está en el ejemplo: este tipo de concepto no tiene simulación. No inventes controles ni código.';
 
-const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_LABORATORIO, `El campo "tipo" vale siempre "${m.tipo}", tal como está en el ejemplo.`, JSON_SEGURO, IDIOMAS[IDIOMA_ACTUAL], VERIFICACION_OCULTA, SIN_MARCAS_CITA, ultima]
+const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_LABORATORIO, `El campo "tipo" vale siempre "${m.tipo}", tal como está en el ejemplo.`, JSON_SEGURO, IDIOMAS[IDIOMA_ACTUAL], VERIFICACION_OCULTA, SIN_MARCAS_CITA, REGLA_SUGERENCIAS, ultima]
     .map((r, i) => `${i + 1}. ${r}`).join('\n');
 
 const noFormalFuentes = (m: NoFormal) => `Actúa como un ${m.rol}. Tu objetivo es procesar el material académico que te proporciono y estructurarlo con rigor y profundidad en un formato JSON diseñado para "Alejandría", una app de conocimiento interactiva.
@@ -289,6 +297,9 @@ export const promptFuentes = (modo: ModoPrompt): string =>
 export const promptExploracion = (modo: ModoPrompt): string =>
     modo === 'formal' ? PROMPT_EXPLORACION_CLASICO : modo === 'auto' ? PROMPT_EXPLORACION : noFormalExploracion(NO_FORMAL[modo]);
 
+/** Pone el tema en el hueco «[INSERTA EL CONCEPTO AQUÍ]» del prompt de exploración (cuando vienes de una sugerencia). Si el prompt no tiene hueco, lo deja igual. */
+export const conTema = (prompt: string, tema: string) => prompt.replace('[INSERTA EL CONCEPTO AQUÍ]', () => tema);
+
 // Añade, justo antes de las reglas, los clústeres que ya existen para que la IA reutilice sus nombres exactos.
 export const conClustersExistentes = (prompt: string, clusters: string[]) =>
     clusters.length === 0 ? prompt : prompt.replace('### REGLAS DE ORO:', () => `CLÚSTERES EXISTENTES EN MI SISTEMA: ${clusters.join(', ')}
@@ -300,7 +311,7 @@ export const conClustersExistentes = (prompt: string, clusters: string[]) =>
 // los criterios de su tipo y las mismas reglas de formato que los prompts de creación; el resultado se pega en el editor (no pasa por «importar»).
 export interface NeuronaRevisable {
     id: string; nombre: string; cluster?: string; tipo: 'formal' | 'historico' | 'teorico';
-    teoria?: string; glosario?: unknown[]; ejercicios?: unknown[]; referencias?: unknown[];
+    teoria?: string; glosario?: unknown[]; ejercicios?: unknown[]; referencias?: unknown[]; sugerencias?: unknown[];
 }
 
 const REVISION: Record<NeuronaRevisable['tipo'], { rol: string; criterio: string }> = {
@@ -322,7 +333,7 @@ export function promptRevision(n: NeuronaRevisable): string {
     const r = REVISION[n.tipo];
     const neurona = JSON.stringify({
         id: n.id, cluster: n.cluster ?? '', tipo: n.tipo, nombre: n.nombre, teoria: n.teoria ?? '',
-        glosario: n.glosario ?? [], ejercicios: n.ejercicios ?? [], referencias: n.referencias ?? [],
+        glosario: n.glosario ?? [], ejercicios: n.ejercicios ?? [], referencias: n.referencias ?? [], sugerencias: n.sugerencias ?? [],
     }, null, 4);
     return `Actúa como un ${r.rol}. Te paso una neurona de "Alejandría" (una app de conocimiento personal) escrita por una IA que puede haberse equivocado. Revísala a fondo y devuélveme el JSON corregido en EL MISMO FORMATO.
 
@@ -331,7 +342,8 @@ TIPO DE LA NEURONA: ${n.tipo}. ${r.criterio} No cambies el valor del campo "tipo
 QUÉ REVISAR, por orden de importancia:
 1. REFERENCIAS: cada una debe existir y estar bien atribuida (título exacto, autores, año y enlace). Si una está mal atribuida, corrígela; si no puedes confirmar que existe, ELIMÍNALA: nunca inventes una referencia ni la dejes con dudas. Contrasta como mínimo en **Google Scholar** y, si no tiene DOI, usa como url la ficha de la publicación en Google Scholar (https://scholar.google.com/...).
 2. CONTENIDO: errores de hechos, fechas, autores, fórmulas y atribuciones en la teoría, el glosario y los ejercicios.
-3. Cambia SOLO lo que esté mal o falte. Lo correcto déjalo tal cual: no lo reescribas ni lo acortes, y mantén la extensión, los subtítulos Markdown y las fórmulas con $ y $$.
+3. SUGERENCIAS: el campo "sugerencias" son temas relacionados que merece la pena estudiar después de este. Quita los que no existan o no tengan relación real con el concepto y, si hay menos de 3, completa hasta 3-5 con temas reales (cada uno con su "nombre" formal y habitual y un "motivo" de una frase). Si el campo está vacío, rellénalo.
+4. Cambia SOLO lo que esté mal o falte. Lo correcto déjalo tal cual: no lo reescribas ni lo acortes, y mantén la extensión, los subtítulos Markdown y las fórmulas con $ y $$.
 
 NEURONA ACTUAL:
 
@@ -341,7 +353,7 @@ ${neurona}
 
 FORMATO DE LA RESPUESTA:
 - Primero, una lista breve (máximo 10 viñetas) de lo que has cambiado y por qué; incluye cada referencia que corrijas o quites.
-- Después, UN ÚNICO bloque \`\`\`json con la neurona corregida: los mismos campos que arriba (id, cluster, tipo, nombre, teoria, glosario, ejercicios, referencias) y el mismo "id". No incluyas "laboratorio" ni campos nuevos, y no uses ningún otro bloque de código.
+- Después, UN ÚNICO bloque \`\`\`json con la neurona corregida: los mismos campos que arriba (id, cluster, tipo, nombre, teoria, glosario, ejercicios, referencias, sugerencias) y el mismo "id". No incluyas "laboratorio" ni campos nuevos, y no uses ningún otro bloque de código.
 - Si no hay nada que corregir, dilo y devuelve igualmente el bloque con la neurona tal cual.
 
 ### REGLAS DE ORO:
