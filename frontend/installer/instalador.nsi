@@ -17,7 +17,7 @@ ManifestDPIAware notset              ; Windows escala la ventana entera: un poco
 
 !define APP "Proyecto Alejandría"
 !define EXE "ProyectoAlejandria.exe"
-!define VERSION "0.5.1"
+!define VERSION "0.6.0"
 !define ID "dev.alejandria.app"      ; el mismo que tauri.conf.json: de él salen las carpetas de datos de la app
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define WEBVIEW2 "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
