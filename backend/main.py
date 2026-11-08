@@ -594,6 +594,23 @@ def update_arista_status(req: AristaStatusRequest):
     else:
         raise HTTPException(status_code=404, detail="Arista no encontrada o error al actualizar.")
 
+@app.get("/api/node/{node_id}/sinapsis")
+def sinapsis_de_neurona(node_id: str):
+    """Todas las conexiones de una neurona, también las rechazadas (el universo no las enseña): la revisión con IA externa las necesita para juzgarlas.
+    Solo cuentan las vecinas vivas (no las de la papelera). Una pareja vale igual en las dos direcciones."""
+    raw_path(node_id)
+    nombres = dict(zip(db_conn._get_df().get("id", []), db_conn._get_df().get("nombre", [])))
+    if node_id not in nombres:
+        raise HTTPException(status_code=404, detail="Neurona no encontrada")
+    out = []
+    for a in db_conn.listar_aristas():
+        if node_id not in (a.get("origen_id"), a.get("destino_id")):
+            continue
+        otra = a["destino_id"] if a["origen_id"] == node_id else a["origen_id"]
+        if otra in nombres and otra != node_id:
+            out.append({"con": otra, "nombre": nombres[otra], "estado": a.get("estado") or "pendiente", "motivo": a.get("motivo") or ""})
+    return {"sinapsis": out}
+
 class NuevaAristaRequest(BaseModel):
     origen_id: str
     destino_id: str

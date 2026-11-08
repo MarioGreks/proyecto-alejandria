@@ -312,6 +312,28 @@ export const conClustersExistentes = (prompt: string, clusters: string[]) =>
 export interface NeuronaRevisable {
     id: string; nombre: string; cluster?: string; tipo: 'formal' | 'historico' | 'teorico';
     teoria?: string; glosario?: unknown[]; ejercicios?: unknown[]; referencias?: unknown[]; sugerencias?: unknown[];
+    sinapsis?: { con: string; nombre: string; estado: string; motivo: string }[];     // sus conexiones (también las rechazadas); sin esto el prompt no habla de sinapsis
+    neuronas?: { id: string; nombre: string }[];                                      // el resto de la red, para poder proponer conexiones nuevas con ids reales
+}
+
+const linea = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+// Sección y reglas de sinapsis del prompt de revisión (solo si la neurona trae su lista de conexiones).
+function seccionSinapsis(n: NeuronaRevisable): { texto: string; formato: string; campos: string } {
+    const lista = (n.sinapsis ?? []).map(s => `- ${s.con} («${linea(s.nombre)}») | estado: ${s.estado} | motivo: ${linea(s.motivo) || '(sin motivo)'}`).join('\n') || '(esta neurona aún no tiene ninguna)';
+    const otras = (n.neuronas ?? []).filter(o => o.id !== n.id && !(n.sinapsis ?? []).some(s => s.con === o.id));
+    const texto = `5. SINAPSIS: son las conexiones de esta neurona con otras de mi red. Estado «aceptada» = la validé yo; «pendiente» = propuesta automática que aún no he mirado; «rechazada» = la descarté yo (se muestra con el motivo con que se propuso). Juzga si cada relación es real, útil y está bien razonada. No cambies nada de la neurona por esto: se responde en campos aparte.
+
+SINAPSIS ACTUALES (id | estado | motivo):
+
+${lista}
+
+NEURONAS DE MI RED CON LAS QUE AÚN NO TIENE CONEXIÓN (id: nombre), por si falta alguna:
+
+${otras.map(o => `${o.id}: ${linea(o.nombre)}`).join('\n') || '(ninguna)'}
+`;
+    const formato = `\n- Dentro de ese mismo bloque json añade, además, el campo "sinapsis": una entrada por CADA sinapsis actual (también las rechazadas), con "con" (el id exacto de la lista), "veredicto" y "razon" (una frase). "veredicto" es exactamente una de estas tres palabras: "confirmar" (la relación es real y útil; en una rechazada significa que la descartó por error), "cuestionar" (dudosa, vaga o mal razonada) o "quitar" (falsa, trivial o redundante). Y el campo "sinapsis_nuevas": entre 0 y 5 conexiones que falten, SOLO con neuronas de la lista de arriba, cada una con "con" (su id exacto) y "motivo" (una frase). No inventes ids. Ejemplo: "sinapsis": [{"con": "id_vecina", "veredicto": "quitar", "razon": "Solo comparten el nombre."}], "sinapsis_nuevas": [{"con": "id_de_la_lista", "motivo": "Es un caso particular de este concepto."}]`;
+    return { texto, formato, campos: ', sinapsis, sinapsis_nuevas' };
 }
 
 const REVISION: Record<NeuronaRevisable['tipo'], { rol: string; criterio: string }> = {
@@ -335,6 +357,7 @@ export function promptRevision(n: NeuronaRevisable): string {
         id: n.id, cluster: n.cluster ?? '', tipo: n.tipo, nombre: n.nombre, teoria: n.teoria ?? '',
         glosario: n.glosario ?? [], ejercicios: n.ejercicios ?? [], referencias: n.referencias ?? [], sugerencias: n.sugerencias ?? [],
     }, null, 4);
+    const sin = n.sinapsis ? seccionSinapsis(n) : { texto: '', formato: '', campos: '' };
     return `Actúa como un ${r.rol}. Te paso una neurona de "Alejandría" (una app de conocimiento personal) escrita por una IA que puede haberse equivocado. Revísala a fondo y devuélveme el JSON corregido en EL MISMO FORMATO.
 
 TIPO DE LA NEURONA: ${n.tipo}. ${r.criterio} No cambies el valor del campo "tipo".
@@ -344,7 +367,7 @@ QUÉ REVISAR, por orden de importancia:
 2. CONTENIDO: errores de hechos, fechas, autores, fórmulas y atribuciones en la teoría, el glosario y los ejercicios.
 3. SUGERENCIAS: el campo "sugerencias" son temas relacionados que merece la pena estudiar después de este. Quita los que no existan o no tengan relación real con el concepto y, si hay menos de 3, completa hasta 3-5 con temas reales (cada uno con su "nombre" formal y habitual y un "motivo" de una frase). Si el campo está vacío, rellénalo.
 4. Cambia SOLO lo que esté mal o falte. Lo correcto déjalo tal cual: no lo reescribas ni lo acortes, y mantén la extensión, los subtítulos Markdown y las fórmulas con $ y $$.
-
+${sin.texto}
 NEURONA ACTUAL:
 
 \`\`\`json
@@ -353,7 +376,7 @@ ${neurona}
 
 FORMATO DE LA RESPUESTA:
 - Primero, una lista breve (máximo 10 viñetas) de lo que has cambiado y por qué; incluye cada referencia que corrijas o quites.
-- Después, UN ÚNICO bloque \`\`\`json con la neurona corregida: los mismos campos que arriba (id, cluster, tipo, nombre, teoria, glosario, ejercicios, referencias, sugerencias) y el mismo "id". No incluyas "laboratorio" ni campos nuevos, y no uses ningún otro bloque de código.
+- Después, UN ÚNICO bloque \`\`\`json con la neurona corregida: los mismos campos que arriba (id, cluster, tipo, nombre, teoria, glosario, ejercicios, referencias, sugerencias${sin.campos}) y el mismo "id". No incluyas "laboratorio" ni campos nuevos, y no uses ningún otro bloque de código.${sin.formato}
 - Si no hay nada que corregir, dilo y devuelve igualmente el bloque con la neurona tal cual.
 
 ### REGLAS DE ORO:

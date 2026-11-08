@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { API } from '../utils/api';
 import { errorDe } from '../utils/errorApi';
 import { aplicarRevision, erroresEditor, formParaGuardar, hayCambios, TIPOS_NEURONA } from '../utils/neurona';
-import type { NeuronaForm, ReferenciaForm, TipoNeurona } from '../utils/neurona';
+import type { NeuronaForm, ReferenciaForm, RevisionSinapsis, SinapsisActual, TipoNeurona, VecinaPosible } from '../utils/neurona';
 import { Cabecera, Modal, Seccion, Dialogo } from './terminal';
 import { Md } from './Md';
 
@@ -12,6 +12,8 @@ interface Props {
     onGuardado: (neurona: any) => void;
     onSalir: () => void;
     onCambios: (hay: boolean) => void;       // el panel lo usa para no perder ediciones al cerrar
+    neuronas: VecinaPosible[];               // toda la red: la IA puede proponer conexiones nuevas con ellas
+    onSinapsis: (revision: RevisionSinapsis) => void;    // el veredicto sobre las sinapsis lo enseña el panel (sobrevive a «Guardar»)
 }
 
 const etiqueta: React.CSSProperties = { color: 'var(--t-suave)', fontSize: 11, display: 'block', marginBottom: 3, fontFamily: 'var(--t-mono)' };
@@ -19,7 +21,7 @@ const area = (alto: number): React.CSSProperties => ({ width: '100%', boxSizing:
 const fila: React.CSSProperties = { padding: 10, border: '1px dashed var(--t-linea)', display: 'flex', flexDirection: 'column', gap: 8 };
 
 /** Editor de una neurona: nombre, tipo, teoría (Markdown con vista previa KaTeX), glosario, ejercicios y referencias. No toca clúster ni laboratorio. */
-export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, onCambios }: Props) {
+export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, onCambios, neuronas, onSinapsis }: Props) {
     const [form, setForm] = useState<NeuronaForm>(inicial);
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState('');
@@ -62,9 +64,16 @@ export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, on
         try {
             const res = await fetch(`${API}/api/json/interpretar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) });
             if (!res.ok) throw new Error(await errorDe(res));
-            const { form: nuevo, avisos: av } = aplicarRevision(form, (await res.json()).datos, nodeId);
+            // Las conexiones de ahora (también las rechazadas) para cotejar el veredicto de la IA; si no se pueden leer, la revisión del texto sigue valiendo.
+            let actuales: SinapsisActual[] | null = null;
+            try { const r = await fetch(`${API}/api/node/${nodeId}/sinapsis`); if (r.ok) actuales = (await r.json()).sinapsis; } catch { /* se avisa abajo */ }
+            const { form: nuevo, avisos: av, sinapsis } = aplicarRevision(form, (await res.json()).datos, nodeId, actuales ? { actuales, neuronas } : undefined);
             setForm(nuevo);
-            setAvisos(['Revisión aplicada al formulario. Compruébala y pulsa «Guardar» (todavía no se ha guardado nada).', ...av]);
+            const hayVeredicto = sinapsis.veredictos.length + sinapsis.nuevas.length > 0;
+            if (hayVeredicto) onSinapsis(sinapsis);
+            setAvisos(['Revisión aplicada al formulario. Compruébala y pulsa «Guardar» (todavía no se ha guardado nada).',
+                ...(hayVeredicto ? ['La IA también opina sobre las sinapsis: arriba tienes su veredicto, para aplicar o no cada propuesta (no depende de «Guardar»).'] : []),
+                ...(actuales ? [] : ['No se pudieron leer las sinapsis de la neurona: se ignora el veredicto sobre ellas, si lo trae.']), ...av]);
             setPegando(false);
             setTexto('');
         } catch (e: any) {
@@ -192,6 +201,7 @@ export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, on
                     <p style={{ margin: '12px 0', color: 'var(--t-texto)', fontSize: 13, lineHeight: 1.5 }}>
                         Pega la respuesta completa de la IA (vale con el texto de antes y el bloque ```json). Se leerá con las mismas tolerancias que el Sintetizador y se
                         aplicará solo al formulario: nombre, tipo, teoría, glosario, ejercicios, referencias y temas relacionados. No se guarda nada hasta que pulses «Guardar».
+                        Si trae un veredicto sobre las sinapsis, se enseña aparte y tú decides qué propuestas aplicar.
                     </p>
                     <textarea className="t-campo" autoFocus spellCheck={false} style={area(260)} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Pega aquí la respuesta de la IA..." />
                     {errorPegar && <div style={{ marginTop: 10, color: 'var(--t-error)', fontSize: 12 }}>[ERROR] {errorPegar}</div>}

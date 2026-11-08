@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aplicarRevision, erroresEditor, formDesdeNeurona, formParaGuardar, hayCambios, normalizarTipo } from './neurona.ts';
+import { aplicarRevision, erroresEditor, formDesdeNeurona, formParaGuardar, hayCambios, normalizarTipo, normalizarVeredicto } from './neurona.ts';
 import { errorDe } from './errorApi.ts';
 
 const API = {
@@ -108,4 +108,55 @@ test('las sugerencias pegadas en una revisión se aplican; si no vienen se dejan
     assert.deepEqual(mal.form.sugerencias, actual.sugerencias);
     assert.match(mal.avisos.join(), /«sugerencias»/);
     assert.equal(hayCambios(actual, con.form), true);
+});
+
+// --- Veredicto de la IA sobre las sinapsis ---
+const ACTUALES = [
+    { con: 'markov', nombre: 'Cadenas de Markov', estado: 'aceptada', motivo: 'm1' },
+    { con: 'prior', nombre: 'Distribución a priori', estado: 'pendiente', motivo: 'm2' },
+    { con: 'ruido', nombre: 'Ruido blanco', estado: 'rechazada', motivo: 'm3' },
+];
+const RED = [{ id: 'bayes', nombre: 'Teorema de Bayes' }, ...ACTUALES.map(s => ({ id: s.con, nombre: s.nombre })), { id: 'gompertz', nombre: 'Modelo de Gompertz' }];
+const BASE = { id: 'bayes', nombre: 'B', teoria: 't', glosario: [], ejercicios: [], referencias: [] };
+const rev = (extra) => aplicarRevision(formDesdeNeurona(API), { ...BASE, ...extra }, 'bayes', { actuales: ACTUALES, neuronas: RED });
+
+test('los veredictos se leen con sinónimos, tildes y mayúsculas; lo desconocido es null', () => {
+    for (const [v, esperado] of [['confirmar', 'confirmar'], ['Mantener', 'confirmar'], ['CUESTIÓNAR', 'cuestionar'], ['dudosa', 'cuestionar'], ['Quitar', 'quitar'], ['eliminar', 'quitar'], ['rechazar', 'quitar']])
+        assert.equal(normalizarVeredicto(v), esperado, v);
+    for (const malo of ['', 'quizás', 5, null, undefined]) assert.equal(normalizarVeredicto(malo), null);
+});
+
+test('el veredicto sobre las sinapsis se lee, por id o por nombre, y no toca el formulario', () => {
+    const r = rev({ sinapsis: [{ con: 'markov', veredicto: 'confirmar', razon: ' Es su caso discreto ' }, { con: 'distribucion a priori', veredicto: 'Cuestionar', razon: 'Vaga' }, { con: 'ruido', veredicto: 'quitar' }],
+        sinapsis_nuevas: [{ con: 'gompertz', motivo: 'Mortalidad' }] });
+    assert.deepEqual(r.sinapsis.veredictos, [
+        { con: 'markov', nombre: 'Cadenas de Markov', estado: 'aceptada', veredicto: 'confirmar', razon: 'Es su caso discreto' },
+        { con: 'prior', nombre: 'Distribución a priori', estado: 'pendiente', veredicto: 'cuestionar', razon: 'Vaga' },
+        { con: 'ruido', nombre: 'Ruido blanco', estado: 'rechazada', veredicto: 'quitar', razon: '' },
+    ]);
+    assert.deepEqual(r.sinapsis.nuevas, [{ con: 'gompertz', nombre: 'Modelo de Gompertz', motivo: 'Mortalidad' }]);
+    assert.equal(r.avisos.length, 0);
+    assert.equal(rev({ sinapsis: [], sinapsis_nuevas: [] }).form.nombre, 'B');
+});
+
+test('un veredicto imperfecto se ignora con aviso: ids inventados, veredictos raros, repetidos, a sí misma, ya conectadas y tipos de dato raros', () => {
+    const r = rev({
+        sinapsis: [{ con: 'inventada', veredicto: 'quitar' }, { con: 'markov', veredicto: 'quizás' }, { con: 'prior', veredicto: 'quitar', razon: 'a' }, { con: 'prior', veredicto: 'confirmar' }, null, { con: 5 }],
+        sinapsis_nuevas: [{ con: 'bayes', motivo: 'sí misma' }, { con: 'markov', motivo: 'ya conectada' }, { con: 'nada' }, { con: 'gompertz' }, { con: 'gompertz', motivo: 'repetida' }],
+    });
+    assert.deepEqual(r.sinapsis.veredictos.map(v => [v.con, v.veredicto]), [['prior', 'quitar']]);
+    assert.deepEqual(r.sinapsis.nuevas, [{ con: 'gompertz', nombre: 'Modelo de Gompertz', motivo: '' }]);
+    const t = r.avisos.join('\n');
+    for (const trozo of ['«inventada»', '«quizás»', 'repetida', '«bayes»', 'ya existe una conexión', '«nada»']) assert.match(t, new RegExp(trozo));
+    const mal = rev({ sinapsis: 'texto', sinapsis_nuevas: 3 });
+    assert.deepEqual(mal.sinapsis, { veredictos: [], nuevas: [] });
+    assert.match(mal.avisos.join('\n'), /«sinapsis» no es una lista[\s\S]*«sinapsis_nuevas» no es una lista/);
+});
+
+test('sin la lista de conexiones, o si el JSON no trae veredicto, no hay propuestas ni avisos de más', () => {
+    const sin = aplicarRevision(formDesdeNeurona(API), { ...BASE, sinapsis: [{ con: 'markov', veredicto: 'quitar' }] }, 'bayes');
+    assert.deepEqual(sin.sinapsis, { veredictos: [], nuevas: [] });
+    assert.equal(sin.avisos.length, 0);
+    assert.deepEqual(rev({}).sinapsis, { veredictos: [], nuevas: [] });
+    assert.equal(rev({}).avisos.length, 0);
 });

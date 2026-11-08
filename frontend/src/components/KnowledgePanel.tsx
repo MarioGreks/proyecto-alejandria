@@ -3,6 +3,9 @@ import { handleOpenExternal } from '../utils/markdown';
 import { Md } from './Md';
 import EditorNeurona from './EditorNeurona';
 import { formDesdeNeurona, normalizarTipo, TIPOS_NEURONA } from '../utils/neurona';
+import type { RevisionSinapsis, SinapsisActual } from '../utils/neurona';
+import { errorDe } from '../utils/errorApi';
+import VeredictoSinapsis, { claveNueva, claveVeredicto } from './VeredictoSinapsis';
 import { promptRevision } from '../utils/prompts';
 import LaboratorioWidget from './LaboratorioWidget';
 import type { LaboratorioData } from './LaboratorioWidget';
@@ -123,6 +126,8 @@ export default function KnowledgePanel({
     const [info, setInfo] = useState('');                 // mensaje en verde (copiado, guardado...)
     const [editando, setEditando] = useState(false);      // editor de la neurona abierto
     const [editorSucio, setEditorSucio] = useState(false);   // con cambios sin guardar
+    const [revisionSinapsis, setRevisionSinapsis] = useState<RevisionSinapsis | null>(null);   // veredicto de la IA externa sobre las conexiones, pendiente de decidir
+    const [aplicadas, setAplicadas] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (nodeId !== null) {
@@ -131,6 +136,8 @@ export default function KnowledgePanel({
             setAviso('');
             setInfo('');
             setEditando(false);
+            setRevisionSinapsis(null);
+            setAplicadas({});
             // Hacemos la llamada real a nuestro Backend de Python (Fase 1)
             fetch(`${API}/node/${nodeId}`)
                 .then(res => res.json())
@@ -171,7 +178,8 @@ export default function KnowledgePanel({
                 })
             });
             if (res.ok) {
-                window.location.reload();
+                setNewEdgeTarget(''); setNewEdgeReason('');
+                if (onRecargar) await onRecargar(); else window.location.reload();
             } else {
                 setAviso('Error: no se pudo crear la conexión.');
             }
@@ -216,11 +224,17 @@ export default function KnowledgePanel({
         try { await onSubredes([nodeId!], [], [subredActiva]); onClose(); } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo quitar de la subred.'}`); }
     };
 
+    const neuronasDeLaRed = (todasLasNeuronas.length > 0 ? todasLasNeuronas : universeNodes).map(n => ({ id: String(n.id), nombre: String(n.nombre ?? n.id) }));
+
     /** Copia al portapapeles el prompt para que una IA externa revise esta neurona (el resultado se pega en el editor). */
     const pedirRevision = async () => {
         if (!data) return;
+        // Las sinapsis de la neurona, también las rechazadas (el universo no las trae). Si no se pueden leer, el prompt sale sin esa parte y se avisa.
+        let sinapsis: SinapsisActual[] | undefined;
+        try { const r = await fetch(`${API}/api/node/${data.id}/sinapsis`); if (r.ok) sinapsis = (await r.json()).sinapsis; } catch { /* se avisa abajo */ }
         const prompt = promptRevision({ id: data.id, nombre: data.nombre, cluster: data.cluster ?? data.cluster_id, tipo: normalizarTipo(data.tipo) ?? 'formal',
-            teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias, sugerencias: data.sugerencias });
+            teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias, sugerencias: data.sugerencias,
+            sinapsis, neuronas: sinapsis ? neuronasDeLaRed : undefined });
         let copiado = false;
         try { await navigator.clipboard.writeText(prompt); copiado = true; } catch { /* sin permiso del portapapeles: se prueba con un campo temporal */ }
         if (!copiado) {
@@ -232,8 +246,31 @@ export default function KnowledgePanel({
         }
         if (!copiado) { setInfo(''); setAviso('Error: no se pudo copiar al portapapeles.'); return; }
         setAviso('');
-        setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`);
+        setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres${sinapsis ? `, con ${sinapsis.length} sinapsis` : ''}). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`
+            + (sinapsis ? '' : ' Aviso: no se pudieron leer las sinapsis, así que esta revisión no las incluye.'));
     };
+
+    /** Aplica una propuesta del veredicto sobre las conexiones (una a una, al momento) y repinta la red. */
+    const aplicarSinapsis = async (clave: string, peticion: () => Promise<Response>) => {
+        setOcupado(clave);
+        try {
+            const res = await peticion();
+            if (!res.ok) throw new Error(await errorDe(res));
+            setAplicadas(a => ({ ...a, [clave]: true }));
+            setAviso('');
+            await onRecargar?.();
+        } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo aplicar la propuesta.'}`); }
+        setOcupado('');
+    };
+    const json = (metodo: string, cuerpo: object): RequestInit => ({ method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
+    const cambiarEstado = (con: string, status: 'aceptada' | 'rechazada') =>
+        aplicarSinapsis(claveVeredicto(con), () => fetch(`${API}/api/arista/status`, json('PUT', { origen_id: data!.id, destino_id: con, status })));
+    const crearConexion = (con: string, motivo: string) =>
+        aplicarSinapsis(claveNueva(con), () => fetch(`${API}/api/arista`, json('POST', { origen_id: data!.id, destino_id: con, motivo: motivo || 'Propuesta por la revisión de la IA' })));
+    const veredictoSinapsis = revisionSinapsis && (
+        <VeredictoSinapsis revision={revisionSinapsis} hechas={aplicadas} ocupado={ocupado}
+            onEstado={cambiarEstado} onCrear={crearConexion} onDescartar={() => { setRevisionSinapsis(null); setAplicadas({}); }} />
+    );
 
     /** Descarta un tema sugerido para siempre (queda marcado en la neurona) y lo quita de la lista. */
     const descartar = async (s: Sugerencia) => {
@@ -313,7 +350,13 @@ export default function KnowledgePanel({
             {!editando && <div style={{ display: 'flex', padding: '0 12px', borderBottom: '1px solid var(--t-linea)' }}>
                 {TABS.map(tab => (
                     <button key={tab} className={`t-tab${activeTab === tab ? ' activa' : ''}`} onClick={() => setActiveTab(tab)}>
-                        {(() => { const nombre = tab === 'relacionados' && visibles.length > 0 ? `${TAB_LABELS[tab]} (${visibles.length})` : TAB_LABELS[tab]; return activeTab === tab ? `[ ${nombre} ]` : nombre; })()}
+                        {(() => {
+                            const porDecidir = revisionSinapsis ? revisionSinapsis.nuevas.filter(n => !aplicadas[claveNueva(n.con)]).length
+                                + revisionSinapsis.veredictos.filter(v => !aplicadas[claveVeredicto(v.con)] && v.veredicto !== 'cuestionar' && v.estado !== (v.veredicto === 'quitar' ? 'rechazada' : 'aceptada')).length : 0;
+                            const nombre = tab === 'relacionados' && visibles.length > 0 ? `${TAB_LABELS[tab]} (${visibles.length})`
+                                : tab === 'sinapsis' && porDecidir > 0 ? `${TAB_LABELS[tab]} (${porDecidir} ${porDecidir === 1 ? 'propuesta' : 'propuestas'})` : TAB_LABELS[tab];
+                            return activeTab === tab ? `[ ${nombre} ]` : nombre;
+                        })()}
                     </button>
                 ))}
             </div>}
@@ -322,9 +365,12 @@ export default function KnowledgePanel({
             <div style={{ flex: 1, padding: 28, overflowY: 'auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
                 {loading && <p style={{ color: 'var(--t-verde)', fontFamily: MONO }}>&gt; Leyendo memoria...</p>}
 
+                {!loading && data && (editando || activeTab === 'sinapsis') && veredictoSinapsis}
+
                 {!loading && data && editando && (
-                    <EditorNeurona key={data.id} nodeId={nodeId!} inicial={formDesdeNeurona(data)} onCambios={setEditorSucio}
-                        onGuardado={n => { setData(n); setEditando(false); setAviso(''); setInfo('Neurona guardada.'); }} onSalir={() => setEditando(false)} />
+                    <EditorNeurona key={data.id} nodeId={nodeId!} inicial={formDesdeNeurona(data)} onCambios={setEditorSucio} neuronas={neuronasDeLaRed}
+                        onSinapsis={r => { setRevisionSinapsis(r); setAplicadas({}); }}
+                        onGuardado={n => { setData(n); setEditando(false); setAviso(''); setInfo('Neurona guardada.' + (revisionSinapsis ? ' El veredicto sobre las sinapsis te espera en la pestaña «Sinapsis».' : '')); if (revisionSinapsis) setActiveTab('sinapsis'); }} onSalir={() => setEditando(false)} />
                 )}
 
                 {!loading && data && !editando && activeTab === 'teoria' && (
@@ -473,7 +519,7 @@ export default function KnowledgePanel({
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ origen_id, destino_id, status })
                                         });
-                                        if (res.ok) window.location.reload();
+                                        if (res.ok) { if (onRecargar) await onRecargar(); else window.location.reload(); }     // sin recargar la página: se conserva el veredicto de la IA
                                         else setAviso('Error: no se pudo actualizar el estado de la conexión.');
                                     } catch (e) {
                                         console.error(e);

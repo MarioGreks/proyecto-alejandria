@@ -544,6 +544,16 @@ class TestAristas(unittest.TestCase):
         self.assertEqual(post("a", "no_existe").status_code, 404)
         self.assertEqual(post("a", "b").status_code, 200)
 
+    def test_sinapsis_de_una_neurona_incluye_las_rechazadas_y_solo_las_suyas(self):
+        db_conn.compile_raw_jsons(force=True)
+        db_conn.add_links([{"origen_id": "a", "destino_id": "b", "motivo": "m_ab", "estado": "rechazada"},
+                           {"origen_id": "zz", "destino_id": "b", "motivo": "m_zb", "estado": "aceptada"}])   # zz no existe: no cuenta
+        r = self.client.get("/api/node/b/sinapsis")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["sinapsis"], [{"con": "a", "nombre": "A", "estado": "rechazada", "motivo": "m_ab"}])
+        self.assertEqual(self.client.get("/api/node/no_existe/sinapsis").status_code, 404)
+        self.assertEqual(self.client.get("/api/node/a%2F..%2Fx/sinapsis").status_code, 404)
+
     def test_arranque_ejecuta_el_hook_del_lifespan(self):
         with patch.object(main, "startup_event") as arranque:
             with TestClient(main.app, base_url="http://127.0.0.1"):

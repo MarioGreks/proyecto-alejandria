@@ -229,3 +229,31 @@ test('conTema pone el concepto sugerido en el hueco del prompt de exploración y
     assert.equal(conTema('sin hueco', 'X'), 'sin hueco');
     assert.ok(conTema('[INSERTA EL CONCEPTO AQUÍ]', 'a $& b').includes('a $& b'), 'los símbolos especiales del tema se copian tal cual');
 });
+
+test('sin sinapsis el prompt de revisión no habla de ellas y es el de siempre', () => {
+    assert.ok(!/sinapsis/i.test(promptRevision({ ...NEURONA })));
+});
+
+test('con sinapsis, el prompt las lista (con estado y motivo, también las rechazadas), pide veredicto y conexiones nuevas solo con neuronas de la red', () => {
+    const p = promptRevision({ ...NEURONA,
+        sinapsis: [{ con: 'markov', nombre: 'Cadenas de Markov', estado: 'aceptada', motivo: 'Caso\ndiscreto' }, { con: 'ruido', nombre: 'Ruido blanco', estado: 'rechazada', motivo: '' }],
+        neuronas: [{ id: 'bayes', nombre: 'Teorema de Bayes' }, { id: 'markov', nombre: 'Cadenas de Markov' }, { id: 'ruido', nombre: 'Ruido blanco' }, { id: 'gompertz', nombre: 'Modelo de Gompertz' }] });
+    assert.match(p, /- markov \(«Cadenas de Markov»\) \| estado: aceptada \| motivo: Caso discreto/);
+    assert.match(p, /- ruido \(«Ruido blanco»\) \| estado: rechazada \| motivo: \(sin motivo\)/);
+    const sinConexion = p.split('NEURONAS DE MI RED CON LAS QUE AÚN NO TIENE CONEXIÓN')[1].split('NEURONA ACTUAL')[0];
+    assert.match(sinConexion, /gompertz: Modelo de Gompertz/);
+    assert.ok(!/bayes: |markov: |ruido: /.test(sinConexion));                                  // ni ella misma ni las ya conectadas
+    assert.match(p, /referencias, sugerencias, sinapsis, sinapsis_nuevas\) y el mismo "id"/);
+    assert.match(p, /"veredicto" es exactamente una de estas tres palabras: "confirmar".*"cuestionar".*"quitar"/);
+    assert.match(p, /SOLO con neuronas de la lista de arriba/);
+    assert.match(p, /No inventes ids/);
+    assert.equal(bloquesJson(p).length, 1);                                                    // el ejemplo de formato no es un bloque json
+    assert.deepEqual(JSON.parse(bloquesJson(p)[0]), { ...NEURONA });                          // la neurona sigue yendo sin sinapsis
+    assert.ok(!p.includes('undefined') && !p.includes('[object'));
+});
+
+test('una neurona sin ninguna sinapsis también produce un prompt válido (solo puede proponer nuevas)', () => {
+    const p = promptRevision({ ...NEURONA, sinapsis: [], neuronas: [{ id: 'bayes', nombre: 'Teorema de Bayes' }] });
+    assert.match(p, /\(esta neurona aún no tiene ninguna\)/);
+    assert.match(p, /\(ninguna\)/);
+});
