@@ -17,7 +17,7 @@ export function SelectorSubred({ subredes, activa, calculando, onElegir, onGesti
     return (
         <div style={{ position: 'relative' }}>
             <button className="t-btn" onClick={() => setAbierto(a => !a)} title="Cambiar entre la red general y tus subredes (TFM, Tesis...)"
-                style={activa ? { borderColor: colorSubred(activa), color: colorSubred(activa) } : undefined}>
+                style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(activa ? { borderColor: colorSubred(activa), color: colorSubred(activa) } : null) }}>
                 [ Red: {activa ?? 'General'}{calculando ? ' …' : ''} ▾ ]
             </button>
             {abierto && (<>
