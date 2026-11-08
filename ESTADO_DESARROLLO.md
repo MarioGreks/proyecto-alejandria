@@ -162,6 +162,12 @@ Se renderiza un *Force Graph* biológico donde las conexiones (links) se dibujan
 - Probado en navegador con backend aislado (crear la neurona la quita sola; descartar, restaurar, subred, editor). Tests: backend 168, frontend 110.
 - Arreglo incluido: los nombres de las neuronas (HTML sobre el lienzo) tenían z-index 50/100 y se veían por encima del panel; ahora 9 (`Z_ROTULOS`), por debajo de las barras (10) y del panel (20).
 
+### [Fase 10.8] «Pedir revisión» con sinapsis ✅ Publicado en la 0.7.0
+- El prompt de revisión lista las conexiones de la neurona (aceptadas, pendientes y rechazadas, con su motivo; `GET /api/node/{id}/sinapsis`) y la lista de neuronas de la red sin conexión con ella. Pide a la IA externa un veredicto por conexión (`confirmar`, `cuestionar`, `quitar`, con `razon`) en el campo `sinapsis` y hasta 5 conexiones nuevas en `sinapsis_nuevas` (`con`, `motivo`), solo con ids de la lista.
+- Al pegar el JSON revisado, `leerSinapsis` (utils/neurona.ts) lo lee con tolerancia (sinónimos, id o nombre; los ids inventados, repetidos o ya conectados se ignoran con aviso) y `VeredictoSinapsis.tsx` enseña las propuestas arriba del editor y en la pestaña «Sinapsis». Cada una se aplica a mano, al momento y con los endpoints de aristas de siempre (no depende de «Guardar»); el veredicto sobrevive a guardar la neurona.
+- En la pestaña «Sinapsis», aceptar, rechazar o crear una conexión ya no recarga la página (se perdería el veredicto): repinta la red con `onRecargar`.
+- Probado en navegador con backend aislado y un JSON imperfecto (comillas sin escapar, coma que falta, ids y veredictos inventados). Tests: backend 169, frontend 117. Sin probar: una respuesta REAL de IA con este veredicto y el .exe empaquetado.
+
 ### [Fase 11 - Futura] Fine-Tuning y Modelfile (Cerebro Dedicado) ⏳ Pendiente
 - **Recolección de Feedback:** Se ha implementado un sistema *Human-in-the-loop* en el panel de sinapsis de la UI. El usuario puede validar (✅) o rechazar (❌) las relaciones propuestas por el LLM.
 - **Creación del Dataset (Pendiente):** Cuando se alcance una masa crítica de validaciones (ej. 200-300 aristas aceptadas/rechazadas), se desarrollará un script (`generar_dataset.py`) para extraer y formatear estos datos en JSONL (formato ShareGPT/Alpaca).
