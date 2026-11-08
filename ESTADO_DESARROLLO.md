@@ -154,6 +154,7 @@ Se renderiza un *Force Graph* biológico donde las conexiones (links) se dibujan
 - **Subredes**: una neurona guarda `"subredes": ["TFM", ...]` en su JSON (backend/subredes.py); todas siguen en la red general. La lista se deduce de las neuronas, viaja con la sincronización y con exportar/importar (exportar dentro de una subred saca solo esa). Selector `[ Red: ... ]` en la barra superior, gestión (crear, renombrar, borrar, elegir neuronas con casillas) y fila «Subredes» en el panel de cada neurona, con «+N vecinas». Dentro de una subred, borrar una neurona solo la quita de ella.
 - **Animación**: red general ⇄ subred (y subred ⇄ subred) interpolada vértice a vértice en la GPU (shaders en Universe.tsx, fórmulas en utils/transicion.ts); la disposición compacta de la subred sale de un layout de fuerzas (utils/distribucionSubred.ts) calculado en un Web Worker y recordado por subred. Interrumpible a mitad.
 - Probado con 2.025 neuronas y 4.270 conexiones: mediana de 6 ms por fotograma durante la transición. Sin probar: el .exe empaquetado (Worker bajo la CSP de Tauri) y la sincronización real entre dos PCs con subredes.
+- **0.5.1**: barra superior redistribuida (red a la izquierda, búsqueda en el centro, Agenda/Papelera/Ajustes a la derecha); Recargar pasa a la barra inferior.
 
 ### [Fase 11 - Futura] Fine-Tuning y Modelfile (Cerebro Dedicado) ⏳ Pendiente
 - **Recolección de Feedback:** Se ha implementado un sistema *Human-in-the-loop* en el panel de sinapsis de la UI. El usuario puede validar (✅) o rechazar (❌) las relaciones propuestas por el LLM.

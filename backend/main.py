@@ -16,7 +16,7 @@ import subredes
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.5.0"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.5.1"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
