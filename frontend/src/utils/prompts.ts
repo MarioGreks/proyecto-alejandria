@@ -39,9 +39,18 @@ const SI_HISTORICO = (flexible: boolean) => flexible ? ' SI ES HISTÓRICO O CONC
 // Revisión interna: mejora la calidad sin añadir nada visible a la respuesta (ni en el texto ni en el JSON).
 const VERIFICACION_OCULTA = `VERIFICACIÓN DOBLE OCULTA: antes de escribir la respuesta final, revísala DOS veces en silencio. Primera pasada, rigor: cada definición, fórmula, deducción, dato, fecha, autor y referencia es correcto; si no estás seguro de algo, quítalo o suavízalo en lugar de inventarlo. Segunda pasada, coherencia: la teoría, el glosario, los ejercicios y el laboratorio no se contradicen y usan la misma notación; cada ejercicio se resuelve de verdad con el resultado que das; el código del laboratorio se ejecuta sin errores y dibuja lo que la teoría describe. Corrige lo que falle y repite la revisión hasta no encontrar nada. Es un proceso interno: NO lo muestres ni lo menciones (ni listas de comprobación, ni «verificado», ni notas, ni campos extra en el JSON); la respuesta debe leerse como si hubiera salido correcta a la primera.`;
 
+// Un tema de asignatura trae varios conceptos y cada neurona trata uno solo: primero se elige, luego se genera.
+const ELEGIR_CONCEPTO = (conceptos: string) => `El material puede contener varios ${conceptos} distintos y cada neurona de Alejandría trata UNO solo, así que trabajas en DOS PASOS:
+
+PASO 1 (en tu primera respuesta): lee TODO el material y haz una lista numerada de TODOS los ${conceptos} distintos que contiene, con su nombre y una línea sobre qué trata cada uno, sin dejarte ninguno. Termina preguntándome cuál quiero. En este paso NO generes ningún JSON: si tu primera respuesta lo contiene, has incumplido estas instrucciones. Solo si el material trata claramente de un único concepto, sáltate la pregunta y pasa directamente al PASO 2.
+
+PASO 2 (cuando te diga cuál): genera un único objeto JSON solo de ese concepto (su teoría cubre solo ese; los demás se mencionan sin desarrollarlos) que siga EXACTAMENTE esta estructura, sin añadir texto fuera del JSON (ni saludos ni explicaciones extra). Entrégalo SIEMPRE dentro de un único bloque de código \`\`\`json ... \`\`\`, nunca como texto suelto del chat: el chat se come los \`$$\`, los \`##\` y la sangría del código Python al copiarlo. Si luego te pido otro concepto de la lista, haz otro JSON igual.`;
+
+const FORMATO_FINAL = 'Devuelve ÚNICAMENTE el bloque JSON en el PASO 2; en el PASO 1 solo la lista y la pregunta.';
+
 const fuentes = (flexible: boolean) => `Actúa como un Catedrático Universitario e Investigador Postdoctoral experto en visualización de datos. Tu objetivo es procesar el material académico que te proporciono y estructurarlo de forma exhaustiva, rigurosa y con extrema profundidad en un formato JSON diseñado para "Alejandría", un simulador interactivo de conocimiento.
 
-Para el concepto ${flexible ? 'más crítico' : 'matemático/analítico más crítico'} del texto, debes generar un único objeto JSON que siga EXACTAMENTE esta estructura, sin añadir texto fuera del JSON (ni saludos ni explicaciones extra):
+${ELEGIR_CONCEPTO(flexible ? 'conceptos' : 'conceptos matemáticos/analíticos')}
 
 \`\`\`json
 {
@@ -102,7 +111,7 @@ ${flexible ? TIPO_CONCEPTO + DOBLE_SALTO + JSON_SEGURO + DOBLE_SALTO : ''}### RE
 7. ${VERIFICACION_OCULTA}
 8. ${SIN_MARCAS_CITA}
 9. ${REGLA_SUGERENCIAS}
-10. Devuelve ÚNICAMENTE el bloque JSON.`;
+10. ${FORMATO_FINAL}`;
 
 const exploracion = (flexible: boolean) => `Actúa como un Investigador Catedrático y tutor académico de nivel de Doctorado (PhD). 
 Quiero que me expliques a fondo y con extremo rigor el siguiente concepto: **[INSERTA EL CONCEPTO AQUÍ]**.
@@ -259,14 +268,14 @@ const reglasNoFormal = (m: NoFormal, ultima: string) => [m.reglaEjercicios, SIN_
 
 const noFormalFuentes = (m: NoFormal) => `Actúa como un ${m.rol}. Tu objetivo es procesar el material académico que te proporciono y estructurarlo con rigor y profundidad en un formato JSON diseñado para "Alejandría", una app de conocimiento interactiva.
 
-Para el concepto más crítico del texto, debes generar un único objeto JSON que siga EXACTAMENTE esta estructura, sin añadir texto fuera del JSON (ni saludos ni explicaciones extra):
+${ELEGIR_CONCEPTO('conceptos')}
 
 \`\`\`json
 ${jsonNoFormal(m)}
 \`\`\`
 
 ### REGLAS DE ORO:
-${reglasNoFormal(m, 'Devuelve ÚNICAMENTE el bloque JSON.')}`;
+${reglasNoFormal(m, FORMATO_FINAL)}`;
 
 const noFormalExploracion = (m: NoFormal) => `Actúa como un ${m.rol}, de nivel de Doctorado (PhD).
 Quiero que me expliques a fondo y con extremo rigor el siguiente concepto: **[INSERTA EL CONCEPTO AQUÍ]**.

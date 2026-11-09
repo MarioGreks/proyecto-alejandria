@@ -33,7 +33,21 @@ test('ambos prompts piden no dejar marcas de cita como [reference:3] en los text
         assert.match(p, /NO dejes las marcas de cita/);
         assert.ok(p.includes('[reference:3]') && p.includes('"referencias"'));
     }
-    assert.ok(PROMPT_FUENTES.trimEnd().endsWith('Devuelve ÚNICAMENTE el bloque JSON.'));   // la última regla sigue siendo la de formato
+    assert.ok(PROMPT_FUENTES.trimEnd().endsWith('el bloque JSON en el PASO 2; en el PASO 1 solo la lista y la pregunta.'));   // la última regla sigue siendo la de formato
+});
+
+test('fuentes propias: primero lista los conceptos y pregunta cuál, y solo después genera el JSON, en todos los modos', () => {
+    for (const modo of ['auto', 'formal', 'historico', 'teorico']) {
+        const p = promptFuentes(modo);
+        assert.match(p, /PASO 1 \(en tu primera respuesta\)/);
+        assert.match(p, /Termina preguntándome cuál quiero\. En este paso NO generes ningún JSON/);
+        assert.match(p, /PASO 2 \(cuando te diga cuál\)/);
+        assert.match(p, /Solo si el material trata claramente de un único concepto, sáltate la pregunta/);
+        assert.match(p, /si tu primera respuesta lo contiene, has incumplido/);
+        assert.match(p, /SIEMPRE dentro de un único bloque de código ```json/);     // copiado del chat renderizado se pierden \$\$, ## y la sangría
+        assert.ok(!p.includes('más crítico'));     // ya no se queda con un solo concepto elegido por la IA
+    }
+    assert.match(PROMPT_FUENTES_CLASICO, /conceptos matemáticos\/analíticos distintos/);
 });
 
 test('el prompt normal distingue formal de histórico (ante la duda, formal) y el clásico sigue siendo el de antes', () => {
@@ -46,7 +60,6 @@ test('el prompt normal distingue formal de histórico (ante la duda, formal) y e
         assert.match(clasico, /Debes incluir SIEMPRE un array/);
         assert.ok(!clasico.includes('undefined') && !normal.includes('undefined'));
     }
-    assert.match(PROMPT_FUENTES_CLASICO, /concepto matemático\/analítico más crítico/);
 });
 
 test('los clústeres existentes se añaden entre el tipo de concepto y las reglas', () => {
@@ -109,7 +122,7 @@ test('histórico y teórico no piden laboratorio ni gráficos; el histórico no 
 
 test('la modalidad de fuentes termina en la regla de formato y la de exploración exige las dos partes en orden', () => {
     for (const modo of ['historico', 'teorico']) {
-        assert.ok(promptFuentes(modo).trimEnd().endsWith('Devuelve ÚNICAMENTE el bloque JSON.'));
+        assert.ok(promptFuentes(modo).trimEnd().endsWith('el bloque JSON en el PASO 2; en el PASO 1 solo la lista y la pregunta.'));
         const e = promptExploracion(modo);
         assert.ok(e.includes('PARTE 1') && e.includes('PARTE 2') && e.includes('SECUENCIA OBLIGATORIA'));
         assert.ok(e.indexOf('PARTE 1') < e.indexOf('PARTE 2'));
