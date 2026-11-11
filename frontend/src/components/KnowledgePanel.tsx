@@ -17,7 +17,7 @@ import type { InfoSubred } from '../utils/subredes';
 import { descartarSugerencia, neuronasEnPapelera, restaurarNeurona, sugerenciasVisibles } from '../utils/sugerencias';
 import type { Sugerencia } from '../utils/sugerencias';
 
-type Tab = 'teoria' | 'glosario' | 'laboratorio' | 'ejercicios' | 'referencias' | 'relacionados' | 'sinapsis';
+type Tab = 'aprender' | 'practicar' | 'fuentes' | 'red';
 
 export interface ReferenciaItem {
     titulo: string;
@@ -40,16 +40,19 @@ interface NodeData {
     sugerencias?: Sugerencia[];     // temas relacionados que trae la neurona (sin los descartados)
 }
 
-const TABS: Tab[] = ['teoria', 'glosario', 'laboratorio', 'ejercicios', 'referencias', 'relacionados', 'sinapsis'];
+// Cuatro pestañas por tarea: aprender (teoría con el glosario al lado), practicar (laboratorio y ejercicios), fuentes (referencias) y red (sinapsis y temas relacionados).
+const TABS: Tab[] = ['aprender', 'practicar', 'fuentes', 'red'];
 const TAB_LABELS: Record<Tab, string> = {
-    teoria: 'Teoría',
-    glosario: 'Glosario',
-    laboratorio: 'Laboratorio',
-    ejercicios: 'Ejercicios',
-    referencias: 'Referencias',
-    relacionados: 'Relacionados',
-    sinapsis: 'Sinapsis'
+    aprender: 'Aprender',
+    practicar: 'Practicar',
+    fuentes: 'Fuentes',
+    red: 'Red'
 };
+
+/** Título de una sección dentro de una pestaña (varias comparten pestaña). */
+const TituloSeccion = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ color: 'var(--t-ambar)', fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>{children}</div>
+);
 
 const MONO = 'var(--t-mono)';
 
@@ -112,7 +115,7 @@ export default function KnowledgePanel({
     onTema?: (nombre: string) => void;     // abre el inyector con ese tema (cuando una sugerencia aún no existe)
     onRecargar?: () => void | Promise<void>;
 }) {
-    const [activeTab, setActiveTab] = useState<Tab>('teoria');
+    const [activeTab, setActiveTab] = useState<Tab>('aprender');
     const [data, setData] = useState<NodeData | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -397,8 +400,8 @@ export default function KnowledgePanel({
                         {(() => {
                             const porDecidir = revisionSinapsis ? revisionSinapsis.nuevas.filter(n => !aplicadas[claveNueva(n.con)]).length
                                 + revisionSinapsis.veredictos.filter(v => !aplicadas[claveVeredicto(v.con)] && v.veredicto !== 'cuestionar' && v.estado !== (v.veredicto === 'quitar' ? 'rechazada' : 'aceptada')).length : 0;
-                            const nombre = tab === 'relacionados' && visibles.length > 0 ? `${TAB_LABELS[tab]} (${visibles.length})`
-                                : tab === 'sinapsis' && porDecidir > 0 ? `${TAB_LABELS[tab]} (${porDecidir} ${porDecidir === 1 ? 'propuesta' : 'propuestas'})` : TAB_LABELS[tab];
+                            const avisos = tab !== 'red' ? [] : [...(porDecidir > 0 ? [`${porDecidir} ${porDecidir === 1 ? 'propuesta' : 'propuestas'}`] : []), ...(visibles.length > 0 ? [`${visibles.length} ${visibles.length === 1 ? 'tema' : 'temas'}`] : [])];
+                            const nombre = avisos.length ? `${TAB_LABELS[tab]} (${avisos.join(', ')})` : TAB_LABELS[tab];
                             return activeTab === tab ? `[ ${nombre} ]` : nombre;
                         })()}
                     </button>
@@ -409,22 +412,23 @@ export default function KnowledgePanel({
             <div style={{ flex: 1, padding: 28, overflowY: 'auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
                 {loading && <p style={{ color: 'var(--t-verde)', fontFamily: MONO }}>&gt; Leyendo memoria...</p>}
 
-                {!loading && data && (editando || activeTab === 'sinapsis') && veredictoSinapsis}
+                {!loading && data && (editando || activeTab === 'red') && veredictoSinapsis}
 
                 {!loading && data && editando && (
                     <EditorNeurona key={data.id} nodeId={nodeId!} inicial={formDesdeNeurona(data)} onCambios={setEditorSucio} neuronas={neuronasDeLaRed}
                         onSinapsis={r => { setRevisionSinapsis(r); setAplicadas({}); }}
-                        onGuardado={n => { setData(n); setEditando(false); setAviso(''); setInfo('Neurona guardada.' + (revisionSinapsis ? ' El veredicto sobre las sinapsis te espera en la pestaña «Sinapsis».' : '')); if (revisionSinapsis) setActiveTab('sinapsis'); }} onSalir={() => setEditando(false)} />
+                        onGuardado={n => { setData(n); setEditando(false); setAviso(''); setInfo('Neurona guardada.' + (revisionSinapsis ? ' El veredicto sobre las sinapsis te espera en la pestaña «Red».' : '')); if (revisionSinapsis) setActiveTab('red'); }} onSalir={() => setEditando(false)} />
                 )}
 
-                {!loading && data && !editando && activeTab === 'teoria' && (
-                    <div className="markdown-container" style={{ lineHeight: 1.6, fontSize: 16, textAlign: 'justify', color: '#e0e0e0' }}>
+                {!loading && data && !editando && activeTab === 'aprender' && (
+                  <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div className="markdown-container" style={{ flex: '2 1 420px', minWidth: 0, lineHeight: 1.6, fontSize: 16, textAlign: 'justify', color: '#e0e0e0' }}>
                         <Md texto={data.teoria} />
                     </div>
-                )}
 
-                {!loading && data && !editando && activeTab === 'glosario' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                    {/* El glosario va al lado de la teoría y se queda a la vista mientras se lee (en una ventana estrecha pasa debajo) */}
+                    <aside style={{ flex: '1 1 260px', minWidth: 0, position: 'sticky', top: 0, maxHeight: 'calc(100vh - 300px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                        <TituloSeccion>## Glosario</TituloSeccion>
                         {(data.glosario ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene glosario</Vacio>}
                         {(data.glosario ?? []).map((g, idx) => (
                             <Tarjeta key={idx} color="var(--t-ambar)">
@@ -436,11 +440,14 @@ export default function KnowledgePanel({
                                 </div>
                             </Tarjeta>
                         ))}
-                    </div>
+                    </aside>
+                  </div>
                 )}
 
-                {!loading && data && !editando && activeTab === 'laboratorio' && (
+                {!loading && data && !editando && activeTab === 'practicar' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                     <div style={{ marginTop: 6 }}>
+                        <div style={{ marginBottom: 12 }}><TituloSeccion>## Laboratorio</TituloSeccion></div>
                         <LaboratorioWidget
                             key={nodeId}
                             data={data.laboratorio ?? null}
@@ -448,18 +455,18 @@ export default function KnowledgePanel({
                             onGuardado={lab => setData(d => (d ? { ...d, laboratorio: lab } : d))}
                         />
                     </div>
-                )}
 
-                {!loading && data && !editando && activeTab === 'ejercicios' && (
                     <div style={{ textAlign: 'justify' }}>
+                        <TituloSeccion>## Ejercicios</TituloSeccion>
                         {(data.ejercicios ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene ejercicios (es histórico o conceptual, o no se generaron)</Vacio>}
                         {(data.ejercicios ?? []).map((ej, idx) => (
                             <EjercicioWidget key={idx} ejercicio={ej} />
                         ))}
                     </div>
+                  </div>
                 )}
 
-                {!loading && data && !editando && activeTab === 'referencias' && (
+                {!loading && data && !editando && activeTab === 'fuentes' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'justify' }}>
                         {(!data.referencias || data.referencias.length === 0) ? (
                             <Vacio>
@@ -512,8 +519,10 @@ export default function KnowledgePanel({
                     </div>
                 )}
 
-                {!loading && data && !editando && activeTab === 'relacionados' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                {!loading && data && !editando && activeTab === 'red' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                    <div style={{ order: 2, display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                        <TituloSeccion>## Temas relacionados</TituloSeccion>
                         {visibles.length === 0 && (
                             <Vacio>
                                 {(data.sugerencias ?? []).length === 0
@@ -543,10 +552,10 @@ export default function KnowledgePanel({
                             </Tarjeta>
                         ))}
                     </div>
-                )}
 
-                {!loading && data && !editando && activeTab === 'sinapsis' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                    {/* Las sinapsis (lo que más se decide) van primero, aunque estén después en el código */}
+                    <div style={{ order: 1, display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                        <TituloSeccion>## Sinapsis</TituloSeccion>
                         <Seccion titulo="Revisar con una IA externa">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: MONO }}>
@@ -632,6 +641,7 @@ export default function KnowledgePanel({
                             </div>
                         </Seccion>
                     </div>
+                  </div>
                 )}
             </div>
 

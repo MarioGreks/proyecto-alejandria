@@ -182,7 +182,7 @@ export default function EditorNeurona({ nodeId, inicial, onGuardado, onSalir, on
             <Seccion titulo={`Temas relacionados sugeridos (${form.sugerencias.length})`}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <p style={{ margin: 0, color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: 'var(--t-mono)' }}>
-                        Los trae la IA al crear o revisar la neurona (pestaña «Relacionados» del panel). Aquí solo se ven y se pueden quitar; para renovarlos usa «Pegar JSON revisado».
+                        Los trae la IA al crear o revisar la neurona (pestaña «Red» del panel). Aquí solo se ven y se pueden quitar; para renovarlos usa «Pegar JSON revisado».
                     </p>
                     {form.sugerencias.map((s, i) => (
                         <div key={i} style={{ ...fila, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
