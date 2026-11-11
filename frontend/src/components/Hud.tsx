@@ -144,7 +144,7 @@ export default function Hud(p: Props) {
                 {!p.sinapsis?.activo && p.aviso && <span style={{ color: 'var(--t-verde)' }}> | {p.aviso}</span>}
             </div>
             <button className="t-btn" onClick={p.onRecargar} title="Vuelve a leer las neuronas del disco">[ Recargar ]</button>
-            <button className="t-btn" onClick={p.onReorganizar} title="Recalcula de cero la posición de todas las neuronas: cierra los huecos y deja el mismo reparto en todos tus PC">[ Reorganizar ]</button>
+            <button className="t-btn" onClick={p.onReorganizar} title="Vuelve a colocar cada neurona dentro de su clúster según sus conexiones (con animación); los clústeres no se mueven">[ Reorganizar ]</button>
             <button className="t-btn" onClick={p.onCentrar}>[ Centrar vista ]</button>
         </div>
     </>);

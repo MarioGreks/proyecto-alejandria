@@ -16,7 +16,8 @@ import Hud from './Hud';
 import { Cabecera, Dialogo, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
-import { casillasRecordadas, centroDeCasilla, firmaUniverso, olvidarDisposicion, posicionesRecordadas, rngDe } from '../utils/disposicion';
+import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionesRecordadas, rngDe } from '../utils/disposicion';
+import { reorganizarPosiciones } from '../utils/reorganizar';
 import { DURACION_MS, FASE_MAX, avance, hornearEscalares, hornearPosiciones } from '../utils/transicion';
 import { asignarSubredes, borrarSubred, colorSubred, esMiembro, guardarSubredActiva, guardarVacias, listarSubredes, mismaSubred, normalizarNombre, renombrarSubred, subredActivaGuardada, vaciasGuardadas } from '../utils/subredes';
 import { calcularDisposicion, renombrarDisposicion } from '../utils/layoutSubred';
@@ -413,7 +414,7 @@ const reducirMovimiento = () => { try { return window.matchMedia('(prefers-reduc
 const atributo = (g: THREE.BufferGeometry, nombre: string) => g.getAttribute(nombre) as THREE.BufferAttribute | undefined;
 const dinamico = <T extends THREE.BufferAttribute>(a: T): T => { a.setUsage(THREE.DynamicDrawUsage); return a; };
 
-const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista }: { onNodeClick: (id: string) => void, searchQuery: string, realNodes: any[], realLinks: any[], vista: Vista }) => {
+const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista, claveGeometria }: { onNodeClick: (id: string) => void, searchQuery: string, realNodes: any[], realLinks: any[], vista: Vista, claveGeometria: number }) => {
     const base = useMemo(() => construirBase(realNodes, realLinks), [realNodes, realLinks]);
     const cacheGeneral = useRef<{ base: Base, escena: Escena } | null>(null);
     // La escena a la que se va. La de la red general se recuerda mientras no cambie el universo (volver a ella no cuesta nada) y la de una subred parte de ella.
@@ -431,7 +432,8 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista }
     const uniformes = useMemo(() => ({ uT: { value: 1 } }), []);
     const matLinea = useMemo(() => materialLinea(uniformes), [uniformes]);
     const matNucleo = useMemo(() => materialNucleo(uniformes), [uniformes]);
-    const lineGeometry = useMemo(() => new THREE.BufferGeometry(), [base]);   // eslint-disable-line react-hooks/exhaustive-deps
+    // Una geometría nueva cada vez que cambia el universo (se dibuja directamente). «Reorganizar» no la renueva: con la misma, la escena anima desde donde estaban las neuronas.
+    const lineGeometry = useMemo(() => new THREE.BufferGeometry(), [claveGeometria]);   // eslint-disable-line react-hooks/exhaustive-deps
     const marcha = useRef({ t: 1, t0: 0, dur: 0 });                              // avance de la transición (1 = en reposo)
     const aplicado = useRef<{ base: Base, destino: Escena, geometria: THREE.BufferGeometry } | null>(null);
     const moviendose = useRef(false);
@@ -447,8 +449,7 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista }
         const pos = atributo(lineGeometry, 'position');
         const primera = !pos || pos.count !== nv || atributo(nGeo, 'aAnt')?.count !== n;
         const dur = reducirMovimiento() ? 0 : DURACION_MS;
-        const animar = !primera && dur > 0;
-        const nodoVis = Float32Array.from(destino.vis);
+        const animar = !primera && dur > 0;        const nodoVis = Float32Array.from(destino.vis);
 
         if (primera) {
             const colAnt = new Float32Array(destino.lineaCol.length);
@@ -711,8 +712,20 @@ export default function Universe() {
         const firma = firmaUniverso(nodos, aristas);
         if (!forzar && firma === firmaActual.current) return;
         firmaActual.current = firma;
+        setClaveGeometria(c => c + 1);
         setRealNodes(nodos);
         setRealLinks(aristas);
+    };
+    const [claveGeometria, setClaveGeometria] = useState(0);     // sube con cada cambio del universo; «Reorganizar» no la toca (ver BiologicalWeb)
+
+    /** «Reorganizar»: cada neurona vuelve a colocarse dentro de su clúster según sus conexiones (reorganizar.ts) y la escena lo anima. Los clústeres no se mueven. */
+    const reorganizar = () => {
+        const clusters: Record<string, string[]> = {};
+        for (const n of realNodes) (clusters[n.cluster_id || "Desconocido"] ??= []).push(String(n.id));
+        reorganizarPosiciones(clusters, realLinks.map(l => [String(l.origen_id), String(l.destino_id)] as [string, string]));
+        setRealNodes(nodos => [...nodos]);       // otra lista, el mismo universo: la base se rehace con las posiciones nuevas y la geometría se conserva
+        setAvisoSinapsis('Neuronas reorganizadas');
+        window.setTimeout(() => setAvisoSinapsis(null), 6000);
     };
     const sondeoEnCurso = useRef(false);     // si el backend tarda (sincronizando, recompilando), no se apilan sondeos
     const loadData = () => {
@@ -905,6 +918,7 @@ export default function Universe() {
                     realNodes={realNodes}
                     realLinks={realLinks}
                     vista={vista}
+                    claveGeometria={claveGeometria}
                 />
 
                 <CameraController resetFlag={resetCamera} targetPosition={null} distancia={distanciaCamara} />
@@ -946,17 +960,9 @@ export default function Universe() {
 
             {confirmarReorganizar && (
                 <Dialogo titulo="Reorganizar las neuronas"
-                    texto="Se recalcula de cero la posición de todas las neuronas: se cierran los huecos y, con las mismas neuronas, el reparto queda igual en todos tus PC. Pierdes la memoria de dónde estaba cada una en este ordenador. No se cambia ni se borra ninguna neurona ni conexión."
+                    texto="Cada neurona vuelve a colocarse dentro de su clúster: las que están conectadas quedan juntas y se deshace la maraña. Los clústeres no se mueven y se anima el cambio. Con las mismas neuronas y conexiones, el reparto sale igual en todos tus PC. Pierdes la posición que tenía cada neurona en este ordenador; no se cambia ni se borra ninguna neurona ni conexión."
                     aceptar="Reorganizar"
-                    onAceptar={() => {
-                        setConfirmarReorganizar(false);
-                        olvidarDisposicion();
-                        recargar().then(() => {
-                            setResetCamera(prev => prev + 1);
-                            setAvisoSinapsis('Neuronas reorganizadas');
-                            window.setTimeout(() => setAvisoSinapsis(null), 6000);
-                        });
-                    }}
+                    onAceptar={() => { setConfirmarReorganizar(false); reorganizar(); }}
                     onCancelar={() => setConfirmarReorganizar(false)} />
             )}
 

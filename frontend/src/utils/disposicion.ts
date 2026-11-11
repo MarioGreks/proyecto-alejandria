@@ -194,13 +194,9 @@ export function casillasRecordadas(nombres: string[]): Record<string, number> {
 const CLAVE_POSICIONES = 'alejandria.posicionesNeuronas';
 const MAX_POSICIONES = 5000;
 
-/**
- * «Reorganizar»: olvida las casillas de los clústeres y las posiciones de las neuronas de este ordenador. La próxima disposición sale de cero y solo
- * depende de los ids y de los clústeres (casillas por orden alfabético, neuronas por su semilla), así que es la misma en cualquier ordenador con las
- * mismas neuronas, sin huecos de neuronas que ya no están. No toca ninguna neurona ni conexión.
- */
-export function olvidarDisposicion(): void {
-    try { localStorage.removeItem(CLAVE_CASILLAS); localStorage.removeItem(CLAVE_POSICIONES); } catch { /* sin almacenamiento: no hay nada que olvidar */ }
+/** «Reorganizar» (reorganizar.ts): sustituye todo lo recordado por estas posiciones (id → [clúster, desplazamiento]); las neuronas que ya no están se olvidan. */
+export function guardarPosiciones(posiciones: Record<string, [string, Vec3]>): void {
+    try { localStorage.setItem(CLAVE_POSICIONES, JSON.stringify(posiciones)); } catch { /* sin almacenamiento: la próxima vez saldrán las de siempre */ }
 }
 
 /**

@@ -8,7 +8,7 @@ export type Vec3 = [number, number, number];
 
 /** Distancia ideal entre dos neuronas conectadas (cada núcleo mide 0,2-0,3). */
 export const LARGO_RESORTE = 4;
-const CORTE = LARGO_RESORTE * 1.8;           // la repulsión solo actúa dentro de esta distancia (con una rejilla, el coste es lineal y no cuadrático)
+const FACTOR_CORTE = 1.8;                // la repulsión solo actúa dentro de LARGO * este factor (con una rejilla, el coste es lineal y no cuadrático)
 const K_RESORTE = 0.15, K_REPULSION = 0.45, K_GRAVEDAD = 0.012;
 const esVec3 = (p: unknown): p is Vec3 => Array.isArray(p) && p.length === 3 && p.every(n => typeof n === 'number' && Number.isFinite(n));
 
@@ -17,7 +17,8 @@ const esVec3 = (p: unknown): p is Vec3 => Array.isArray(p) && p.length === 3 && 
  * (o en una nube pequeña si no tienen ninguna) y se asientan con las fuerzas. Si no había ninguna previa, el resultado queda centrado en el origen.
  * shortcut: rejilla de 27 celdas por neurona, suficiente hasta unos pocos miles; con muchas más habría que usar un árbol de Barnes-Hut.
  */
-export function disponerSubred(idsEntrada: string[], aristas: [string, string][], previas: Record<string, Vec3> = {}, iteraciones = 180): Record<string, Vec3> {
+export function disponerSubred(idsEntrada: string[], aristas: [string, string][], previas: Record<string, Vec3> = {}, iteraciones = 180, largoResorte = LARGO_RESORTE): Record<string, Vec3> {
+    const LARGO = largoResorte, CORTE = LARGO * FACTOR_CORTE;   // `largoResorte`: la distancia ideal entre conectadas (la de las subredes por defecto; «Reorganizar» la acorta)
     const ids = [...new Set(idsEntrada)].sort();
     const n = ids.length;
     const res: Record<string, Vec3> = {};
@@ -55,7 +56,7 @@ export function disponerSubred(idsEntrada: string[], aristas: [string, string][]
     let cx = 0, cy = 0, cz = 0;
     for (let i = 0; i < n; i++) if (fijo[i]) { cx += pos[i * 3]; cy += pos[i * 3 + 1]; cz += pos[i * 3 + 2]; }
     if (nFijos) { cx /= nFijos; cy /= nFijos; cz /= nFijos; }
-    const radioNube = LARGO_RESORTE * Math.cbrt(n) * 0.8;
+    const radioNube = LARGO * Math.cbrt(n) * 0.8;
     const alAzar = (id: string, escala: number): Vec3 => {
         const r = rngDe(`sub:${id}`);
         let u = r() + r() + r() - 1.5, v = r() + r() + r() - 1.5, w = r() + r() + r() - 1.5;
@@ -71,7 +72,7 @@ export function disponerSubred(idsEntrada: string[], aristas: [string, string][]
             if (!ya.length) continue;
             const m = [0, 0, 0];
             for (const j of ya) { m[0] += pos[j * 3]; m[1] += pos[j * 3 + 1]; m[2] += pos[j * 3 + 2]; }
-            const o = alAzar(ids[i], LARGO_RESORTE);
+            const o = alAzar(ids[i], LARGO);
             pos[i * 3] = m[0] / ya.length + o[0]; pos[i * 3 + 1] = m[1] / ya.length + o[1]; pos[i * 3 + 2] = m[2] / ya.length + o[2];
             colocado[i] = 1;
         }
@@ -108,17 +109,17 @@ export function disponerSubred(idsEntrada: string[], aristas: [string, string][]
                     let d = Math.hypot(x, y, z);
                     if (d >= CORTE) continue;
                     if (d < 1e-6) { const o = alAzar(`${ids[i]}|${ids[j]}`, 0.1); x = o[0] + 1e-3; y = o[1]; z = o[2]; d = Math.hypot(x, y, z); }
-                    const f = K_REPULSION * LARGO_RESORTE * (CORTE - d) / CORTE / d;
+                    const f = K_REPULSION * LARGO * (CORTE - d) / CORTE / d;
                     fuerza[i * 3] += x * f; fuerza[i * 3 + 1] += y * f; fuerza[i * 3 + 2] += z * f;
                     fuerza[j * 3] -= x * f; fuerza[j * 3 + 1] -= y * f; fuerza[j * 3 + 2] -= z * f;
                 }
             }
         }
-        // resortes: acercan las conectadas hasta LARGO_RESORTE
+        // resortes: acercan las conectadas hasta LARGO
         for (const [a, b] of aris) {
             const x = pos[b * 3] - pos[a * 3], y = pos[b * 3 + 1] - pos[a * 3 + 1], z = pos[b * 3 + 2] - pos[a * 3 + 2];
             const d = Math.hypot(x, y, z) || 1e-6;
-            const f = K_RESORTE * (d - LARGO_RESORTE) / d;
+            const f = K_RESORTE * (d - LARGO) / d;
             fuerza[a * 3] += x * f; fuerza[a * 3 + 1] += y * f; fuerza[a * 3 + 2] += z * f;
             fuerza[b * 3] -= x * f; fuerza[b * 3 + 1] -= y * f; fuerza[b * 3 + 2] -= z * f;
         }
