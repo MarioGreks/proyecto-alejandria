@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     PROMPT_FUENTES, PROMPT_EXPLORACION, PROMPT_FUENTES_CLASICO, PROMPT_EXPLORACION_CLASICO, MODOS_PROMPT, conClustersExistentes,
-    conTema, guardarModo, modoGuardado, promptExploracion, promptFuentes, promptRevision,
+    conTema, fichaVecina, guardarModo, modoGuardado, promptExploracion, promptFuentes, promptRevision, promptSinapsis,
 } from './prompts.ts';
 
 test('la exploración libre obliga a consultar Google Scholar y ambos prompts admiten su ficha como URL de la referencia', () => {
@@ -274,4 +274,22 @@ test('una neurona sin ninguna sinapsis también produce un prompt válido (solo 
     const p = promptRevision({ ...NEURONA, sinapsis: [], neuronas: [{ id: 'bayes', nombre: 'Teorema de Bayes' }] });
     assert.match(p, /\(esta neurona aún no tiene ninguna\)/);
     assert.match(p, /\(ninguna\)/);
+});
+
+test('el prompt de sinapsis es independiente: ficha de cada neurona de la red, criterio exigente y respuesta solo con sinapsis', () => {
+    const neuronas = [
+        fichaVecina({ id: 'markov', nombre: 'Cadenas de Markov', cluster_id: 'Estadística', glosario: JSON.stringify([{ termino: 'Estado' }, { termino: 'Transición' }]), teoria: '## Intro\nProcesos **sin memoria**.' }),
+        fichaVecina({ id: 'gompertz', nombre: 'Modelo de Gompertz', cluster_id: 'Actuarial', glosario: [{ termino: 'Mortalidad' }] }),
+    ];
+    const p = promptSinapsis({ ...NEURONA, cluster: 'Estadística', sinapsis: [{ con: 'markov', nombre: 'Cadenas de Markov', estado: 'pendiente', motivo: 'Afinidad semántica' }], neuronas });
+    assert.match(p, /NO revises ni reescribas el contenido de la neurona/);
+    assert.match(p, /sé especialmente exigente con las que unen clústeres distintos/);
+    assert.match(p, /gompertz: Modelo de Gompertz \[Actuarial\] \| términos: Mortalidad/);        // la ficha trae clúster y términos, no solo el nombre
+    assert.ok(!p.includes('markov: Cadenas'), 'una vecina ya conectada no se ofrece como candidata nueva');
+    assert.match(p, /UN ÚNICO bloque ```json que contenga SOLO el campo "sinapsis"/);
+    assert.match(p, /SOLO con neuronas de la lista de arriba/);
+    assert.ok(!/"teoria"|"ejercicios"|"referencias"/.test(p), 'no lleva la neurona entera ni pide devolverla');
+    assert.ok(!p.includes('undefined') && !p.includes('[object') && !p.includes('\n5. '));
+    assert.equal(fichaVecina(neuronas[0]).resumen, '');         // una ficha ya hecha no se vuelve a resumir (sin teoría)
+    assert.equal(neuronas[0].resumen, 'Procesos sin memoria.');       // sin el título «## Intro»
 });

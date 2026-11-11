@@ -325,8 +325,22 @@ export interface NeuronaRevisable {
     id: string; nombre: string; cluster?: string; tipo: 'formal' | 'historico' | 'teorico';
     teoria?: string; glosario?: unknown[]; ejercicios?: unknown[]; referencias?: unknown[]; sugerencias?: unknown[];
     sinapsis?: { con: string; nombre: string; estado: string; motivo: string }[];     // sus conexiones (también las rechazadas); sin esto el prompt no habla de sinapsis
-    neuronas?: { id: string; nombre: string }[];                                      // el resto de la red, para poder proponer conexiones nuevas con ids reales
+    neuronas?: FichaVecina[];                                                         // el resto de la red, para poder proponer conexiones nuevas con ids reales
 }
+
+/** Una neurona de la red vista desde fuera: con `terminos` y `resumen` la IA puede juzgar la relación (solo con el nombre, no). */
+export interface FichaVecina { id: string; nombre: string; cluster?: string; terminos?: string; resumen?: string }
+
+/** Ficha corta de una neurona de la red (el glosario puede venir como lista o como JSON en texto, según de dónde se lea). */
+export function fichaVecina(n: any, largoResumen = 160): FichaVecina {
+    let glosario = n?.glosario;
+    if (typeof glosario === 'string') { try { glosario = JSON.parse(glosario); } catch { glosario = []; } }
+    const terminos = (Array.isArray(glosario) ? glosario : []).map((g: any) => g?.termino).filter((t: unknown) => typeof t === 'string' && t).slice(0, 6).join(', ');
+    const sinTitulos = String(n?.teoria ?? '').split('\n').filter((l: string) => !/^\s*#/.test(l)).join(' ');     // los títulos («1. Introducción histórica…») gastan el resumen sin informar
+    const resumen = linea(sinTitulos.replace(/[#$*\\]/g, '')).slice(0, largoResumen);   // shortcut: con cientos de neuronas el prompt crece; habría que acotar la lista
+    return { id: String(n?.id), nombre: String(n?.nombre ?? n?.id), cluster: n?.cluster_id ?? n?.cluster ?? undefined, terminos, resumen };
+}
+const PREFIJO_FORMATO_SINAPSIS = '\n- Dentro de ese mismo bloque json añade, además, ';
 
 const linea = (s: string) => s.replace(/\s+/g, ' ').trim();
 
@@ -342,9 +356,9 @@ ${lista}
 
 NEURONAS DE MI RED CON LAS QUE AÚN NO TIENE CONEXIÓN (id: nombre), por si falta alguna:
 
-${otras.map(o => `${o.id}: ${linea(o.nombre)}`).join('\n') || '(ninguna)'}
+${otras.map(o => `${o.id}: ${linea(o.nombre)}${o.cluster ? ` [${o.cluster}]` : ''}${o.terminos ? ` | términos: ${o.terminos}` : ''}${o.resumen ? ` | ${o.resumen}` : ''}`).join('\n') || '(ninguna)'}
 `;
-    const formato = `\n- Dentro de ese mismo bloque json añade, además, el campo "sinapsis": una entrada por CADA sinapsis actual (también las rechazadas), con "con" (el id exacto de la lista), "veredicto" y "razon" (una frase). "veredicto" es exactamente una de estas tres palabras: "confirmar" (la relación es real y útil; en una rechazada significa que la descartó por error), "cuestionar" (dudosa, vaga o mal razonada) o "quitar" (falsa, trivial o redundante). Y el campo "sinapsis_nuevas": entre 0 y 5 conexiones que falten, SOLO con neuronas de la lista de arriba, cada una con "con" (su id exacto) y "motivo" (una frase). No inventes ids. Ejemplo: "sinapsis": [{"con": "id_vecina", "veredicto": "quitar", "razon": "Solo comparten el nombre."}], "sinapsis_nuevas": [{"con": "id_de_la_lista", "motivo": "Es un caso particular de este concepto."}]`;
+    const formato = `${PREFIJO_FORMATO_SINAPSIS}el campo "sinapsis": una entrada por CADA sinapsis actual (también las rechazadas), con "con" (el id exacto de la lista), "veredicto" y "razon" (una frase). "veredicto" es exactamente una de estas tres palabras: "confirmar" (la relación es real y útil; en una rechazada significa que la descartó por error), "cuestionar" (dudosa, vaga o mal razonada) o "quitar" (falsa, trivial o redundante). Y el campo "sinapsis_nuevas": entre 0 y 5 conexiones que falten, SOLO con neuronas de la lista de arriba, cada una con "con" (su id exacto) y "motivo" (una frase). No inventes ids. Ejemplo: "sinapsis": [{"con": "id_vecina", "veredicto": "quitar", "razon": "Solo comparten el nombre."}], "sinapsis_nuevas": [{"con": "id_de_la_lista", "motivo": "Es un caso particular de este concepto."}]`;
     return { texto, formato, campos: ', sinapsis, sinapsis_nuevas' };
 }
 
@@ -396,6 +410,33 @@ FORMATO DE LA RESPUESTA:
 2. ${IDIOMAS[IDIOMA_ACTUAL]}
 3. ${VERIFICACION_OCULTA}
 4. ${SIN_MARCAS_CITA}`;
+}
+
+/**
+ * «Pedir sinapsis»: prompt aparte, solo para juzgar las conexiones de UNA neurona y proponer las que falten, sin revisar su contenido. A diferencia del de
+ * revisión, la IA ve una ficha (clúster, términos, resumen) de cada neurona de la red, no solo su nombre. La respuesta es un JSON con `sinapsis` y
+ * `sinapsis_nuevas`, el mismo que lee `leerSinapsis`.
+ */
+export function promptSinapsis(n: NeuronaRevisable & { sinapsis: NonNullable<NeuronaRevisable['sinapsis']> }): string {
+    const sin = seccionSinapsis(n);
+    const ficha = fichaVecina(n, 1200);
+    return `Actúa como un Catedrático Universitario con una visión muy amplia del conocimiento, experto en cómo se relacionan los conceptos entre sí. Te paso UNA neurona de "Alejandría" (una app de conocimiento personal: cada concepto es una neurona y las sinapsis son las conexiones entre conceptos) y una ficha de las demás neuronas de mi red. Tu tarea es SOLO juzgar sus sinapsis y proponer las que falten: NO revises ni reescribas el contenido de la neurona.
+
+CRITERIO: una sinapsis es real si un concepto usa, deriva, generaliza o aplica al otro, si comparten un modelo o una herramienta matemática concreta, o si tienen un vínculo histórico o conceptual directo (misma persona o escuela, una influencia clara). NO basta con que sean del mismo campo general ni de la misma época. Prefiere pocas conexiones y buenas a muchas flojas, y sé especialmente exigente con las que unen clústeres distintos (el nombre entre corchetes es el clúster).
+
+NEURONA A REVISAR:
+- id: ${n.id}
+- nombre: ${linea(n.nombre)}${n.cluster ? `\n- clúster: ${n.cluster}` : ''}${ficha.terminos ? `\n- términos clave: ${ficha.terminos}` : ''}
+- resumen: ${ficha.resumen || '(sin teoría)'}
+
+${sin.texto.replace(/^5\. /, '')}
+FORMATO DE LA RESPUESTA:
+- Primero, una lista breve (máximo 8 viñetas) con lo más importante de tu razonamiento.
+- Después, UN ÚNICO bloque \`\`\`json que contenga SOLO ${sin.formato.slice(PREFIJO_FORMATO_SINAPSIS.length)} No devuelvas la neurona ni más campos, y no uses ningún otro bloque de código.
+
+### REGLAS DE ORO:
+1. ${JSON_SEGURO}
+2. ${IDIOMAS[IDIOMA_ACTUAL]}`;
 }
 
 const CLAVE_MODO = 'alejandria.modoPrompt';

@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { handleOpenExternal } from '../utils/markdown';
 import { Md } from './Md';
 import EditorNeurona from './EditorNeurona';
-import { formDesdeNeurona, normalizarTipo, TIPOS_NEURONA } from '../utils/neurona';
+import { formDesdeNeurona, leerSinapsis, normalizarTipo, TIPOS_NEURONA } from '../utils/neurona';
 import type { RevisionSinapsis, SinapsisActual } from '../utils/neurona';
 import { errorDe } from '../utils/errorApi';
 import VeredictoSinapsis, { claveNueva, claveVeredicto } from './VeredictoSinapsis';
-import { promptRevision } from '../utils/prompts';
+import { fichaVecina, promptRevision, promptSinapsis } from '../utils/prompts';
 import LaboratorioWidget from './LaboratorioWidget';
 import type { LaboratorioData } from './LaboratorioWidget';
 import { API } from '../utils/api';
@@ -128,6 +128,10 @@ export default function KnowledgePanel({
     const [editorSucio, setEditorSucio] = useState(false);   // con cambios sin guardar
     const [revisionSinapsis, setRevisionSinapsis] = useState<RevisionSinapsis | null>(null);   // veredicto de la IA externa sobre las conexiones, pendiente de decidir
     const [aplicadas, setAplicadas] = useState<Record<string, boolean>>({});
+    const [pegandoSinapsis, setPegandoSinapsis] = useState(false);     // «Pegar respuesta» del prompt de sinapsis
+    const [textoSinapsis, setTextoSinapsis] = useState('');
+    const [errorSinapsis, setErrorSinapsis] = useState('');
+    const [leyendoSinapsis, setLeyendoSinapsis] = useState(false);
 
     useEffect(() => {
         if (nodeId !== null) {
@@ -224,7 +228,7 @@ export default function KnowledgePanel({
         try { await onSubredes([nodeId!], [], [subredActiva]); onClose(); } catch (e: any) { setAviso(`Error: ${e?.message ?? 'no se pudo quitar de la subred.'}`); }
     };
 
-    const neuronasDeLaRed = (todasLasNeuronas.length > 0 ? todasLasNeuronas : universeNodes).map(n => ({ id: String(n.id), nombre: String(n.nombre ?? n.id) }));
+    const neuronasDeLaRed = (todasLasNeuronas.length > 0 ? todasLasNeuronas : universeNodes).map(n => fichaVecina(n));   // con clúster, términos y resumen: la IA externa puede juzgar la relación
 
     /** Copia al portapapeles el prompt para que una IA externa revise esta neurona (el resultado se pega en el editor). */
     const pedirRevision = async () => {
@@ -235,19 +239,59 @@ export default function KnowledgePanel({
         const prompt = promptRevision({ id: data.id, nombre: data.nombre, cluster: data.cluster ?? data.cluster_id, tipo: normalizarTipo(data.tipo) ?? 'formal',
             teoria: data.teoria, glosario: data.glosario, ejercicios: data.ejercicios, referencias: data.referencias, sugerencias: data.sugerencias,
             sinapsis, neuronas: sinapsis ? neuronasDeLaRed : undefined });
+        if (!await copiar(prompt)) return;
+        setAviso('');
+        setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres${sinapsis ? `, con ${sinapsis.length} sinapsis` : ''}). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`
+            + (sinapsis ? '' : ' Aviso: no se pudieron leer las sinapsis, así que esta revisión no las incluye.'));
+    };
+
+    /** Copia un texto al portapapeles (con un campo temporal si no hay permiso). Si falla, avisa y devuelve false. */
+    const copiar = async (texto: string): Promise<boolean> => {
         let copiado = false;
-        try { await navigator.clipboard.writeText(prompt); copiado = true; } catch { /* sin permiso del portapapeles: se prueba con un campo temporal */ }
+        try { await navigator.clipboard.writeText(texto); copiado = true; } catch { /* sin permiso del portapapeles: se prueba con un campo temporal */ }
         if (!copiado) {
             const t = document.createElement('textarea');
-            t.value = prompt; t.style.position = 'fixed'; t.style.opacity = '0';
+            t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0';
             document.body.appendChild(t); t.select();
             try { copiado = document.execCommand('copy'); } catch { copiado = false; }
             t.remove();
         }
-        if (!copiado) { setInfo(''); setAviso('Error: no se pudo copiar al portapapeles.'); return; }
+        if (!copiado) { setInfo(''); setAviso('Error: no se pudo copiar al portapapeles.'); }
+        return copiado;
+    };
+
+    /** Copia el prompt que pide a una IA externa SOLO el veredicto sobre las sinapsis de esta neurona (con una ficha de cada neurona de la red). */
+    const pedirSinapsis = async () => {
+        if (!data) return;
+        let actuales: SinapsisActual[];
+        try {
+            const r = await fetch(`${API}/api/node/${data.id}/sinapsis`);
+            if (!r.ok) throw new Error();
+            actuales = (await r.json()).sinapsis;
+        } catch { setInfo(''); setAviso('Error: no se pudieron leer las sinapsis de la neurona.'); return; }
+        const prompt = promptSinapsis({ id: data.id, nombre: data.nombre, cluster: data.cluster ?? data.cluster_id, tipo: normalizarTipo(data.tipo) ?? 'formal',
+            teoria: data.teoria, glosario: data.glosario, sinapsis: actuales, neuronas: neuronasDeLaRed });
+        if (!await copiar(prompt)) return;
         setAviso('');
-        setInfo(`Prompt de revisión copiado (${prompt.length.toLocaleString('es-ES')} caracteres${sinapsis ? `, con ${sinapsis.length} sinapsis` : ''}). Pégalo en tu IA y, con su respuesta, usa [ Editar ] → [ Pegar JSON revisado ].`
-            + (sinapsis ? '' : ' Aviso: no se pudieron leer las sinapsis, así que esta revisión no las incluye.'));
+        setInfo(`Prompt de sinapsis copiado (${prompt.length.toLocaleString('es-ES')} caracteres, con ${actuales.length} sinapsis). Pégalo en tu IA y, con su respuesta, usa [ Pegar respuesta ].`);
+    };
+
+    /** Lee la respuesta de la IA al prompt de sinapsis y enseña su veredicto (no cambia ninguna conexión). */
+    const leerRespuestaSinapsis = async () => {
+        if (!data) return;
+        setLeyendoSinapsis(true); setErrorSinapsis('');
+        try {
+            const res = await fetch(`${API}/api/json/interpretar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: textoSinapsis }) });
+            if (!res.ok) throw new Error(await errorDe(res));
+            const r = await fetch(`${API}/api/node/${data.id}/sinapsis`);
+            if (!r.ok) throw new Error('No se pudieron leer las sinapsis de la neurona para cotejar la respuesta.');
+            const { revision, avisos } = leerSinapsis((await res.json()).datos, (await r.json()).sinapsis, neuronasDeLaRed, data.id);
+            if (revision.veredictos.length + revision.nuevas.length === 0) throw new Error(`La respuesta no trae ningún veredicto válido sobre las sinapsis.${avisos.length ? ' ' + avisos.join(' ') : ''}`);
+            setRevisionSinapsis(revision); setAplicadas({});
+            setPegandoSinapsis(false); setTextoSinapsis('');
+            setAviso(''); setInfo(avisos.length ? `Veredicto leído, con avisos: ${avisos.join(' ')}` : 'Veredicto leído: debajo tienes cada propuesta para aplicarla o no.');
+        } catch (e: any) { setErrorSinapsis(e?.message ?? 'No se pudo leer la respuesta.'); }
+        setLeyendoSinapsis(false);
     };
 
     /** Aplica una propuesta del veredicto sobre las conexiones (una a una, al momento) y repinta la red. */
@@ -503,6 +547,28 @@ export default function KnowledgePanel({
 
                 {!loading && data && !editando && activeTab === 'sinapsis' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                        <Seccion titulo="Revisar con una IA externa">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: MONO }}>
+                                    Copia un prompt solo de sinapsis (con una ficha de cada neurona de tu red), pégalo en tu IA y trae su respuesta: te propone qué conexiones confirmar, quitar o añadir, y tú decides cada una.
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <button className="t-btn" onClick={pedirSinapsis}>[ Copiar prompt de sinapsis ]</button>
+                                    <button className="t-btn" onClick={() => { setPegandoSinapsis(p => !p); setErrorSinapsis(''); }}>[ Pegar respuesta ]</button>
+                                </div>
+                                {pegandoSinapsis && (
+                                    <>
+                                        <textarea className="t-campo" spellCheck={false} style={{ minHeight: 160, width: '100%', boxSizing: 'border-box' }} value={textoSinapsis}
+                                            onChange={e => setTextoSinapsis(e.target.value)} placeholder="Pega aquí la respuesta de la IA..." />
+                                        {errorSinapsis && <div style={{ color: 'var(--t-error)', fontSize: 12 }}>[ERROR] {errorSinapsis}</div>}
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button className="t-btn" disabled={leyendoSinapsis || !textoSinapsis.trim()} onClick={leerRespuestaSinapsis}>[ Leer respuesta ]</button>
+                                            <button className="t-btn plano" disabled={leyendoSinapsis} onClick={() => setPegandoSinapsis(false)}>[ Cancelar ]</button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </Seccion>
                         {enlaces.length === 0 ? (
                             <Vacio>Esta neurona aún no ha formado conexiones sinápticas con otras.</Vacio>
                         ) : (
