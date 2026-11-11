@@ -279,7 +279,7 @@ def interpretar_json(req: InterpretarJsonRequest):
     datos.pop("embedding", None)
     return {"datos": datos}
 
-def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None):
+def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None, cluster=None):
     guardadas = None
     try:
         import numpy as np
@@ -288,7 +288,7 @@ def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, gl
         clasificador = init_clasificador()
         vector = np.array(embedding)
         nuevas_aristas = clasificador.evaluar_conexiones(nuevo_id, nombre, teoria, vector, base_de_datos,
-                                                         nuevo_glosario=glosario, progreso=sinapsis.avance(nombre))
+                                                         nuevo_glosario=glosario, progreso=sinapsis.avance(nombre), cluster_nuevo=cluster)
         if nuevas_aristas:
             db_conn.add_links(nuevas_aristas, overwrite=False)
         guardadas = len(nuevas_aristas)
@@ -370,7 +370,8 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
                 data.get("teoria", ""),
                 data["embedding"],
                 base_de_datos,
-                data.get("glosario")
+                data.get("glosario"),
+                data.get("cluster")
             )
         
         return {

@@ -99,7 +99,7 @@ class TestSinapsis(unittest.TestCase):
     BASE = [{"id": i, "nombre": i.upper(), "embedding": [1., 0.1 * n], "teoria": f"## Teoría de {i}", "glosario": json.dumps([{"termino": f"término-{i}"}])}
             for n, i in enumerate(["a", "b", "c", "d", "e", "f", "g"])]
 
-    def evaluar(self, veredictos, omitir=None, progreso=None, base=None, error=False):
+    def evaluar(self, veredictos, omitir=None, progreso=None, base=None, error=False, cluster=None):
         prompts = []
 
         def urlopen(req, timeout=None):
@@ -116,8 +116,20 @@ class TestSinapsis(unittest.TestCase):
         with patch.object(clasificador, "ensure_ollama_running"), patch.object(clasificador, "get_best_llm_model", return_value="m"), \
              patch.object(clasificador.urllib.request, "urlopen", side_effect=urlopen):
             res = _modelo().evaluar_conexiones("a", "A", "texto de A", np.array([1., 0.]), base or self.BASE,
-                                               omitir=omitir, nuevo_glosario=[{"termino": "término-a"}], progreso=progreso)
+                                               omitir=omitir, nuevo_glosario=[{"termino": "término-a"}], progreso=progreso, cluster_nuevo=cluster)
         return res, prompts
+
+    def test_entre_clusters_distintos_exige_que_un_texto_nombre_al_otro_y_no_propone_afinidad(self):
+        dep = {"relacion": "A_se_basa_en_B", "motivo": self.MOTIVO}
+        base = lambda cluster, teoria="Intro histórica sin nada más.": [{"id": "b", "nombre": "B", "embedding": [1., 0.], "glosario": [], "teoria": teoria, "cluster_id": cluster}]
+        res, _ = self.evaluar({"B": dep}, base=base("Matemáticas"), cluster="Estadística")
+        self.assertEqual(res, [])                                  # sin mención y de otro clúster: ni la dependencia ni la afinidad
+        res, _ = self.evaluar({"B": dep}, base=base("Estadística"), cluster="estadística")
+        self.assertEqual(res[0]["motivo"], self.MOTIVO)            # mismo clúster (sin tildes ni mayúsculas): como siempre
+        res, _ = self.evaluar({"B": dep}, base=base("Matemáticas"), cluster="Desconocido")
+        self.assertEqual(res[0]["motivo"], self.MOTIVO)            # sin clúster conocido no se exige más
+        res, _ = self.evaluar({"B": dep}, base=base("Matemáticas", "Se usa en el término-a de otro texto."), cluster="Estadística")
+        self.assertEqual(res[0]["motivo"], self.MOTIVO)            # B nombra algo de A: pasa
 
     def test_el_sentido_decide_origen_y_destino(self):
         m = self.MOTIVO

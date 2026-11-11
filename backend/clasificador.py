@@ -36,6 +36,11 @@ def resolver_cluster_propuesto(propuesto, existentes: List[str]) -> Tuple[Option
             return nombre, False
     return propuesto, True
 
+def _son_clusters_distintos(a, b) -> bool:
+    """Dos clústeres conocidos y distintos ('Desconocido' o vacío no cuentan: sin dato no se exige más)."""
+    conocidos = [_normalizar(c) for c in (a, b) if isinstance(c, str) and c.strip() and _normalizar(c) != "desconocido"]
+    return len(conocidos) == 2 and conocidos[0] != conocidos[1]
+
 def _palabras(texto) -> set:
     """Conjunto de palabras (minúsculas, sin tildes) de un texto."""
     return set(re.findall(r"[a-z0-9]+", _normalizar(str(texto or ""))))
@@ -341,7 +346,7 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
         return str(correcto).strip().lower() != "false"
 
     def evaluar_conexiones(self, nuevo_id: str, nuevo_nombre: str, nuevo_resumen: str, vector_nuevo: np.ndarray, base_de_datos: List[Dict],
-                           omitir: Optional[set] = None, nuevo_glosario=None, progreso=None) -> List[Dict]:
+                           omitir: Optional[set] = None, nuevo_glosario=None, progreso=None, cluster_nuevo: Optional[str] = None) -> List[Dict]:
         """
         Filtro Híbrido RAG:
         1. Busca los 10 nodos más cercanos matemáticamente (similitud > 0.4).
@@ -352,6 +357,8 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
            para que no quede flotando sola: tú decides si procede.
         `omitir`: parejas (origen, destino) ya decididas; se saltan sin gastar una llamada al LLM.
         `progreso(hecho, total, conexiones)`: se llama tras cada pareja, para poder enseñar el avance.
+        `cluster_nuevo`: su clúster. Entre clústeres distintos se exige más: la conexión necesita que al menos un texto nombre al otro concepto
+        y no se propone ninguna «Afinidad» (en los datos reales, todas las conexiones rechazadas eran entre clústeres y sin esa mención).
         """
         # El embedding solo ve las primeras ~128 palabras (la introducción histórica) y puntúa bajo a una neurona corta:
         # por eso no se usa un umbral fijo (el LLM es el filtro) y se suma un empujón cuando un texto nombra al otro concepto.
@@ -385,6 +392,7 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
             menciones = coincidencias(claves_de[str(nodo.get('id'))], palabras_nuevo) + coincidencias(claves_nuevo, palabras_de[str(nodo.get('id'))])
             if similitud > 0.15 or menciones >= 0.5:
                 candidatos.append({"id": str(nodo.get('id')), "nombre": nodo.get('nombre', ''), "similitud": similitud, "nodo": nodo, "menciones": menciones,
+                                   "entre_clusters": _son_clusters_distintos(cluster_nuevo, nodo.get('cluster_id')),
                                    "puntuacion": similitud + min(MAX_EMPUJON, EMPUJON_MENCION * menciones)})
 
         candidatos.sort(key=lambda x: x['puntuacion'], reverse=True)
@@ -419,6 +427,8 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
                             print(f" -> [Descartada] {nuevo_nombre} ~ {c['nombre']}: el motivo es demasiado corto o copia la pista del prompt")
                         elif sentido == "rel" and not (pistas[0] and pistas[1]):
                             print(f" -> [Descartada] {nuevo_nombre} ~ {c['nombre']}: 'relacionados' sin que cada texto nombre al otro")
+                        elif c['entre_clusters'] and not (pistas[0] or pistas[1]):
+                            print(f" -> [Descartada] {nuevo_nombre} ~ {c['nombre']}: entre clústeres distintos y ningún texto nombra al otro concepto")
                         else:
                             origen, destino = (str(nuevo_id), c['id']) if sentido in ("ab", "rel") else (c['id'], str(nuevo_id))
                             aceptadas.append((c['puntuacion'], {"origen_id": origen, "destino_id": destino, "motivo": motivo}))
@@ -432,7 +442,7 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
 
         ya_conectado = bool(omitir) and any(o == str(nuevo_id) for o, _ in omitir)
         if not conexiones and not ya_conectado:
-            mejor = next((c for c in top_k if not (omitir and (str(nuevo_id), c['id']) in omitir)), None)
+            mejor = next((c for c in top_k if not c['entre_clusters'] and not (omitir and (str(nuevo_id), c['id']) in omitir)), None)
             if mejor:
                 por_que = ("No se pudo consultar al modelo local" if consultados == 0 and fallos
                            else "El modelo local no vio una dependencia clara")
@@ -465,7 +475,7 @@ def regenerar_aristas(db) -> int:
         if emb is None or len(emb) == 0:
             continue
         try:
-            aristas = clasificador.evaluar_conexiones(nodo['id'], nodo['nombre'], nodo.get('teoria', ''), np.array(emb), nodos, omitir=db.get_known_pairs(), nuevo_glosario=nodo.get('glosario'))
+            aristas = clasificador.evaluar_conexiones(nodo['id'], nodo['nombre'], nodo.get('teoria', ''), np.array(emb), nodos, omitir=db.get_known_pairs(), nuevo_glosario=nodo.get('glosario'), cluster_nuevo=nodo.get('cluster_id'))
             if aristas:
                 db.add_links(aristas, overwrite=False)
                 total += len(aristas)
