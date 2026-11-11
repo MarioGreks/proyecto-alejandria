@@ -359,8 +359,8 @@ export default function KnowledgePanel({
             bottom: 48,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '92%',
-            maxWidth: 1000,
+            width: '94%',
+            maxWidth: 1280,     // con el glosario al lado, 1000 dejaba la teoría estrecha
             display: 'flex',
             flexDirection: 'column',
             zIndex: 20,
@@ -422,12 +422,12 @@ export default function KnowledgePanel({
 
                 {!loading && data && !editando && activeTab === 'aprender' && (
                   <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    <div className="markdown-container" style={{ flex: '2 1 420px', minWidth: 0, lineHeight: 1.6, fontSize: 16, textAlign: 'justify', color: '#e0e0e0' }}>
+                    <div className="markdown-container" style={{ flex: '3 1 480px', minWidth: 0, lineHeight: 1.6, fontSize: 16, textAlign: 'justify', color: '#e0e0e0' }}>
                         <Md texto={data.teoria} />
                     </div>
 
                     {/* El glosario va al lado de la teoría y se queda a la vista mientras se lee (en una ventana estrecha pasa debajo) */}
-                    <aside style={{ flex: '1 1 260px', minWidth: 0, position: 'sticky', top: 0, maxHeight: 'calc(100vh - 300px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
+                    <aside style={{ flex: '1 1 280px', minWidth: 0, position: 'sticky', top: 0, maxHeight: 'calc(100vh - 300px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
                         <TituloSeccion>## Glosario</TituloSeccion>
                         {(data.glosario ?? []).length === 0 && <Vacio>[ ] Este concepto no tiene glosario</Vacio>}
                         {(data.glosario ?? []).map((g, idx) => (
