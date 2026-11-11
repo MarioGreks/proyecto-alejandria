@@ -106,11 +106,12 @@ def get_db_status():
 
 @app.get("/api/universe")
 def get_universe():
-    """Devuelve la lista de nodos reales de la BD para que el frontend los posicione."""
-    return {
+    """Devuelve la lista de nodos reales de la BD para que el frontend los posicione. JSONResponse directo: el codificador de FastAPI recorre en Python
+    cada diccionario y, con miles de neuronas, era la mitad del tiempo de cada sondeo (el contenido ya son tipos básicos)."""
+    return JSONResponse({
         "nodes": db_conn.get_universe_metadata(),
         "links": db_conn.get_links_metadata()
-    }
+    })
 
 class _Sinapsis:
     """Estado de la búsqueda de conexiones, para que la interfaz enseñe que se está trabajando (cada neurona tarda ~1 min)."""

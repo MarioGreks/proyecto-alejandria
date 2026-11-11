@@ -1585,7 +1585,66 @@ class TestSugerencias(unittest.TestCase):
         self.assertEqual(len(s[1]["motivo"]), 160)
 
 
-from test_sincronizacion import TestSincronizacion  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
+class TestRendimiento(unittest.TestCase):
+    """Lo que se sondea cada pocos segundos (el universo) y la compilación no deben crecer con el texto de las neuronas ni cargar el modelo sin necesidad."""
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(os.path.join(DATA_DIR, "raw"), exist_ok=True)
+        cls.client = TestClient(main.app, base_url="http://127.0.0.1")
+
+    def neurona(self, nid, **campos):
+        ruta = os.path.join(DATA_DIR, "raw", f"{nid}.json")
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump({"nombre": nid, "teoria": "t", **campos}, f)
+        self.addCleanup(lambda: os.path.exists(ruta) and os.remove(ruta))
+
+    def test_el_universo_solo_trae_lo_que_necesita_y_no_el_texto_completo(self):
+        self.neurona("perf_a", cluster="Mates", embedding=[0.1, 0.2], subredes=["TFM"],
+                     teoria="## 1. Introducción\n\nTexto con $x$ y **negrita**.\n\n## 2. Más\nOtro párrafo.",
+                     glosario=[{"termino": "Término 1", "definicion": "una definición larguísima"}],
+                     ejercicios=[{"enunciado": "e", "solucion": "s"}], referencias=[{"titulo": "T", "autores": "A"}])
+        nodo = next(n for n in self.client.get("/api/universe").json()["nodes"] if n["id"] == "perf_a")
+        self.assertEqual(set(nodo), {"id", "nombre", "cluster_id", "subredes", "glosario", "resumen"})     # nada de teoria, ejercicios ni referencias
+        self.assertEqual(nodo["glosario"], [{"termino": "Término 1"}])                                    # solo los términos (es lo que se busca)
+        self.assertEqual((nodo["cluster_id"], nodo["subredes"]), ("Mates", ["TFM"]))
+        self.assertEqual(nodo["resumen"], "Texto con x y negrita. Otro párrafo.")                         # sin títulos ni marcas
+        self.assertEqual(self.client.get("/node/perf_a").json()["teoria"].count("Texto con"), 1)          # el texto completo sigue en la neurona
+
+    def test_resumen_de_la_teoria_coincide_con_el_del_frontend(self):
+        from database import resumen_teoria
+        self.assertEqual(resumen_teoria("# T\nTexto largo"), "Texto largo")                                # como fichaVecina en prompts.ts
+        self.assertEqual(resumen_teoria("  ## Título\n\n\n  Uno   dos $$x$$ **y**"), "Uno dos x y")                # espacios colapsados, sin títulos ni #, $, *, \
+        self.assertEqual(len(resumen_teoria("a " * 500)), 160)
+        self.assertEqual(resumen_teoria(None), "")
+
+    def test_la_lista_del_universo_se_reutiliza_hasta_que_cambia_la_base(self):
+        self.neurona("perf_b", embedding=[0.1])
+        a = db_conn.get_universe_metadata()
+        self.assertIs(db_conn.get_universe_metadata(), a)                                                 # sin cambios: la misma lista, sin rehacerla
+        self.neurona("perf_c", embedding=[0.1])
+        b = db_conn.get_universe_metadata()
+        self.assertIsNot(b, a)
+        self.assertIn("perf_c", {n["id"] for n in b})
+
+    def test_compilar_solo_carga_el_modelo_si_a_alguna_neurona_le_falta_el_embedding(self):
+        import database
+        propio = tempfile.mkdtemp(prefix="ap-compilar-")                  # una carpeta y una base propias: las neuronas de otros tests no cuentan
+        self.addCleanup(shutil.rmtree, propio, True)
+        os.makedirs(os.path.join(propio, "raw"))
+        escribir = lambda nid, **c: json.dump({"nombre": nid, "teoria": "t", **c}, open(os.path.join(propio, "raw", nid + ".json"), "w", encoding="utf-8"))
+        with patch.object(database, "DATA_DIR", propio), patch.object(database, "NODOS_FILE", os.path.join(propio, "nodos.parquet")), \
+             patch.object(database, "ARISTAS_FILE", os.path.join(propio, "aristas.parquet")), \
+             patch.object(clasificador, "init_clasificador", return_value=None) as carga:
+            db = database.LocalGraphDB()
+            escribir("a", embedding=[0.1, 0.2]), escribir("b", embedding=[0.3, 0.4])
+            self.assertEqual(db.compile_raw_jsons(force=True), 2)
+            self.assertEqual(carga.call_count, 0)                         # todas traen embedding: el modelo ni se carga
+            escribir("c"), escribir("d")                                    # dos sin embedding
+            db.compile_raw_jsons(force=True)
+            self.assertEqual(carga.call_count, 1)                         # se carga una sola vez, no una por neurona
+
+
+from test_sincronizacion import TestSincronizacion, TestSincronizacionIncremental  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
 
 
 if __name__ == "__main__":

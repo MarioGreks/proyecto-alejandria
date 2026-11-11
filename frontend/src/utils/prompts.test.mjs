@@ -290,6 +290,8 @@ test('el prompt de sinapsis es independiente: ficha de cada neurona de la red, c
     assert.match(p, /SOLO con neuronas de la lista de arriba/);
     assert.ok(!/"teoria"|"ejercicios"|"referencias"/.test(p), 'no lleva la neurona entera ni pide devolverla');
     assert.ok(!p.includes('undefined') && !p.includes('[object') && !p.includes('\n5. '));
-    assert.equal(fichaVecina(neuronas[0]).resumen, '');         // una ficha ya hecha no se vuelve a resumir (sin teoría)
+    assert.equal(fichaVecina(neuronas[0]).resumen, 'Procesos sin memoria.');         // una ficha ya hecha (o un nodo del universo con su resumen) lo conserva
+    assert.equal(fichaVecina({ id: 'x', nombre: 'X', resumen: 'abcdef' }, 3).resumen, 'abc');
+    assert.equal(fichaVecina({ id: 'x', nombre: 'X', teoria: '# T\nTexto largo' }).resumen, 'Texto largo');          // sin resumen, se saca de la teoría completa
     assert.equal(neuronas[0].resumen, 'Procesos sin memoria.');       // sin el título «## Intro»
 });

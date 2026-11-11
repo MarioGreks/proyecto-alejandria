@@ -36,6 +36,43 @@ MIN_BORRADOS_SOSPECHOSOS = 5            # desde cuántos borrados «a la vez» s
 FRACCION_BORRADOS_SOSPECHOSOS = 0.5     # ...si además son más de esta fracción de lo que había
 
 
+class _SinCambios:
+    """El contenido de una neurona local cuyo archivo no ha cambiado desde la última vuelta: se sabe que su hash es el del estado, sin leerla."""
+    def __repr__(self):
+        return "SIN_CAMBIOS"
+
+
+SIN_CAMBIOS = _SinCambios()
+
+
+class _Remoto(dict):
+    """Un elemento de otro PC cuya versión ya se conoce por el estado: «datos» se lee del archivo la primera vez que alguien lo pide (solo se pide lo que se va a aplicar)."""
+    def __init__(self, ruta: str, prefijo: str, v: tuple, borrada: bool):
+        super().__init__(v=v, borrada=borrada)
+        self._ruta, self._prefijo = ruta, prefijo
+
+    def __missing__(self, clave):
+        if clave != "datos":
+            raise KeyError(clave)
+        datos = None
+        if not self["borrada"]:
+            datos = _leer(self._ruta)["datos"]
+            if not isinstance(datos, dict):
+                raise ValueError("datos")
+            if self._prefijo == "c":
+                datos = _normalizar_arista(datos)
+        self["datos"] = datos
+        return datos
+
+
+def _firma_de(ruta: str, con_identidad: bool = False) -> list:
+    """[instante de modificación en ns, tamaño] del archivo: si coincide con lo anotado, el archivo no ha cambiado. Con `con_identidad` añade el número de archivo del
+    sistema: _escribir crea un temporal nuevo cada vez, así que dos reescrituras seguidas del mismo tamaño y dentro del mismo tic del reloj (los archivos de la carpeta
+    compartida los reescriben otros PCs) siguen distinguiéndose. Los locales no la llevan porque scandir no la da en Windows."""
+    st = os.stat(ruta)
+    return [st.st_mtime_ns, st.st_size, st.st_ino] if con_identidad else [st.st_mtime_ns, st.st_size]
+
+
 def _escribir(ruta: str, contenido: dict) -> None:
     """Atómico: temporal en la misma carpeta y renombrado (los lectores solo miran *.json)."""
     os.makedirs(os.path.dirname(ruta), exist_ok=True)
@@ -124,26 +161,38 @@ class Sincronizador:
         return os.path.join(self.carpeta, RAIZ, self.pc)
 
     # ---------------------------------------------------------------- lectura de lo local
-    def _neuronas_locales(self) -> Tuple[Dict[str, dict], set, Dict[str, int]]:
-        """({clave: contenido sin embedding}, claves ilegibles ahora mismo, {clave: instante de la última modificación del archivo en µs})."""
-        vivas, ilegibles, mtimes = {}, set(), {}
+    def _neuronas_locales(self, items: Optional[dict] = None) -> Tuple[Dict[str, dict], set, Dict[str, int], Dict[str, list]]:
+        """({clave: contenido sin embedding}, claves ilegibles ahora mismo, {clave: instante de la última modificación del archivo en µs}, {clave: [instante, tamaño]}).
+        Si el archivo sigue igual que la última vez que se sincronizó (mismo instante y tamaño que anotó el estado), no se lee ni se calcula su hash: su contenido
+        es SIN_CAMBIOS (con 2000 neuronas, leer todos los JSON, embeddings incluidos, eran ~1,5 s en cada vuelta)."""
+        vivas, ilegibles, mtimes, firmas = {}, set(), {}, {}
+        items = items or {}
         if os.path.isdir(self.raw):
-            for f in os.listdir(self.raw):
+            for e in os.scandir(self.raw):
+                f = e.name
                 if not f.endswith(".json") or not ID_VALIDO.fullmatch(f[:-5]):
                     continue
-                ruta = os.path.join(self.raw, f)
+                k = "n/" + f[:-5]
                 try:
-                    c = _leer(ruta)
-                    mtimes["n/" + f[:-5]] = int(os.path.getmtime(ruta) * 1_000_000)
+                    st = e.stat()
+                    mtimes[k] = int(st.st_mtime * 1_000_000)
+                    firmas[k] = [st.st_mtime_ns, st.st_size]
+                    previo = items.get(k)
+                    if previo and previo.get("hash") and not previo.get("borrada") and previo.get("m") == firmas[k]:
+                        vivas[k] = SIN_CAMBIOS
+                        continue
+                    c = _leer(e.path)
                 except (OSError, ValueError):
-                    ilegibles.add("n/" + f[:-5])
+                    mtimes.pop(k, None)
+                    firmas.pop(k, None)
+                    ilegibles.add(k)
                     continue
                 if isinstance(c, dict):
                     c.pop("embedding", None)
-                    vivas["n/" + f[:-5]] = c
+                    vivas[k] = c
                 else:
-                    ilegibles.add("n/" + f[:-5])
-        return vivas, ilegibles, mtimes
+                    ilegibles.add(k)
+        return vivas, ilegibles, mtimes, firmas
 
     def _aristas_locales(self) -> Dict[str, dict]:
         out = {}
@@ -154,10 +203,13 @@ class Sincronizador:
         return out
 
     # ---------------------------------------------------------------- lectura de lo ajeno
-    def _leer_pc(self, pc: str, avisos: List[str]) -> Dict[str, dict]:
-        """Todo lo que publicó un PC: {clave: {"v": (t, rev, pc), "borrada", "datos"}}."""
+    def _leer_pc(self, pc: str, avisos: List[str], usar_cache: bool = False) -> Dict[str, dict]:
+        """Todo lo que publicó un PC: {clave: {"v": (t, rev, pc), "borrada", "datos"}}. Con `usar_cache`, lo que no ha cambiado desde la última vuelta
+        (mismo instante y tamaño) se conoce por el estado y sus «datos» se leen solo si hacen falta (ver _Remoto)."""
         out: Dict[str, dict] = {}
         base = os.path.join(self.carpeta, RAIZ, pc)
+        cache = self.estado.setdefault("rem", {}) if usar_cache else None     # {"pc/sub/archivo": {"m": [instante, tamaño], "v": [...], "borrada": bool}}
+        vistos = set()
         for sub, prefijo in (("neuronas", "n"), ("conexiones", "c")):
             carpeta = os.path.join(base, sub)
             for f in sorted(os.listdir(carpeta)) if os.path.isdir(carpeta) else []:
@@ -167,8 +219,17 @@ class Sincronizador:
                 ok = ID_VALIDO.fullmatch(nombre) if prefijo == "n" else (nombre.count("@") == 1 and all(ID_VALIDO.fullmatch(x) for x in nombre.split("@")))
                 if not ok:
                     continue
+                ruta = os.path.join(carpeta, f)
+                clave_cache = f"{pc}/{sub}/{f}"
                 try:
-                    w = _leer(os.path.join(carpeta, f))
+                    firma = _firma_de(ruta, con_identidad=True) if usar_cache else None
+                    previo = cache.get(clave_cache) if usar_cache else None
+                    if previo and previo.get("m") == firma:
+                        # El archivo no ha cambiado desde la última vuelta: su versión se sabe sin abrirlo (en una carpeta de nube, abrirlo puede significar bajarlo)
+                        out[f"{prefijo}/{nombre}"] = _Remoto(ruta, prefijo, tuple(previo["v"]), bool(previo["borrada"]))
+                        vistos.add(clave_cache)
+                        continue
+                    w = _leer(ruta)
                     s = w["_sync"]
                     v = (int(s["t"]), int(s["rev"]), str(s["pc"]))
                     borrada = bool(s.get("borrada"))
@@ -181,7 +242,33 @@ class Sincronizador:
                     avisos.append(f"{pc}/{sub}/{f}: ilegible por ahora ({type(e).__name__})")     # lo normal: la nube aún lo está subiendo o bajando
                     continue
                 out[f"{prefijo}/{nombre}"] = {"v": v, "borrada": borrada, "datos": datos}
+                if usar_cache:
+                    cache[clave_cache] = {"m": firma, "v": list(v), "borrada": borrada}
+                    vistos.add(clave_cache)
+        if usar_cache:
+            for k in [k for k in cache if k.startswith(pc + "/") and k not in vistos]:
+                del cache[k]                       # el archivo ya no está (o no se puede leer): se olvida
         return out
+
+    @staticmethod
+    def _es_nuevo(item: Optional[dict], rem: dict) -> bool:
+        """¿La versión remota es posterior a la que anota el estado (o no hay estado)? Es la misma cuenta que `rem_nuevo` de `sincronizar`."""
+        v_estado = tuple(item["v"]) if item and item.get("v") else None
+        return v_estado is None or rem["v"] > v_estado
+
+    @staticmethod
+    def _precargar(remotos: Dict[str, dict], elementos: List[Tuple[str, dict]], avisos: List[str]) -> None:
+        """Lee ya los «datos» de los remotos que se van a necesitar. Uno que no se puede leer ahora mismo (la nube lo está bajando) se quita de `remotos`
+        y de `elementos` con un aviso, igual que un archivo ilegible: se reintenta en la próxima vuelta."""
+        for k, r in list(elementos):
+            if r["borrada"]:
+                continue
+            try:
+                r["datos"]
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                avisos.append(f"{k}: ilegible por ahora ({type(e).__name__})")
+                remotos.pop(k, None)
+                elementos.remove((k, r))
 
     def _remotos(self, avisos: List[str]) -> Dict[str, dict]:
         """La mejor versión de cada elemento entre las subcarpetas de los demás PCs."""
@@ -190,7 +277,7 @@ class Sincronizador:
         for pc in sorted(os.listdir(base)) if os.path.isdir(base) else []:
             if pc == self.pc or not ID_VALIDO.fullmatch(pc) or not os.path.isdir(os.path.join(base, pc)):
                 continue
-            for clave, r in self._leer_pc(pc, avisos).items():
+            for clave, r in self._leer_pc(pc, avisos, usar_cache=True).items():
                 if clave not in mejores or r["v"] > mejores[clave]["v"]:
                     mejores[clave] = r
         return mejores
@@ -205,10 +292,11 @@ class Sincronizador:
             resumen = {"enviadas": 0, "recibidas": 0, "borradas": 0, "conflictos": [], "avisos": avisos}
             items = self.estado["items"]
 
-            n_loc, ilegibles, mtimes = self._neuronas_locales()
+            n_loc, ilegibles, mtimes, firmas = self._neuronas_locales(items)
             c_loc = self._aristas_locales()
             locales = {**n_loc, **c_loc}
             remotos = self._remotos(avisos)
+            self._precargar(remotos, [(k, r) for k, r in remotos.items() if self._es_nuevo(items.get(k), r)], avisos)     # lo que va a ganar ya se lee aquí: si falla, se salta con aviso
 
             # ---- ¿qué se «borró» aquí? Una neurona sin archivo que estaba en el estado; con salvaguarda ante desapariciones masivas
             vivos_antes = [k for k, it in items.items() if not it.get("borrada")]
@@ -237,13 +325,17 @@ class Sincronizador:
                 loc = locales.get(k)
                 hay_borrado_local = k in borrados_locales
                 restaurar = bool(it and it.get("sin_archivo"))
-                cambio_local = (loc is not None and (it is None or it.get("borrada") or _hash(loc) != it.get("hash"))) or hay_borrado_local
+                cambio_local = (loc is not None and (it is None or it.get("borrada") or (loc is not SIN_CAMBIOS and _hash(loc) != it.get("hash")))) or hay_borrado_local
+                if not cambio_local and it is not None and not it.get("borrada") and k in firmas:
+                    it["m"] = firmas[k]                      # sin cambios (aunque el archivo se haya reescrito, p. ej. al añadirle el embedding): la próxima vez no hará falta leerlo
                 rem = remotos.get(k)
                 rem_nuevo = rem is not None and (v_estado is None or rem["v"] > v_estado)
 
                 if cambio_local and rem_nuevo and not hay_borrado_local and not rem["borrada"] and loc is not None \
                         and _hash({x: y for x, y in rem["datos"].items() if x != "embedding"} if k.startswith("n/") else rem["datos"]) == _hash(loc):
                     items[k] = {"v": list(rem["v"]), "hash": _hash(loc), "borrada": False}     # lo mismo en los dos PCs (p. ej. importado a mano en ambos): sin conflicto
+                    if k in firmas:
+                        items[k]["m"] = firmas[k]
                     continue
                 if cambio_local:
                     prev_t, prev_rev = (v_estado[0], v_estado[1]) if v_estado else (0, 0)
@@ -269,6 +361,8 @@ class Sincronizador:
                     candidatas = [x for x in (rem, propios.get(k)) if x is not None and not x["borrada"]]
                     if candidatas:
                         a_aplicar.append((k, max(candidatas, key=lambda x: x["v"])))
+
+            self._precargar(remotos, a_aplicar, avisos)          # también lo que se restaura (no pasa por «nuevo»): todo lo que se aplique está ya leído
 
             # ---- recepción: neuronas primero, luego conexiones (que necesitan sus dos extremos)
             cambios_n = cambios_a = False
@@ -296,7 +390,7 @@ class Sincronizador:
                     _escribir(ruta, contenido)
                     resumen["recibidas"] += 1
                     cambios_n = True
-                    items[k] = {"v": list(rem["v"]), "hash": _hash({x: y for x, y in contenido.items() if x != "embedding"}), "borrada": False}
+                    items[k] = {"v": list(rem["v"]), "hash": _hash({x: y for x, y in contenido.items() if x != "embedding"}), "borrada": False, "m": _firma_de(ruta)}
             if cambios_n:
                 self.al_cambiar(True, False)                     # recompilar: así las conexiones ven ya las neuronas nuevas
             existentes = {f[:-5] for f in os.listdir(self.raw) if f.endswith(".json")} if os.path.isdir(self.raw) else set()
@@ -326,6 +420,8 @@ class Sincronizador:
                     w["datos"] = mio["datos"]
                 _escribir(os.path.join(self.dir_propia, "neuronas" if tipo == "n" else "conexiones", resto + ".json"), w)
                 items[k] = {"v": list(mio["v"]), "hash": None if mio["borrada"] else _hash(mio["datos"]), "borrada": mio["borrada"]}
+                if not mio["borrada"] and k in firmas:
+                    items[k]["m"] = firmas[k]
                 resumen["enviadas"] += 1
             _escribir(os.path.join(self.dir_propia, "pc.json"), {"id": self.pc, "nombre": self.host, "esquema": ESQUEMA, "ultima": self._iso()})
 

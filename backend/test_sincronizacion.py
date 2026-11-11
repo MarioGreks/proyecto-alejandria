@@ -197,7 +197,7 @@ class TestSincronizacion(unittest.TestCase):
     def test_al_azar_tres_pcs_siempre_acaban_iguales(self):
         """Ediciones, altas, borrados y cambios de estado al azar, sincronizaciones en cualquier orden: al final, todos iguales."""
         import random
-        for semilla in range(8):
+        for semilla in range(40):
             with self.subTest(semilla=semilla):
                 azar = random.Random(semilla)
                 compartida = tempfile.mkdtemp(prefix="ap-azar-")
@@ -339,6 +339,171 @@ class TestSincronizacion(unittest.TestCase):
         r = b.vuelta()
         self.assertEqual(b.ids(), ["x"])
         self.assertGreaterEqual(len(r["avisos"]), 1)
+
+
+class TestSincronizacionIncremental(unittest.TestCase):
+    """Una vuelta sin cambios no vuelve a leer las neuronas cuyo archivo sigue igual (mismo instante y tamaño), pero detecta cualquier cambio."""
+    def setUp(self):
+        self.compartida = tempfile.mkdtemp(prefix="ap-compartida-")
+        self.reloj = Reloj()
+        self.addCleanup(shutil.rmtree, self.compartida, True)
+        self.a = Pc("A", self.compartida, self.reloj)
+        self.addCleanup(shutil.rmtree, self.a.datos, True)
+        for i in range(5):
+            self.a.neurona(f"n{i}", teoria=f"texto {i}")
+        self.a.vuelta()
+
+    def pc_nuevo(self, nombre):
+        p = Pc(nombre, self.compartida, self.reloj)
+        self.addCleanup(shutil.rmtree, p.datos, True)
+        return p
+
+    def lecturas_en_una_vuelta(self, pc=None):
+        """Una vuelta de `pc`, y qué archivos de su carpeta de neuronas se leyeron en ella."""
+        pc = pc or self.a
+        leidos = []
+        original = sincronizacion._leer
+
+        def contando(ruta):
+            leidos.append(os.path.normcase(ruta))
+            return original(ruta)
+        sincronizacion._leer = contando
+        try:
+            resumen = pc.vuelta()
+        finally:
+            sincronizacion._leer = original
+        return [os.path.basename(r) for r in leidos if os.path.normcase(pc.raw) in r], resumen
+
+    def test_una_vuelta_sin_cambios_no_lee_ninguna_neurona(self):
+        leidas, r = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, [])
+        self.assertEqual((r["enviadas"], r["recibidas"], r["borradas"]), (0, 0, 0))
+
+    def test_una_edicion_se_detecta_aunque_las_demas_no_se_lean(self):
+        self.a.neurona("n2", teoria="editada")
+        leidas, r = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, ["n2.json"])                      # solo la que cambió
+        self.assertEqual(r["enviadas"], 1)
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        self.assertEqual(b.leer("n2")["teoria"], "editada")
+
+    def test_un_cambio_de_contenido_con_el_mismo_tamano_tambien_se_detecta(self):
+        ruta = os.path.join(self.a.raw, "n1.json")
+        antes = os.path.getsize(ruta)
+        self.a.neurona("n1", teoria="texto X")                     # «texto 1» → «texto X»: mismo tamaño, otro instante
+        self.assertEqual(os.path.getsize(ruta), antes)
+        self.assertEqual(self.a.vuelta()["enviadas"], 1)
+
+    def test_un_borrado_se_detecta_sin_leer_nada(self):
+        self.a.borrar("n3")
+        leidas, r = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, [])
+        self.assertEqual(r["enviadas"], 1)                         # la tumba se publica
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        self.assertNotIn("n3", b.ids())
+
+    def test_anadir_el_embedding_al_archivo_no_es_un_cambio_y_se_anota_para_no_releerlo(self):
+        ruta = os.path.join(self.a.raw, "n0.json")
+        with open(ruta, encoding="utf-8") as f:
+            c = json.load(f)
+        c["embedding"] = [0.1] * 50                                # lo que hace compile_raw_jsons: reescribe el archivo (otro tamaño e instante)
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(c, f, indent=2)
+        t = self.reloj() / 1_000_000
+        os.utime(ruta, (t, t))
+        leidas, r = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, ["n0.json"])                      # se lee una vez para comprobarlo...
+        self.assertEqual(r["enviadas"], 0)                         # ...y no cuenta como cambio
+        leidas, _ = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, [])                               # a la siguiente ya no
+
+    def test_un_estado_anterior_sin_firmas_se_lee_una_vez_y_se_aprende(self):
+        for it in self.a.sync.estado["items"].values():
+            it.pop("m", None)                                      # el estado que dejó una versión sin esta mejora
+        leidas, r = self.lecturas_en_una_vuelta()
+        self.assertEqual(len(leidas), 5)
+        self.assertEqual((r["enviadas"], r["recibidas"]), (0, 0))
+        leidas, _ = self.lecturas_en_una_vuelta()
+        self.assertEqual(leidas, [])
+
+    def lecturas_de_la_nube(self, pc):
+        """Una vuelta de `pc` y cuántos archivos de la carpeta compartida (lo que publican los demás) se abrieron."""
+        leidos = []
+        original = sincronizacion._leer
+
+        def contando(ruta):
+            leidos.append(os.path.normcase(ruta))
+            return original(ruta)
+        sincronizacion._leer = contando
+        try:
+            resumen = pc.vuelta()
+        finally:
+            sincronizacion._leer = original
+        return [os.path.basename(r) for r in leidos if os.path.normcase(self.compartida) in r and os.path.normcase(pc.sync.dir_propia) not in r and not r.endswith("pc.json")], resumen   # pc.json: la ficha de cada PC, una por vuelta
+
+    def test_lo_que_otro_pc_publico_y_no_ha_cambiado_no_se_abre_otra_vez(self):
+        b = self.pc_nuevo("B")
+        b.vuelta()                                                    # recibe las 5 (se abren una vez)
+        abiertos, r = self.lecturas_de_la_nube(b)
+        self.assertEqual(abiertos, [])
+        self.assertEqual((r["enviadas"], r["recibidas"]), (0, 0))
+
+    def test_una_reescritura_remota_del_mismo_tamano_y_el_mismo_instante_tambien_se_ve(self):
+        """Dos reescrituras seguidas del mismo archivo (mismo tamaño, dentro del mismo tic del reloj) no pueden confundirse con «sin cambios»."""
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        ruta = os.path.join(self.a.sync.dir_propia, "neuronas", "n1.json")
+        antes = os.stat(ruta)
+        self.a.neurona("n1", teoria="texto Z")                    # mismo tamaño que «texto 1»
+        self.a.vuelta()
+        self.assertEqual(os.path.getsize(ruta), antes.st_size)
+        os.utime(ruta, ns=(antes.st_atime_ns, antes.st_mtime_ns))     # y, para el caso, el mismo instante de modificación
+        self.assertEqual(b.vuelta()["recibidas"], 1)
+        self.assertEqual(b.leer("n1")["teoria"], "texto Z")
+
+    def test_una_edicion_remota_se_abre_y_se_aplica_aunque_las_demas_esten_en_la_cache(self):
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        self.a.neurona("n3", teoria="cambiada en A")
+        self.a.vuelta()
+        abiertos, r = self.lecturas_de_la_nube(b)
+        self.assertEqual(abiertos, ["n3.json"])                       # solo la que cambió
+        self.assertEqual(r["recibidas"], 1)
+        self.assertEqual(b.leer("n3")["teoria"], "cambiada en A")
+
+    def test_lo_que_desaparece_de_la_nube_se_olvida_de_la_cache_y_no_rompe_nada(self):
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        os.remove(os.path.join(self.a.sync.dir_propia, "neuronas", "n2.json"))
+        r = b.vuelta()                                                # B sigue teniendo n2: no se «borra» por desaparecer de la nube
+        self.assertIn("n2", b.ids())
+        self.assertFalse(any(k.endswith("/n2.json") for k in b.sync.estado["rem"]))
+        self.assertEqual((r["recibidas"], r["borradas"]), (0, 0))
+
+    def test_un_archivo_remoto_que_se_estropea_sin_cambiar_de_firma_se_salta_con_aviso(self):
+        b = self.pc_nuevo("B")
+        b.vuelta()
+        ruta = os.path.join(self.a.sync.dir_propia, "neuronas", "n1.json")
+        st = os.stat(ruta)
+        with open(ruta, "wb") as f:
+            f.write(b"x" * st.st_size)                                # basura del mismo tamaño...
+        os.utime(ruta, ns=(st.st_atime_ns, st.st_mtime_ns))           # ...y el mismo instante: la cache cree que sigue igual
+        del b.sync.estado["items"]["n/n1"]                           # y B «no sabe» de ella: hará falta leerla para aplicarla
+        r = b.vuelta()                                                # no lanza: se salta con aviso
+        self.assertTrue(any("n/n1" in av and "ilegible" in av for av in r["avisos"]), r["avisos"])
+        self.assertEqual(b.leer("n1")["teoria"], "texto 1")           # lo que B ya tenía no se toca
+
+    def test_lo_que_llega_de_otro_pc_tampoco_se_relee_y_una_edicion_posterior_se_ve(self):
+        b = self.pc_nuevo("B")
+        self.assertEqual(b.vuelta()["recibidas"], 5)
+        leidas, _ = self.lecturas_en_una_vuelta(b)
+        self.assertEqual(leidas, [])
+        b.neurona("n4", teoria="editada en B")
+        self.assertEqual(b.vuelta()["enviadas"], 1)
+        self.assertEqual(self.a.vuelta()["recibidas"], 1)
+        self.assertEqual(self.a.leer("n4")["teoria"], "editada en B")
 
 
 if __name__ == "__main__":

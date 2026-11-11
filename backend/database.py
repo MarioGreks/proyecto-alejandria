@@ -1,5 +1,6 @@
 import functools
 import os
+import re
 import threading
 import pandas as pd
 from pydantic import BaseModel
@@ -23,6 +24,14 @@ def _lista_json(valor) -> list:
     except ValueError:
         v = []
     return v if isinstance(v, list) else []
+
+
+RESUMEN_UNIVERSO = 160
+
+def resumen_teoria(teoria, largo: int = RESUMEN_UNIVERSO) -> str:
+    """El arranque de la teoría sin títulos Markdown ni marcas (#, $, *, \\) y con los espacios colapsados. Debe coincidir con `fichaVecina` (prompts.ts)."""
+    sin_titulos = " ".join(l for l in str(teoria or "").split("\n") if not l.lstrip().startswith("#"))
+    return " ".join(re.sub(r"[#$*\\]", "", sin_titulos).split())[:largo]
 
 
 class Concepto(BaseModel):
@@ -56,6 +65,7 @@ class LocalGraphDB:
     def __init__(self):
         """Inicializa el almacenamiento simulando una base de datos de grafos local."""
         self._df_cache = None
+        self._universo_cache = None   # (DataFrame del que salió, lista para el universo)
         self._last_parquet_mtime = 0
         self._n_fallidos = 0  # JSON de raw/ que no se pudieron leer en la última compilación
         self._n_papelera = 0  # JSON de raw/ que están en la papelera (no entran en la base) en la última compilación
@@ -90,7 +100,9 @@ class LocalGraphDB:
         if not os.path.exists(raw_dir):
             os.makedirs(raw_dir)
             
-        json_files = [f for f in os.listdir(raw_dir) if f.endswith('.json')]
+        # scandir da el mtime con la propia lectura de la carpeta (en Windows, sin una llamada por archivo): con 2000 neuronas, 93 ms → unos pocos
+        entradas = [e for e in os.scandir(raw_dir) if e.name.endswith('.json')]
+        json_files = [e.name for e in entradas]
         if not json_files:
             # Si no hay archivos pero el parquet existe, significa que se borró el último nodo.
             if os.path.exists(NODOS_FILE):
@@ -101,7 +113,7 @@ class LocalGraphDB:
             return 0
             
         # Comprobar si hay cambios analizando el mtime de los archivos
-        max_mtime = max(os.path.getmtime(os.path.join(raw_dir, f)) for f in json_files)
+        max_mtime = max(e.stat().st_mtime for e in entradas)
         if not force and os.path.exists(NODOS_FILE):
             # Comprobamos también si la cantidad de archivos coincide con el parquet
             parquet_mtime = os.path.getmtime(NODOS_FILE)
@@ -112,12 +124,18 @@ class LocalGraphDB:
                     return 0 # Ya está actualizado
                 
         import json
-        clasificador = None
-        try:
-            from clasificador import init_clasificador
-            clasificador = init_clasificador()
-        except ImportError:
-            print("[Alejandria] Aviso: fastembed no está instalado. Ejecuta 'pip install fastembed' en tu terminal.")
+        # El modelo de embeddings (1,5–2 s y cientos de MB) solo se carga si alguna neurona aún no tiene embedding
+        modelo = {"cargado": False, "clasificador": None}
+
+        def clasificador_si_hace_falta():
+            if not modelo["cargado"]:
+                modelo["cargado"] = True
+                try:
+                    from clasificador import init_clasificador
+                    modelo["clasificador"] = init_clasificador()
+                except ImportError:
+                    print("[Alejandria] Aviso: fastembed no está instalado. Ejecuta 'pip install fastembed' en tu terminal.")
+            return modelo["clasificador"]
 
         nodos_nuevos = []
         self._n_fallidos = 0
@@ -133,11 +151,13 @@ class LocalGraphDB:
                     continue
                     
                 # Si falta el embedding, lo generamos y lo escribimos en el JSON
-                if ("embedding" not in data or not data["embedding"]) and clasificador is not None:
-                    texto = f"{data.get('nombre', '')}. {data.get('teoria', '')}"
-                    data["embedding"] = clasificador.get_embedding(texto).tolist()
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, ensure_ascii=False, indent=2)
+                if "embedding" not in data or not data["embedding"]:
+                    clasificador = clasificador_si_hace_falta()
+                    if clasificador is not None:
+                        texto = f"{data.get('nombre', '')}. {data.get('teoria', '')}"
+                        data["embedding"] = clasificador.get_embedding(texto).tolist()
+                        with open(filepath, 'w', encoding='utf-8') as f:
+                            json.dump(data, f, ensure_ascii=False, indent=2)
                         
                 nodos_nuevos.append({
                     "id": file.replace('.json', ''),
@@ -188,22 +208,24 @@ class LocalGraphDB:
         return 0 if df.empty else len(df)
 
     def get_universe_metadata(self):
-        """Devuelve ID, nombre, cluster y textos completos de los nodos para el buscador."""
+        """Lo que el universo necesita de cada neurona: id, nombre, clúster, subredes, los términos del glosario (para buscar) y un resumen de la teoría
+        (para las fichas de los prompts). El texto completo, los ejercicios y las referencias se piden de una en una con get_node: el universo se sondea
+        cada 5 s y con 2000 neuronas eran 40 MB por sondeo. La lista se rehace solo cuando cambia la base (el DataFrame es otro objeto)."""
         df = self._get_df()
         if df.empty: return []
-        
+        if self._universo_cache is not None and self._universo_cache[0] is df:
+            return self._universo_cache[1]
+
+        out = []
         if "id" in df.columns:
-            cols = ["id", "nombre", "cluster_id"]
-            if "teoria" in df.columns: cols.append("teoria")
-            if "glosario" in df.columns: cols.append("glosario")
-            if "ejercicios" in df.columns: cols.append("ejercicios")
-            if "referencias" in df.columns: cols.append("referencias")
-            out = df[cols].to_dict(orient="records")
-            subredes = df["subredes"] if "subredes" in df.columns else [None] * len(out)     # una base compilada con una versión anterior aún no tiene la columna
-            for r, s in zip(out, subredes):
-                r["subredes"] = _lista_json(s)
-            return out
-        return []
+            n = len(df)
+            col = lambda nombre: df[nombre].tolist() if nombre in df.columns else [None] * n     # una base compilada con una versión anterior no tiene todas las columnas
+            for id_, nombre, cluster, glosario, teoria, subredes in zip(df["id"].tolist(), col("nombre"), col("cluster_id"), col("glosario"), col("teoria"), col("subredes")):
+                out.append({"id": id_, "nombre": nombre, "cluster_id": cluster, "subredes": _lista_json(subredes),
+                            "glosario": [{"termino": g.get("termino", "")} for g in _lista_json(glosario) if isinstance(g, dict)],
+                            "resumen": resumen_teoria(teoria)})
+        self._universo_cache = (df, out)
+        return out
 
     @_locked
     def get_links_metadata(self):

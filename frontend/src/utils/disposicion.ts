@@ -122,14 +122,39 @@ const distancia = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2
  * hasta uno que cumpla (el primero es el de `posicionNeurona`, así que una neurona sin vecinas cerca no cambia de sitio). Si la nube se
  * llena, su radio crece lo justo solo para esa neurona. Una neurona nueva nunca mueve a otra; sin memoria, el mismo conjunto de ids da
  * el mismo resultado en cualquier ordenador.
- * shortcut: compara contra todas las del clúster (O(n²)); con miles de neuronas en un clúster habría que usar una rejilla.
+ * Las colocadas van en una rejilla de celdas del tamaño de la distancia mínima: para un candidato solo hay que mirar las 27 celdas de alrededor (todo lo que
+ * está a menos de `minima` cae ahí), así que cada neurona cuesta lo mismo con 60 que con 2000 en el clúster (comparando con todas, 500 tardaban 1,6 s y 2000, 68 s).
+ * Da exactamente los mismos sitios que la comparación con todas (hay un test que lo comprueba).
  */
+function crearRejilla(lado: number) {
+    // Clave numérica por hash de la celda (sin crear textos): si dos celdas chocan, el cajón lleva puntos de más, que son puntos reales y no cambian el resultado.
+    const celdas = new Map<number, Vec3[]>();
+    const clave = (x: number, y: number, z: number) => (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+    return {
+        agregar(p: Vec3): void {
+            const k = clave(Math.floor(p[0] / lado), Math.floor(p[1] / lado), Math.floor(p[2] / lado));
+            const c = celdas.get(k);
+            if (c) c.push(p); else celdas.set(k, [p]);
+        },
+        /** Distancia al punto más cercano; exacta si es menor que `lado` (lo único que importa) y, si no hay ninguno tan cerca, mayor o infinita. */
+        masCercano(p: Vec3): number {
+            const cx = Math.floor(p[0] / lado), cy = Math.floor(p[1] / lado), cz = Math.floor(p[2] / lado);
+            let m = Infinity;
+            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+                const c = celdas.get(clave(cx + dx, cy + dy, cz + dz));
+                if (c) for (const q of c) m = Math.min(m, distancia(p, q));
+            }
+            return m;
+        },
+    };
+}
+
 export function desplazamientosCluster(ids: string[], previas: Record<string, Vec3> = {}, minima = DISTANCIA_MINIMA, radio = 10): Record<string, Vec3> {
     const orden = [...new Set(ids)].sort();
     const res: Record<string, Vec3> = {};
-    const colocadas: Vec3[] = [];
+    const colocadas = crearRejilla(Math.max(minima, 1e-9));
     for (const id of orden) {
-        if (esVec3(previas[id])) { res[id] = previas[id]; colocadas.push(previas[id]); }
+        if (esVec3(previas[id])) { res[id] = previas[id]; colocadas.agregar(previas[id]); }
     }
     for (const id of orden) {
         if (id in res) continue;
@@ -137,12 +162,12 @@ export function desplazamientosCluster(ids: string[], previas: Record<string, Ve
         let elegido: Vec3 | null = null, mejorDist = -1;
         for (let i = 0; i < MAX_INTENTOS; i++) {
             const p = puntoDeNube(r, radio + Math.floor(i / INTENTOS_POR_PASO) * PASO_NUBE);
-            const d = colocadas.reduce((m, q) => Math.min(m, distancia(p, q)), Infinity);
+            const d = colocadas.masCercano(p);
             if (d >= minima) { elegido = p; break; }
             if (d > mejorDist) { elegido = p; mejorDist = d; }       // por si se agotan los intentos: el menos malo
         }
         res[id] = elegido!;
-        colocadas.push(elegido!);
+        colocadas.agregar(elegido!);
     }
     return res;
 }

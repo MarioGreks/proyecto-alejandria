@@ -99,3 +99,44 @@ test('si el clúster se llena, la nube crece lo justo y se sigue cumpliendo la d
     const mayor = Math.max(...puntos.map(p => Math.hypot(...p)));
     assert.ok(mayor > 10 && mayor < 40, `radio final ${mayor}`);                         // creció, pero sin irse lejos
 });
+
+test('desplazamientosCluster con rejilla da los mismos sitios que comparar con todas las neuronas (referencia O(n²))', () => {
+    // La implementación anterior, tal cual: la rejilla solo acelera, no cambia ningún sitio (si cambiara, las neuronas de otro PC no coincidirían con las de este).
+    const nube = (r, radio) => {
+        let u = r() + r() + r() - 1.5, v = r() + r() + r() - 1.5, w = r() + r() + r() - 1.5;
+        const largo = Math.hypot(u, v, w) || 1; u /= largo; v /= largo; w /= largo;
+        const d = Math.abs(r() + r() - 1) * radio;
+        return [u * d, v * d, w * d];
+    };
+    const referencia = (ids, previas = {}, minima = DISTANCIA_MINIMA, radio = 10) => {
+        const orden = [...new Set(ids)].sort(), res = {}, colocadas = [];
+        for (const id of orden) if (Array.isArray(previas[id])) { res[id] = previas[id]; colocadas.push(previas[id]); }
+        for (const id of orden) {
+            if (id in res) continue;
+            const r = rngDe(`n:${id}`);
+            let elegido = null, mejor = -1;
+            for (let i = 0; i < 4000; i++) {
+                const p = nube(r, radio + Math.floor(i / 40) * 0.5);
+                const d = colocadas.reduce((m, q) => Math.min(m, dist(p, q)), Infinity);
+                if (d >= minima) { elegido = p; break; }
+                if (d > mejor) { elegido = p; mejor = d; }
+            }
+            res[id] = elegido; colocadas.push(elegido);
+        }
+        return res;
+    };
+    const ids = (n, p) => Array.from({ length: n }, (_, i) => `${p}_${i}`);
+    assert.deepEqual(desplazamientosCluster(ids(150, 'a')), referencia(ids(150, 'a')));
+    const previas = referencia(ids(30, 'b'));
+    assert.deepEqual(desplazamientosCluster([...ids(30, 'b'), ...ids(40, 'c')], previas), referencia([...ids(30, 'b'), ...ids(40, 'c')], previas));
+    assert.deepEqual(desplazamientosCluster(ids(60, 'd'), {}, 6, 1), referencia(ids(60, 'd'), {}, 6, 1));        // nube pequeña: obliga a crecer y agota intentos
+    const juntas = Object.fromEntries(ids(10, 'e').map((id, i) => [id, [i * 0.1, 0, 0]]));
+    assert.deepEqual(desplazamientosCluster(ids(40, 'e'), juntas), referencia(ids(40, 'e'), juntas));            // previas más juntas que la mínima
+});
+
+test('desplazamientosCluster: 1000 neuronas en un clúster se colocan en tiempo razonable (antes, 11 s)', () => {
+    const t = performance.now();
+    const d = desplazamientosCluster(Array.from({ length: 1000 }, (_, i) => `n_${i}`));
+    assert.equal(Object.keys(d).length, 1000);
+    assert.ok(performance.now() - t < 5000, `tardó ${Math.round(performance.now() - t)} ms`);
+});

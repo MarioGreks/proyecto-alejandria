@@ -336,8 +336,9 @@ export function fichaVecina(n: any, largoResumen = 160): FichaVecina {
     let glosario = n?.glosario;
     if (typeof glosario === 'string') { try { glosario = JSON.parse(glosario); } catch { glosario = []; } }
     const terminos = (Array.isArray(glosario) ? glosario : []).map((g: any) => g?.termino).filter((t: unknown) => typeof t === 'string' && t).slice(0, 6).join(', ');
+    // El universo ya trae `resumen` (backend/database.py: resumen_teoria, la misma cuenta que esta); sin él se saca de la teoría completa.
     const sinTitulos = String(n?.teoria ?? '').split('\n').filter((l: string) => !/^\s*#/.test(l)).join(' ');     // los títulos («1. Introducción histórica…») gastan el resumen sin informar
-    const resumen = linea(sinTitulos.replace(/[#$*\\]/g, '')).slice(0, largoResumen);   // shortcut: con cientos de neuronas el prompt crece; habría que acotar la lista
+    const resumen = (typeof n?.resumen === 'string' ? n.resumen : linea(sinTitulos.replace(/[#$*\\]/g, ''))).slice(0, largoResumen);   // shortcut: con cientos de neuronas el prompt crece; habría que acotar la lista
     return { id: String(n?.id), nombre: String(n?.nombre ?? n?.id), cluster: n?.cluster_id ?? n?.cluster ?? undefined, terminos, resumen };
 }
 const PREFIJO_FORMATO_SINAPSIS = '\n- Dentro de ese mismo bloque json añade, además, ';

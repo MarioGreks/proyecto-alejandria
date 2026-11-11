@@ -713,11 +713,15 @@ export default function Universe() {
         setRealNodes(nodos);
         setRealLinks(aristas);
     };
+    const sondeoEnCurso = useRef(false);     // si el backend tarda (sincronizando, recompilando), no se apilan sondeos
     const loadData = () => {
+        if (sondeoEnCurso.current) return;
+        sondeoEnCurso.current = true;
         fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
             .then(res => res.json())
             .then(data => aplicarUniverso(data))
-            .catch(err => console.error("Error fetching universe:", err));
+            .catch(err => console.error("Error fetching universe:", err))
+            .finally(() => { sondeoEnCurso.current = false; });
     };
 
     const recargar = (): Promise<void> =>
@@ -728,8 +732,10 @@ export default function Universe() {
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 5000);
-        return () => clearInterval(interval);
+        const interval = setInterval(() => { if (!document.hidden) loadData(); }, 5000);     // con la ventana oculta no se sondea (como Ajustes y Sincronización)
+        const alVolver = () => { if (!document.hidden) loadData(); };                         // al volver se pone al día sin esperar al siguiente turno
+        document.addEventListener('visibilitychange', alVolver);
+        return () => { clearInterval(interval); document.removeEventListener('visibilitychange', alVolver); };
     }, []);
 
     // Búsqueda de conexiones de una neurona nueva: tarda ~1 min en segundo plano, así que se enseña el avance y el resultado.
