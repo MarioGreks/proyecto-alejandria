@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DISTANCIA_MINIMA, asignarCasillas, centroDeCasilla, desplazamientosCluster, firmaUniverso, hashTexto, posicionNeurona, rngDe } from './disposicion.ts';
+import { DISTANCIA_MINIMA, asignarCasillas, casillasRecordadas, centroDeCasilla, desplazamientosCluster, firmaUniverso, hashTexto, olvidarDisposicion, posicionNeurona, posicionesRecordadas, rngDe } from './disposicion.ts';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
@@ -139,4 +139,24 @@ test('desplazamientosCluster: 1000 neuronas en un clúster se colocan en tiempo 
     const d = desplazamientosCluster(Array.from({ length: 1000 }, (_, i) => `n_${i}`));
     assert.equal(Object.keys(d).length, 1000);
     assert.ok(performance.now() - t < 5000, `tardó ${Math.round(performance.now() - t)} ms`);
+});
+
+test('olvidarDisposicion: la disposición vuelve a salir de cero (sin huecos y igual en cualquier ordenador) y nada más se toca', () => {
+    const almacen = new Map([['otra.clave', 'intacta']]);
+    globalThis.localStorage = { getItem: k => (almacen.has(k) ? almacen.get(k) : null), setItem: (k, v) => almacen.set(k, String(v)), removeItem: k => almacen.delete(k) };
+    try {
+        const ids = Array.from({ length: 30 }, (_, i) => `n_${i}`);
+        const base = posicionesRecordadas({ Mates: ids });            // se recuerdan las 30
+        casillasRecordadas(['Mates', 'Física']);
+        // se «borran» las 20 primeras: con memoria, las 10 que quedan conservan sus sitios aunque hayan quedado huecos
+        const quedan = ids.slice(20);
+        assert.deepEqual(posicionesRecordadas({ Mates: quedan }), Object.fromEntries(quedan.map(id => [id, base[id]])));
+        assert.ok([...almacen.keys()].some(k => k.includes('posiciones')) && [...almacen.keys()].some(k => k.includes('casillas')));
+        olvidarDisposicion();
+        assert.deepEqual([...almacen.keys()], ['otra.clave']);       // solo se olvida la disposición
+        assert.deepEqual(posicionesRecordadas({ Mates: quedan }), desplazamientosCluster(quedan));          // de cero: lo que saldría en un ordenador sin memoria
+    } finally {
+        delete globalThis.localStorage;
+    }
+    olvidarDisposicion();                                              // sin almacenamiento no falla
 });

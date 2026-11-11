@@ -195,6 +195,15 @@ const CLAVE_POSICIONES = 'alejandria.posicionesNeuronas';
 const MAX_POSICIONES = 5000;
 
 /**
+ * «Reorganizar»: olvida las casillas de los clústeres y las posiciones de las neuronas de este ordenador. La próxima disposición sale de cero y solo
+ * depende de los ids y de los clústeres (casillas por orden alfabético, neuronas por su semilla), así que es la misma en cualquier ordenador con las
+ * mismas neuronas, sin huecos de neuronas que ya no están. No toca ninguna neurona ni conexión.
+ */
+export function olvidarDisposicion(): void {
+    try { localStorage.removeItem(CLAVE_CASILLAS); localStorage.removeItem(CLAVE_POSICIONES); } catch { /* sin almacenamiento: no hay nada que olvidar */ }
+}
+
+/**
  * Posiciones (relativas al centro) de las neuronas de cada clúster, recordadas en este ordenador para que ninguna se mueva al añadir otras.
  * `clusters`: nombre del clúster → ids de sus neuronas. Una neurona que cambia de clúster se vuelve a colocar en el nuevo.
  */

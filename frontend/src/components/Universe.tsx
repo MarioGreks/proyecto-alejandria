@@ -13,10 +13,10 @@ import GestionSubredes from './Subredes';
 import ProcesandoNeurona from './ProcesandoNeurona';
 import Seguro from './Seguro';
 import Hud from './Hud';
-import { Cabecera, Modal } from './terminal';
+import { Cabecera, Dialogo, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
-import { casillasRecordadas, centroDeCasilla, firmaUniverso, posicionesRecordadas, rngDe } from '../utils/disposicion';
+import { casillasRecordadas, centroDeCasilla, firmaUniverso, olvidarDisposicion, posicionesRecordadas, rngDe } from '../utils/disposicion';
 import { DURACION_MS, FASE_MAX, avance, hornearEscalares, hornearPosiciones } from '../utils/transicion';
 import { asignarSubredes, borrarSubred, colorSubred, esMiembro, guardarSubredActiva, guardarVacias, listarSubredes, mismaSubred, normalizarNombre, renombrarSubred, subredActivaGuardada, vaciasGuardadas } from '../utils/subredes';
 import { calcularDisposicion, renombrarDisposicion } from '../utils/layoutSubred';
@@ -691,6 +691,7 @@ export default function Universe() {
     const [showAjustes, setShowAjustes] = useState(false);
     const [showAgenda, setShowAgenda] = useState(false);
     const [showPapelera, setShowPapelera] = useState(false);
+    const [confirmarReorganizar, setConfirmarReorganizar] = useState(false);
     const [showTutorial, setShowTutorial] = useState(() => !tutorialVisto());   // la primera vez que se abre la app
     const [injectionData, setInjectionData] = useState('');
     const [injectionStatus, setInjectionStatus] = useState('');
@@ -940,7 +941,24 @@ export default function Universe() {
                 }}
                 onInyector={() => setShowInjector(true)}
                 onCentrar={() => setResetCamera(prev => prev + 1)}
+                onReorganizar={() => setConfirmarReorganizar(true)}
             />
+
+            {confirmarReorganizar && (
+                <Dialogo titulo="Reorganizar las neuronas"
+                    texto="Se recalcula de cero la posición de todas las neuronas: se cierran los huecos y, con las mismas neuronas, el reparto queda igual en todos tus PC. Pierdes la memoria de dónde estaba cada una en este ordenador. No se cambia ni se borra ninguna neurona ni conexión."
+                    aceptar="Reorganizar"
+                    onAceptar={() => {
+                        setConfirmarReorganizar(false);
+                        olvidarDisposicion();
+                        recargar().then(() => {
+                            setResetCamera(prev => prev + 1);
+                            setAvisoSinapsis('Neuronas reorganizadas');
+                            window.setTimeout(() => setAvisoSinapsis(null), 6000);
+                        });
+                    }}
+                    onCancelar={() => setConfirmarReorganizar(false)} />
+            )}
 
             {/* Modal de Inyección de Neuronas */}
             {showInjector && (
