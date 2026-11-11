@@ -144,8 +144,15 @@ export function textoAOpciones(texto: string): (number | string)[] {
 export const literal = (v: Valor): string =>
     typeof v === 'boolean' ? (v ? 'True' : 'False') : typeof v === 'number' ? String(v) : JSON.stringify(v);
 
-export const inyectar = (codigo: string, valores: Record<string, Valor>): string =>
-    Object.entries(valores).reduce((c, [clave, v]) => c.split(`{${clave}}`).join(literal(v)), codigo);
+const PALABRAS_PYTHON = new Set(['False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield']);
+
+// Los controles que el código no usa como {variable} se definen igualmente al principio: las IA a veces escriben `n = int(n)` sin llaves, y sin esto
+// esa variable no existe en Python (NameError) y el control no hace nada.
+export const inyectar = (codigo: string, valores: Record<string, Valor>): string => {
+    const sueltos = Object.entries(valores).filter(([clave]) => !codigo.includes(`{${clave}}`) && !PALABRAS_PYTHON.has(clave));
+    const cuerpo = Object.entries(valores).reduce((c, [clave, v]) => c.split(`{${clave}}`).join(literal(v)), codigo);
+    return sueltos.length ? `${sueltos.map(([clave, v]) => `${clave} = ${literal(v)}`).join('\n')}\n${cuerpo}` : cuerpo;
+};
 
 const ZORDER_POR_TIPO: Record<string, number> = { imagen: 0, area: 1, barras: 1, dispersion: 1, banda_x: 0.5, banda_y: 0.5, linea: 2, vline: 2, hline: 2, texto: 3 };
 export const zorderDe = (s: Serie): number => s.zorder ?? ZORDER_POR_TIPO[s.tipo] ?? 2;

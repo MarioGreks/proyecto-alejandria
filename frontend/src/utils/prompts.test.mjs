@@ -36,6 +36,11 @@ test('ambos prompts piden no dejar marcas de cita como [reference:3] en los text
     assert.ok(PROMPT_FUENTES.trimEnd().endsWith('el bloque JSON en el PASO 2; en el PASO 1 solo la lista y la pregunta.'));   // la última regla sigue siendo la de formato
 });
 
+test('los prompts con laboratorio exigen las llaves en cada control, también dentro de una conversión', () => {
+    for (const p of [promptFuentes('formal'), promptExploracion('formal')])
+        assert.ok(p.includes('NUNCA escribas el nombre suelto sin llaves (`n = int(n)`)'));
+});
+
 test('fuentes propias: primero lista los conceptos y pregunta cuál, y solo después genera el JSON, en todos los modos', () => {
     for (const modo of ['auto', 'formal', 'historico', 'teorico']) {
         const p = promptFuentes(modo);

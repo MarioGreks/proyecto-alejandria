@@ -208,7 +208,7 @@ export const VISTA_GENERAL: Vista = { nombre: null, layout: null, color: '#fffff
 
 interface Base {
     ids: string[]; indicePorId: Map<string, number>; posGen: THREE.Vector3[]; coloresGen: Float32Array;
-    enlaces: [number, number, string, string][];            // índice de origen y de destino, y sus ids
+    enlaces: [number, number, string, string, boolean][];   // índice de origen y de destino, sus ids y si está aún pendiente de revisar
     arcos: Float32Array;                                     // 4 por neurona: desvío en arco al viajar (xyz) y retraso de salida (w)
     clusterCenters: THREE.Vector3[]; clusterKeys: string[];
     nombres: string[]; nombreN: string[]; clusterN: string[]; busqueda: string[];   // nombre, y textos normalizados donde buscar (el nombre, el clúster, y los dos con los términos del glosario)
@@ -259,11 +259,11 @@ function construirBase(realNodes: any[], realLinks: any[]): Base | null {
         });
     });
     const indicePorId = new Map(ids.map((id, i) => [id, i]));
-    const enlaces: [number, number, string, string][] = [];
+    const enlaces: [number, number, string, string, boolean][] = [];
     for (const l of realLinks ?? []) {
         const a = indicePorId.get(l.origen_id), b = indicePorId.get(l.destino_id);
         if (a === undefined || b === undefined) { console.warn(`Enlace fallido: ${l.origen_id} (${a}) -> ${l.destino_id} (${b})`); continue; }
-        enlaces.push([a, b, l.origen_id, l.destino_id]);
+        enlaces.push([a, b, l.origen_id, l.destino_id, l.estado !== 'aceptada']);
     }
     const arcos = new Float32Array(ids.length * 4);
     ids.forEach((id, i) => {
@@ -286,8 +286,9 @@ function dendritasDe(base: Base, i: number, pos: THREE.Vector3, color: THREE.Col
 }
 
 /** Curva de una conexión entre dos neuronas (siempre la misma curva para el mismo par): añade sus vértices a los arrays. */
-function curvaDe(enlace: [number, number, string, string], pa: THREE.Vector3, pb: THREE.Vector3, ca: THREE.Color, cb: THREE.Color, lp: number[], lc: number[], nodoDe: number[]) {
-    const [a, , origen, destino] = enlace;
+function curvaDe(enlace: [number, number, string, string, boolean], pa: THREE.Vector3, pb: THREE.Vector3, ca: THREE.Color, cb: THREE.Color, lp: number[], lc: number[], nodoDe: number[]) {
+    const [a, , origen, destino, pendiente] = enlace;
+    if (pendiente) { ca = ca.clone().multiplyScalar(BRILLO_PENDIENTE); cb = cb.clone().multiplyScalar(BRILLO_PENDIENTE); }   // sin revisar: se ve, pero no domina
     const dir = new THREE.Vector3().subVectors(pb, pa);
     const dist = dir.length();
     dir.normalize();
@@ -297,9 +298,10 @@ function curvaDe(enlace: [number, number, string, string], pa: THREE.Vector3, pb
     const rnd = rngDe(`l:${origen}>${destino}`);   // cada conexión, siempre con la misma curva
     perp.applyAxisAngle(dir, rnd() * Math.PI * 2);
     const midPoint = new THREE.Vector3().addVectors(pa, pb).multiplyScalar(0.5);
-    midPoint.add(perp.multiplyScalar(dist * (0.2 + rnd() * 0.2)));
+    midPoint.add(perp.multiplyScalar(dist * (0.15 + rnd() * 0.15)));   // término medio: con 0.2–0.4 formaban una maraña, con 0.06–0.14 quedaban rectas
     addSmoothCurve(pa, pb, midPoint, ca, cb, lp, lc, SEGMENTOS_ENLACE, a, nodoDe);
 }
+const BRILLO_PENDIENTE = 0.35;
 const SEGMENTOS_ENLACE = 12;
 
 /**

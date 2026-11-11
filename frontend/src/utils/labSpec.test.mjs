@@ -21,6 +21,12 @@ test('inyectar sustituye todas las apariciones y no toca otras llaves del códig
     assert.equal(inyectar('x = {a}', { a: 1e-7 }), 'x = 1e-7');
 });
 
+test('inyectar define al principio los controles que el código usa sin llaves (n = int(n)) y salta las palabras reservadas', () => {
+    const salida = inyectar('n = int(n)\nm = {m}', { n: 2000, m: 3, mostrar: true, lambda: 2 });
+    assert.equal(salida, 'n = 2000\nmostrar = True\nn = int(n)\nm = 3');
+    assert.equal(inyectar('x = {a}', { a: 1 }), 'x = 1');   // sin sueltos, el código no cambia
+});
+
 test('marcas: valores bonitos dentro del rango y sin ruido de coma flotante', () => {
     assert.deepEqual(marcas(0, 1, 6), [0, 0.2, 0.4, 0.6, 0.8, 1]);
     assert.deepEqual(marcas(0, 10, 6), [0, 2, 4, 6, 8, 10]);
