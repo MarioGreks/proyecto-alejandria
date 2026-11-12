@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SIN_LIMITES, calidadDe, debeProponer, leerRendimientoGuardado, nombrePerfil, normalizarRendimiento, textoCpu, textoFps, textoRam } from './rendimiento.ts';
+import { SIN_LIMITES, calidadDe, debeProponer, leerRendimientoGuardado, nombrePerfil, normalizarRendimiento, segundosDeAvance, textoCpu, textoFps, textoRam } from './rendimiento.ts';
 
 /** Un localStorage de pruebas (Node no lo trae). */
 function conAlmacen(valorInicial, f) {
@@ -49,6 +49,14 @@ test('solo se propone un perfil si aún no se eligió, el equipo lo necesita y n
     assert.equal(debeProponer(sinElegir, 'ligero', true), false);          // ya dijo «ahora no»
     assert.equal(debeProponer(elegido, 'ligero', false), false);           // ya eligió
     assert.equal(debeProponer(sinElegir, '', false), false);               // respuesta rara del backend
+});
+
+test('el tiempo que se le pasa a advance va en SEGUNDOS y sigue desde el reloj de la escena (regresión 0.8.0: iba en ms y el 3D giraba como una peonza)', () => {
+    assert.equal(segundosDeAvance(5, 1000, 1000), 5);          // el primer fotograma cae justo en la base: sin salto
+    assert.equal(segundosDeAvance(5, 1000, 1500), 5.5);        // 500 ms después, medio segundo más
+    assert.equal(segundosDeAvance(0, 40_000, 40_033), 0.033);  // marcas de rAF grandes (la página lleva 40 s abierta) no se cuelan como tiempo
+    const delta = segundosDeAvance(12, 7000, 7033) - segundosDeAvance(12, 7000, 7000);
+    assert.ok(delta > 0.03 && delta < 0.04, `un fotograma a 30 FPS avanza ~0,033 s, no ~33 (salió ${delta})`);
 });
 
 test('los textos de los controles', () => {

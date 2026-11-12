@@ -100,6 +100,11 @@ export const avisarRendimiento = (a: AjustesRendimiento): void => {
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent<AjustesRendimiento>(EVENTO_RENDIMIENTO, { detail: a }));
 };
 
+/** Tiempo que hay que pasarle a `advance` de react-three-fiber con `frameloop="never"`: en SEGUNDOS y continuando desde el reloj de la escena (`base`).
+ *  La 0.8.0 le pasaba milisegundos y las animaciones iban ~1000 veces más rápido (el universo giraba como una peonza con el límite de FPS activo).
+ *  `inicioMs` y `ahoraMs` son marcas de requestAnimationFrame: el primer fotograma cae justo en `base`, sin salto. */
+export const segundosDeAvance = (base: number, inicioMs: number, ahoraMs: number): number => base + (ahoraMs - inicioMs) / 1000;
+
 /** «2,5 GB» o «Sin tope». */
 export const textoRam = (mb: number): string => (mb <= 0 ? 'Sin tope' : `${(mb / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} GB`);
 export const textoFps = (fps: number): string => (fps <= 0 ? 'Sin tope' : `${fps} FPS`);
