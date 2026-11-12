@@ -1,6 +1,6 @@
 [package]
 name = "frontend"
-version = "0.8.1"
+version = "0.8.2"
 description = "Proyecto Alejandría: tu segundo cerebro, local y privado"
 authors = ["Proyecto Alejandría"]
 license = "MIT"
