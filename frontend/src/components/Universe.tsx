@@ -629,6 +629,8 @@ const BiologicalWeb = ({ onNodeClick, searchQuery, realNodes, realLinks, vista, 
 
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
+const _desde = new THREE.Vector3(), _hasta = new THREE.Vector3(), _giro = new THREE.Quaternion(), _q = new THREE.Quaternion();   // temporales del recentrado
+
 const CameraController = ({ resetFlag, targetPosition, distancia }: { resetFlag: number, targetPosition: THREE.Vector3 | null, distancia: number }) => {
     const controlsRef = useRef<OrbitControlsImpl>(null);
     const { camera } = useThree();
@@ -656,9 +658,16 @@ const CameraController = ({ resetFlag, targetPosition, distancia }: { resetFlag:
 
     useFrame((_, delta) => {
         if (isAnimating.current && controlsRef.current) {
-            controlsRef.current.target.lerp(targetRef.current, delta * 4);
-            camera.position.lerp(camTargetRef.current, delta * 4);
-            controlsRef.current.update();
+            const controls = controlsRef.current;
+            const k = 1 - Math.exp(-delta * 4);   // nunca pasa de 1: un tirón de FPS o una pestaña oculta no hacen que la cámara se pase de largo
+            controls.target.lerp(targetRef.current, k);
+            // La cámara viaja por la esfera alrededor del objetivo (gira la dirección, interpola la distancia): una línea recta atravesaría el centro del universo
+            _desde.copy(camera.position).sub(controls.target);
+            _hasta.copy(camTargetRef.current).sub(targetRef.current);
+            const radio = THREE.MathUtils.lerp(_desde.length(), _hasta.length(), k);
+            _giro.identity().slerp(_q.setFromUnitVectors(_desde.normalize(), _hasta.normalize()), k);
+            camera.position.copy(_desde.applyQuaternion(_giro).multiplyScalar(radio)).add(controls.target);
+            controls.update();
             
             // Detener animación si ya estamos cerca (el lerp es exponencial: con 0.1 tarda segundos en "llegar" sin que se note)
             if (controlsRef.current.target.distanceTo(targetRef.current) < 0.5 && camera.position.distanceTo(camTargetRef.current) < 0.5) {
@@ -707,7 +716,6 @@ export default function Universe() {
     const calidad = calidadDe(rendimiento.calidad_3d);
     const [showAgenda, setShowAgenda] = useState(false);
     const [showPapelera, setShowPapelera] = useState(false);
-    const [confirmarReorganizar, setConfirmarReorganizar] = useState(false);
     const [showTutorial, setShowTutorial] = useState(() => !tutorialVisto());   // la primera vez que se abre la app
     const [injectionData, setInjectionData] = useState('');
     const [injectionStatus, setInjectionStatus] = useState('');
@@ -733,15 +741,21 @@ export default function Universe() {
     };
     const [claveGeometria, setClaveGeometria] = useState(0);     // sube con cada cambio del universo; «Reorganizar» no la toca (ver BiologicalWeb)
 
-    /** «Reorganizar»: cada neurona vuelve a colocarse dentro de su clúster según sus conexiones (reorganizar.ts) y la escena lo anima. Los clústeres no se mueven. */
-    const reorganizar = () => {
-        const clusters: Record<string, string[]> = {};
-        for (const n of realNodes) (clusters[n.cluster_id || "Desconocido"] ??= []).push(String(n.id));
-        reorganizarPosiciones(clusters, realLinks.map(l => [String(l.origen_id), String(l.destino_id)] as [string, string]));
-        setRealNodes(nodos => [...nodos]);       // otra lista, el mismo universo: la base se rehace con las posiciones nuevas y la geometría se conserva
-        setAvisoSinapsis('Neuronas reorganizadas');
-        window.setTimeout(() => setAvisoSinapsis(null), 6000);
-    };
+    /** [ Recargar ]: relee el universo del disco y vuelve a colocar cada neurona dentro de su clúster según sus conexiones (reorganizar.ts), animado y sin avisos.
+     *  Los clústeres no se mueven. Si el universo cambió se repinta de golpe (geometría nueva); si no, la escena anima desde donde estaban. */
+    const recargarYColocar = () =>
+        fetch(`${API}/api/universe?t=${Date.now()}`, { cache: "no-store" })
+            .then(res => res.json())
+            .then(data => {
+                const nodos = Array.isArray(data?.nodes) ? data.nodes : null, aristas = Array.isArray(data?.links) ? data.links : null;
+                if (!nodos || !aristas) return;
+                const clusters: Record<string, string[]> = {};
+                for (const n of nodos) (clusters[n.cluster_id || "Desconocido"] ??= []).push(String(n.id));
+                reorganizarPosiciones(clusters, aristas.map((l: any) => [String(l.origen_id), String(l.destino_id)] as [string, string]));
+                if (firmaUniverso(nodos, aristas) !== firmaActual.current) aplicarUniverso(data);
+                else setRealNodes(prev => [...prev]);     // otra lista, el mismo universo: la base se rehace con las posiciones nuevas y la geometría se conserva
+            })
+            .catch(err => console.error("Error fetching universe:", err));
     const sondeoEnCurso = useRef(false);     // si el backend tarda (sincronizando, recompilando), no se apilan sondeos
     const loadData = () => {
         if (sondeoEnCurso.current) return;
@@ -979,16 +993,8 @@ export default function Universe() {
                 }}
                 onInyector={() => setShowInjector(true)}
                 onCentrar={() => setResetCamera(prev => prev + 1)}
-                onReorganizar={() => setConfirmarReorganizar(true)}
+                onRecargarYColocar={recargarYColocar}
             />
-
-            {confirmarReorganizar && (
-                <Dialogo titulo="Reorganizar las neuronas"
-                    texto="Cada neurona vuelve a colocarse dentro de su clúster: las que están conectadas quedan juntas y se deshace la maraña. Los clústeres no se mueven y se anima el cambio. Con las mismas neuronas y conexiones, el reparto sale igual en todos tus PC. Pierdes la posición que tenía cada neurona en este ordenador; no se cambia ni se borra ninguna neurona ni conexión."
-                    aceptar="Reorganizar"
-                    onAceptar={() => { setConfirmarReorganizar(false); reorganizar(); }}
-                    onCancelar={() => setConfirmarReorganizar(false)} />
-            )}
 
             {/* Modal de Inyección de Neuronas */}
             {showInjector && (

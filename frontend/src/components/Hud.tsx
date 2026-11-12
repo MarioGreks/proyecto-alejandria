@@ -28,7 +28,7 @@ interface Props {
     onRecargar: () => void;
     onInyector: () => void;
     onCentrar: () => void;
-    onReorganizar: () => void;
+    onRecargarYColocar: () => void;
 }
 
 const barra: React.CSSProperties = {
@@ -144,8 +144,7 @@ export default function Hud(p: Props) {
                 {p.sinapsis?.ia_pausada && <span style={{ color: 'var(--t-ambar)' }} title={p.sinapsis.motivo_pausa}> | IA en pausa: poca memoria libre</span>}
                 {!p.sinapsis?.activo && p.aviso && <span style={{ color: 'var(--t-verde)' }}> | {p.aviso}</span>}
             </div>
-            <button className="t-btn" onClick={p.onRecargar} title="Vuelve a leer las neuronas del disco">[ Recargar ]</button>
-            <button className="t-btn" onClick={p.onReorganizar} title="Vuelve a colocar cada neurona dentro de su clúster según sus conexiones (con animación); los clústeres no se mueven">[ Reorganizar ]</button>
+            <button className="t-btn" onClick={p.onRecargarYColocar} title="Vuelve a leer las neuronas del disco y recoloca cada una dentro de su clúster según sus conexiones (con animación); los clústeres no se mueven">[ Recargar ]</button>
             <button className="t-btn" onClick={p.onCentrar}>[ Centrar vista ]</button>
         </div>
     </>);
