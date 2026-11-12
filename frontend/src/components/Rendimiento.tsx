@@ -155,14 +155,14 @@ export default function Rendimiento() {
                     </select>
                 </label>
 
-                <label style={{ ...fila, cursor: 'pointer' }}>
-                    <input type="checkbox" className="t-check" checked={a.ia_en_gpu} onChange={ev => cambiar({ ia_en_gpu: ev.target.checked })} />
-                    Dejar que la IA local use la GPU {!hw.gpu_dedicada && <span style={nota}>(tu GPU es integrada: suele ir mejor desmarcado)</span>}
+                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input type="checkbox" className="t-check" style={{ flex: "none", whiteSpace: "nowrap" }} checked={a.ia_en_gpu} onChange={ev => cambiar({ ia_en_gpu: ev.target.checked })} />
+                    <span>Dejar que la IA local use la GPU {!hw.gpu_dedicada && <span style={nota}>(tu GPU es integrada: suele ir mejor desmarcado)</span>}</span>
                 </label>
 
-                <label style={{ ...fila, cursor: 'pointer' }}>
-                    <input type="checkbox" className="t-check" checked={a.sinapsis_auto} onChange={ev => cambiar({ sinapsis_auto: ev.target.checked })} />
-                    Buscar las conexiones de una neurona nueva automáticamente <span style={nota}>(desmarcado: se piden en la pestaña Red de cada neurona)</span>
+                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input type="checkbox" className="t-check" style={{ flex: "none", whiteSpace: "nowrap" }} checked={a.sinapsis_auto} onChange={ev => cambiar({ sinapsis_auto: ev.target.checked })} />
+                    <span>Buscar las conexiones de una neurona nueva automáticamente <span style={nota}>(desmarcado: se piden en la pestaña Red de cada neurona)</span></span>
                 </label>
             </div>
 

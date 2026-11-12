@@ -42,7 +42,7 @@ class _DISPLAY_DEVICEW(ctypes.Structure):
                 ("DeviceID", wintypes.WCHAR * 128), ("DeviceKey", wintypes.WCHAR * 128)]
 
 
-_DEDICADAS = ("geforce", "rtx", "gtx", "quadro", "radeon rx", "radeon pro", "arc a", "arc b", "titan")
+_DEDICADAS = ("geforce", "rtx", "gtx", "quadro", "radeon rx", "radeon pro", "arc a", "arc b", "arc(tm) a", "arc(tm) b", "titan")
 
 
 def es_gpu_dedicada(nombre: str) -> bool:
@@ -61,7 +61,7 @@ def gpus() -> List[str]:
         d.cb = ctypes.sizeof(d)
         if not ctypes.windll.user32.EnumDisplayDevicesW(None, i, ctypes.byref(d), 0):
             break
-        if d.DeviceString and d.DeviceString not in nombres and "basic" not in d.DeviceString.lower() and "remote" not in d.DeviceString.lower():
+        if d.DeviceString and d.DeviceString not in nombres and not any(v in d.DeviceString.lower() for v in ("basic", "remote", "virtual", "indirect")):
             nombres.append(d.DeviceString)
         i += 1
     return nombres
@@ -182,8 +182,8 @@ JOB_OBJECT_CPU_RATE_CONTROL_ENABLE = 0x1
 JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP = 0x4
 BELOW_NORMAL_PRIORITY_CLASS = 0x4000
 NORMAL_PRIORITY_CLASS = 0x20
-_EXTENDED_LIMIT = 9
-_CPU_RATE = 15
+_CLASE_LIMITE_EXTENDIDO = 9
+_CLASE_TASA_CPU = 15
 PROCESS_SET_QUOTA, PROCESS_TERMINATE, PROCESS_QUERY_LIMITED, PROCESS_SET_INFORMATION = 0x0100, 0x0001, 0x1000, 0x0200
 
 
@@ -221,6 +221,7 @@ def _firmas() -> None:
     k.CloseHandle.argtypes = [H]
     k.CreateJobObjectW.argtypes, k.CreateJobObjectW.restype = [ctypes.c_void_p, wintypes.LPCWSTR], H
     k.AssignProcessToJobObject.argtypes = [H, H]
+    k.IsProcessInJob.argtypes = [H, H, ctypes.POINTER(wintypes.BOOL)]
     k.SetInformationJobObject.argtypes = [H, ctypes.c_int, ctypes.c_void_p, D]
     k.GetProcessTimes.argtypes = [H, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
     k.CreateToolhelp32Snapshot.argtypes, k.CreateToolhelp32Snapshot.restype = [D, D], H
@@ -245,11 +246,11 @@ def _fijar_limites(job, cpu_pct: int, ram_mb: int, baja_prioridad: bool) -> bool
         flags |= JOB_OBJECT_LIMIT_JOB_MEMORY
         ext.JobMemoryLimit = ram_mb * 2**20
     ext.BasicLimitInformation.LimitFlags = flags
-    ok = bool(k.SetInformationJobObject(job, _EXTENDED_LIMIT, ctypes.byref(ext), ctypes.sizeof(ext)))
+    ok = bool(k.SetInformationJobObject(job, _CLASE_LIMITE_EXTENDIDO, ctypes.byref(ext), ctypes.sizeof(ext)))
     cpu = _CPU_RATE_INFO()
     cpu.ControlFlags = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP
     cpu.CpuRate = max(1, min(100, cpu_pct)) * 100        # en centésimas de por ciento del TOTAL de la CPU (todos los núcleos); 10000 = 100 %, o sea, sin tope
-    return ok and bool(k.SetInformationJobObject(job, _CPU_RATE, ctypes.byref(cpu), ctypes.sizeof(cpu)))
+    return ok and bool(k.SetInformationJobObject(job, _CLASE_TASA_CPU, ctypes.byref(cpu), ctypes.sizeof(cpu)))
 
 
 def _meter_pid(job, pid: int) -> bool:
@@ -260,6 +261,9 @@ def _meter_pid(job, pid: int) -> bool:
     if not p:
         return False
     try:
+        ya = wintypes.BOOL()
+        if k.IsProcessInJob(p, job, ctypes.byref(ya)) and ya.value:
+            return True                               # ya estaba en este job (de una aplicación anterior): Windows rechazaría asignarlo otra vez
         return bool(k.AssignProcessToJobObject(job, p))
     finally:
         k.CloseHandle(p)

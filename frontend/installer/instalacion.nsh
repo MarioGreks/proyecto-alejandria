@@ -28,6 +28,7 @@ Function InstalarApp
   File "${BACKEND}\agenda.py"
   File "${BACKEND}\subredes.py"
   File "${BACKEND}\sugerencias.py"
+  File "${BACKEND}\recursos.py"
   File "${BACKEND}\requirements.txt"
   SetOutPath "$RutaApp"
   File "..\..\LICENSE"                       ; licencia del proyecto y avisos de terceros (se generan con `npm run avisos`), junto a la app

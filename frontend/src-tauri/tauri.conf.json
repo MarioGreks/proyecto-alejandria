@@ -46,6 +46,7 @@
       "../../backend/agenda.py": "backend/agenda.py",
       "../../backend/subredes.py": "backend/subredes.py",
       "../../backend/sugerencias.py": "backend/sugerencias.py",
+      "../../backend/recursos.py": "backend/recursos.py",
       "../../backend/requirements.txt": "backend/requirements.txt"
     },
     "windows": {

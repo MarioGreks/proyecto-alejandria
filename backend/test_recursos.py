@@ -354,6 +354,11 @@ class TestJobObject(unittest.TestCase):
         self.assertTrue(recursos._fijar_limites(self.job, 40, 3000, baja_prioridad=True))
         self.assertTrue(recursos._meter_pid(self.job, self.hijo.pid))
 
+    def test_adoptar_dos_veces_el_mismo_proceso_sigue_contando_como_adoptado(self):
+        """Windows rechaza asignar a un job un proceso que ya está en él: sin esta comprobación, reaplicar el perfil informaba «0 procesos de Ollama adoptados»."""
+        self.assertTrue(recursos._meter_pid(self.job, self.hijo.pid))
+        self.assertTrue(recursos._meter_pid(self.job, self.hijo.pid))
+
     def test_acepta_quitar_los_limites(self):
         self.assertTrue(recursos._fijar_limites(self.job, 40, 3000, baja_prioridad=True))
         self.assertTrue(recursos._fijar_limites(self.job, 100, 0, baja_prioridad=False))
