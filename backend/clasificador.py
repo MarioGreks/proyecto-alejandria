@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Tuple
 from fastembed import TextEmbedding
 import urllib.request
 from idioma import instruccion
+import recursos
 try:
     from ollama_service import ensure_ollama_running, get_best_llm_model
 except ImportError:
@@ -87,7 +88,7 @@ class ClasificadorLocal:
         La primera vez que se ejecute, descargará el modelo de embeddings (~240MB) en caché.
         """
         print(f"[Capa 2] Cargando modelo de embeddings locales ({model_name})...")
-        self.embedding_model = TextEmbedding(model_name=model_name)
+        self.embedding_model = TextEmbedding(model_name=model_name, threads=recursos.hilos_embedding())   # None = los que decida onnxruntime
         
         # Stopwords para la Capa 1 (Reglas base)
         self.stopwords = set(["el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "en", "con", "por", "para", "como", "sobre", "entre"])
@@ -162,7 +163,7 @@ class ClasificadorLocal:
         Texto: {texto[:1000]}
         """
         
-        if not ensure_ollama_running():   # IA local desactivada en Ajustes, o Ollama no instalado
+        if recursos.ia_pausada() or not ensure_ollama_running():   # sin memoria libre, IA local desactivada en Ajustes, o Ollama no instalado
             return "Desconocido"
         modelo = get_best_llm_model("phi3:mini")
 
@@ -171,6 +172,7 @@ class ClasificadorLocal:
             "prompt": prompt,
             "stream": False,
             "format": "json",
+            **recursos.opciones_ollama(),
             "keep_alive": 0 # FUNDAMENTAL: Matar el modelo inmediatamente después para liberar RAM
         }
         
@@ -310,7 +312,7 @@ Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
     @staticmethod
     def _consultar(modelo: str, prompt: str) -> Optional[Dict]:
         """Una consulta JSON al LLM local. None si su respuesta no es JSON; lanza si falla la conexión."""
-        data = {"model": modelo, "prompt": prompt, "stream": False, "format": "json", "keep_alive": "5m"}
+        data = {"model": modelo, "prompt": prompt, "stream": False, "format": "json", "keep_alive": "5m", **recursos.opciones_ollama()}   # con límites: hilos, contexto, GPU y tiempo en memoria del perfil
         req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=json.dumps(data).encode('utf-8'))
         req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, timeout=120) as response:   # la primera consulta incluye cargar el modelo en memoria (en una CPU lenta, decenas de segundos)
@@ -417,6 +419,8 @@ Responde ÚNICAMENTE en formato JSON: {{"correcto": true o false}}"""
                 try:
                     if not llm_ok:
                         raise RuntimeError("IA local desactivada o Ollama no disponible")
+                    if not recursos.esperar_recursos():       # poca RAM libre: se espera a que vuelva (hasta unos minutos) en vez de empujar al PC al límite
+                        raise RuntimeError("IA en pausa por falta de memoria libre")
                     terminos_c, resumen_c = self._ficha(c['nodo'])
                     pistas = (_pistas(nuevo_resumen, distintivas(claves_de[c['id']])), _pistas(c['nodo'].get('teoria'), distintivas(claves_nuevo)))
                     juicio = self._juzgar_par(modelo, ficha_nuevo, (c['nombre'], terminos_c, resumen_c), pistas)

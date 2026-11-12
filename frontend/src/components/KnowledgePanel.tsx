@@ -263,6 +263,17 @@ export default function KnowledgePanel({
         return copiado;
     };
 
+    /** Pide a la IA local que busque ahora las conexiones de esta neurona (en el perfil Ligero no se buscan solas al crearla). Sigue en segundo plano. */
+    const calcularConexiones = async () => {
+        if (!data) return;
+        setAviso(''); setInfo('');
+        try {
+            const r = await fetch(`${API}/api/node/${data.id}/sinapsis/calcular`, { method: 'POST' });
+            if (r.ok) setInfo('Buscando conexiones con la IA local en segundo plano: el avance sale en la barra de abajo y, al acabar, las propuestas aparecen aquí.');
+            else setAviso(`Error: ${(await r.json().catch(() => ({}))).detail ?? 'no se pudieron calcular las conexiones.'}`);
+        } catch { setAviso('Error: no se pudo hablar con el servidor.'); }
+    };
+
     /** Copia el prompt que pide a una IA externa SOLO el veredicto sobre las sinapsis de esta neurona (con una ficha de cada neurona de la red). */
     const pedirSinapsis = async () => {
         if (!data) return;
@@ -556,6 +567,14 @@ export default function KnowledgePanel({
                     {/* Las sinapsis (lo que más se decide) van primero, aunque estén después en el código */}
                     <div style={{ order: 1, display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'justify' }}>
                         <TituloSeccion>## Sinapsis</TituloSeccion>
+                        <Seccion titulo="Buscar con la IA local">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: MONO }}>
+                                    Tu IA local compara esta neurona con las demás y propone conexiones, que tú aceptas o rechazas. Con el perfil de rendimiento Ligero no se buscan solas al crear una neurona: se piden aquí.
+                                </div>
+                                <div><button className="t-btn" disabled={ocupado !== ''} onClick={calcularConexiones}>[ Calcular conexiones ]</button></div>
+                            </div>
+                        </Seccion>
                         <Seccion titulo="Revisar con una IA externa">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ color: 'var(--t-suave)', fontSize: 12, lineHeight: 1.5, fontFamily: MONO }}>

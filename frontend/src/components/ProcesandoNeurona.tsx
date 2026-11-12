@@ -7,6 +7,7 @@ export interface EstadoProceso {
     hecho: number;
     total: number;
     conexiones: number;
+    pendientes?: boolean;      // las conexiones no se buscan solas (perfil Ligero): se piden desde la pestaña «Red» de la neurona
 }
 
 const MONO = 'var(--t-mono)';
@@ -22,7 +23,7 @@ export default function ProcesandoNeurona({ p }: { p: EstadoProceso }) {
                     {p.fase === 'guardando' ? '[..]' : '[ok]'} Guardando la neurona y clasificándola
                 </div>
                 <div style={{ color: p.fase === 'conexiones' ? 'var(--t-ambar)' : p.fase === 'listo' ? 'var(--t-suave)' : 'var(--t-linea)' }}>
-                    {p.fase === 'listo' ? '[ok]' : p.fase === 'conexiones' ? '[..]' : '[  ]'} Buscando conexiones con tus otras neuronas
+                    {p.pendientes ? '[--]' : p.fase === 'listo' ? '[ok]' : p.fase === 'conexiones' ? '[..]' : '[  ]'} {p.pendientes ? 'Conexiones con tus otras neuronas: cuando lo pidas' : 'Buscando conexiones con tus otras neuronas'}
                 </div>
                 {p.fase === 'conexiones' && (
                     <div style={{ marginLeft: 30, color: 'var(--t-texto)' }}>
@@ -31,8 +32,10 @@ export default function ProcesandoNeurona({ p }: { p: EstadoProceso }) {
                 )}
                 {p.fase === 'listo' && (
                     <div style={{ marginTop: 8, color: 'var(--t-verde)' }}>
-                        {p.conexiones > 0
-                            ? `> ${p.conexiones} conexión(es) propuesta(s), pendientes de revisar. Reiniciando la matriz...`
+                        {p.pendientes
+                            ? '> Neurona guardada. Para buscar sus conexiones: abre la neurona → pestaña Red → [ Calcular conexiones ]. Reiniciando la matriz...'
+                            : p.conexiones > 0
+                            ?`> ${p.conexiones} conexión(es) propuesta(s), pendientes de revisar. Reiniciando la matriz...`
                             : '> Sin conexiones nuevas. Reiniciando la matriz...'}
                     </div>
                 )}

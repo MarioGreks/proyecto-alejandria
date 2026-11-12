@@ -11,6 +11,7 @@ import threading
 from typing import List, Optional
 
 import ajustes
+import recursos
 
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 
@@ -113,13 +114,16 @@ def ensure_ollama_running(espera: float = ESPERA_ARRANQUE) -> bool:
                 # visible (decenas de destellos de Terminal al abrir la app; medido con una instancia propia de `ollama serve`).
                 creationflags = 0x08000000
 
-            subprocess.Popen(
+            proceso = subprocess.Popen(
                 [ollama_bin, "serve"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
-                creationflags=creationflags
+                creationflags=creationflags,
+                env=recursos.entorno_ollama()                  # con límites activos: un solo modelo y una sola petición a la vez
             )
+            recursos.marcar_ollama_propio()
+            recursos.adoptar_proceso(proceso.pid)              # bajo los topes de CPU/RAM (si ya heredó el job de este backend, no hace falta y se ignora)
 
             limite = time.monotonic() + espera
             while time.monotonic() < limite:
@@ -169,6 +173,12 @@ def get_best_llm_model(preferencia: str = "phi3:mini") -> str:
 
     # En automático nunca se elige un modelo de licencia restringida; si solo hay de esos, se devuelve la preferencia (la IA queda sin modelo hasta que se elija uno)
     models = [m for m in models if not licencia_restrictiva(m)]
+
+    # Perfil Ligero: un modelo pequeño (qwen2.5 de 1,5B o 0,5B, Apache-2.0) si está instalado; es lo que mejor aguanta un PC justo de RAM
+    if ajustes.leer().get("perfil") == "ligero":
+        ligero = recursos.modelo_ligero_instalado(models)
+        if ligero:
+            return ligero
 
     # 1. Coincidencia exacta o parcial con la preferencia
     for m in models:

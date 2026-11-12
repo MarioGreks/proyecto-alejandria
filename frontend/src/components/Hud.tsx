@@ -6,7 +6,7 @@ import { SelectorSubred } from './Subredes';
 import type { InfoSubred } from '../utils/subredes';
 
 interface Resultado { node: { id: string; nombre: string }; type: string }
-interface Sinapsis { activo: boolean; nodo: string | null; hecho: number; total: number }
+interface Sinapsis { activo: boolean; nodo: string | null; hecho: number; total: number; ia_pausada?: boolean; motivo_pausa?: string }
 
 interface Props {
     busqueda: string;
@@ -141,6 +141,7 @@ export default function Hud(p: Props) {
             <div style={{ flex: 1, textAlign: 'center', color: 'var(--t-suave)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                 {p.subredActiva ? `«${p.subredActiva}»: ` : ''}{p.nodos} nodos | {p.aristas} aristas | {ia}
                 {p.sinapsis?.activo && <span style={{ color: 'var(--t-ambar)' }}> | buscando conexiones de «{p.sinapsis.nodo}»{p.sinapsis.total > 0 ? ` ${p.sinapsis.hecho}/${p.sinapsis.total}` : '...'}</span>}
+                {p.sinapsis?.ia_pausada && <span style={{ color: 'var(--t-ambar)' }} title={p.sinapsis.motivo_pausa}> | IA en pausa: poca memoria libre</span>}
                 {!p.sinapsis?.activo && p.aviso && <span style={{ color: 'var(--t-verde)' }}> | {p.aviso}</span>}
             </div>
             <button className="t-btn" onClick={p.onRecargar} title="Vuelve a leer las neuronas del disco">[ Recargar ]</button>

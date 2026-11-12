@@ -5,6 +5,7 @@ import { subredActivaGuardada } from '../utils/subredes';
 import type { ResumenImportacion } from '../utils/intercambio';
 import { Cabecera, Modal, Seccion } from './terminal';
 import SincronizacionPcs from './SincronizacionPcs';
+import Rendimiento from './Rendimiento';
 import { guardarCache, iguales, leerCache } from '../utils/cacheEstado';
 
 interface Estado { ia_activa: boolean; modelo: string; version: string; carpeta_datos: string; ollama: boolean; ollama_instalado: boolean; modelos: string[]; modelos_restringidos?: string[]; neuronas: number; buscar_actualizaciones: boolean }
@@ -39,6 +40,10 @@ export default function Ajustes({ onCerrar, onTutorial }: { onCerrar: () => void
             <div>
 
                 {!e ? <p>Conectando con el servidor...</p> : (<>
+                    <Seccion titulo="Rendimiento">
+                        <Rendimiento />
+                    </Seccion>
+
                     <Seccion titulo="IA local (Ollama)">
                         <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
                             <input type="checkbox" className="t-check" checked={e.ia_activa} onChange={ev => guardar({ ia_activa: ev.target.checked })} />

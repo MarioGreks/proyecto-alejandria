@@ -697,15 +697,15 @@ class TestAjustes(unittest.TestCase):
         self.addCleanup(p.stop)
 
     def test_sin_archivo_o_con_basura_valen_los_valores_por_defecto(self):
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
+        self.assertEqual(ajustes.leer(), ajustes.DEFECTO)
         with open(self.ruta, "w") as f:
             f.write("{no es json")
-        self.assertEqual(ajustes.leer(), {"ia_activa": True, "modelo": "", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
+        self.assertEqual(ajustes.leer(), ajustes.DEFECTO)
 
     def test_guardar_ignora_claves_desconocidas_y_tipos_incorrectos(self):
         ajustes.guardar({"ia_activa": False, "modelo": "qwen2.5:3b", "otra": 1})
         ajustes.guardar({"ia_activa": "no", "modelo": 5})
-        self.assertEqual(ajustes.leer(), {"ia_activa": False, "modelo": "qwen2.5:3b", "buscar_actualizaciones": True, "carpeta_sincronizacion": "", "sincronizar_auto": True})
+        self.assertEqual(ajustes.leer(), {**ajustes.DEFECTO, "ia_activa": False, "modelo": "qwen2.5:3b"})
 
     def test_la_busqueda_de_actualizaciones_se_puede_apagar_y_se_guarda(self):
         self.assertTrue(ajustes.leer()["buscar_actualizaciones"])             # por defecto avisa de versiones nuevas
@@ -1645,6 +1645,8 @@ class TestRendimiento(unittest.TestCase):
 
 
 from test_sincronizacion import TestSincronizacion, TestSincronizacionIncremental  # noqa: E402,F401  (para que `unittest test_backend` también las ejecute)
+from test_recursos import (TestAjustesDeRendimiento, TestPerfiles, TestOpcionesDeOllama, TestModeloLigero, TestVigilanciaDeRam,  # noqa: E402,F401
+                           TestEndpointsDeRecursos, TestSinapsisBajoDemanda, TestJobObject)
 
 
 if __name__ == "__main__":

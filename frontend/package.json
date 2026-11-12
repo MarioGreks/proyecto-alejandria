@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.7.6",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "pyodide": "node scripts/bajar-pyodide.mjs",
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "instalador": "tauri build --no-bundle && node installer/construir.mjs",
-    "test": "node --test src/utils/labSpec.test.mjs src/labs/adaptar.test.mjs src/utils/pilarAscii.test.mjs src/utils/prompts.test.mjs src/utils/ejemplos.test.mjs src/utils/actualizador.test.mjs src/utils/versiones.test.mjs src/utils/citas.test.mjs src/utils/disposicion.test.mjs src/utils/etiquetaMath.test.mjs src/utils/neurona.test.mjs src/utils/agenda.test.mjs src/utils/subredes.test.mjs src/utils/distribucionSubred.test.mjs src/utils/transicion.test.mjs src/utils/sugerencias.test.mjs src/utils/reorganizar.test.mjs"
+    "test": "node --test src/utils/labSpec.test.mjs src/labs/adaptar.test.mjs src/utils/pilarAscii.test.mjs src/utils/prompts.test.mjs src/utils/ejemplos.test.mjs src/utils/actualizador.test.mjs src/utils/versiones.test.mjs src/utils/citas.test.mjs src/utils/disposicion.test.mjs src/utils/etiquetaMath.test.mjs src/utils/neurona.test.mjs src/utils/agenda.test.mjs src/utils/subredes.test.mjs src/utils/distribucionSubred.test.mjs src/utils/transicion.test.mjs src/utils/sugerencias.test.mjs src/utils/reorganizar.test.mjs src/utils/rendimiento.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

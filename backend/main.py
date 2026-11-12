@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
 import ajustes
+import recursos
 import vigilante
 import intercambio
 import sincronizacion
@@ -17,7 +18,7 @@ import sugerencias
 from database import db_conn, Concepto, DATA_DIR
 from ollama_service import arrancar_en_segundo_plano, get_ollama_path, is_ollama_running, get_available_models, licencia_restrictiva
 
-APP_VERSION = "0.7.6"   # la misma que frontend/src-tauri/tauri.conf.json
+APP_VERSION = "0.8.0"   # la misma que frontend/src-tauri/tauri.conf.json
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -79,6 +80,11 @@ def startup_event():
         papelera.purgar_caducadas()                 # las neuronas que llevan más de 7 días en la papelera se borran de verdad
     except Exception as e:
         print(f"[Papelera] {e}")
+    try:
+        print(f"[Recursos] {recursos.aplicar()}")   # topes de CPU/RAM guardados en Ajustes: antes de arrancar Ollama, que hereda el límite
+    except Exception as e:
+        print(f"[Recursos] No se pudieron aplicar los límites: {e}")
+    recursos.vigilar()                              # RAM libre: si baja demasiado con límites activos, pausa la IA y descarga el modelo
     servicio_sync.iniciar_auto()                    # sincronización entre PCs, si hay carpeta elegida en Ajustes
     print(f"[Alejandria] Ollama: {arrancar_en_segundo_plano()}")     # sin esperar: el backend responde al momento y Ollama se levanta detrás
 
@@ -147,7 +153,8 @@ sinapsis = _Sinapsis()
 
 @app.get("/api/sinapsis/estado")
 def estado_sinapsis():
-    return sinapsis.leer()
+    pausa = recursos.estado_pausa()
+    return {**sinapsis.leer(), "ia_pausada": pausa["pausada"], "motivo_pausa": pausa["motivo"]}
 
 regeneracion_en_curso = threading.Lock()
 
@@ -280,7 +287,7 @@ def interpretar_json(req: InterpretarJsonRequest):
     datos.pop("embedding", None)
     return {"datos": datos}
 
-def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None, cluster=None):
+def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, glosario=None, cluster=None, omitir=None):
     guardadas = None
     try:
         import numpy as np
@@ -288,7 +295,7 @@ def evaluar_conexiones_bg(nuevo_id, nombre, teoria, embedding, base_de_datos, gl
         from database import db_conn
         clasificador = init_clasificador()
         vector = np.array(embedding)
-        nuevas_aristas = clasificador.evaluar_conexiones(nuevo_id, nombre, teoria, vector, base_de_datos,
+        nuevas_aristas = clasificador.evaluar_conexiones(nuevo_id, nombre, teoria, vector, base_de_datos, omitir=omitir,
                                                          nuevo_glosario=glosario, progreso=sinapsis.avance(nombre), cluster_nuevo=cluster)
         if nuevas_aristas:
             db_conn.add_links(nuevas_aristas, overwrite=False)
@@ -361,8 +368,9 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
         # Forzar recarga del parquet en la base de datos local
         db_conn.compile_raw_jsons(force=True)
         
-        # Enviar la evaluación de conexiones al fondo (para no bloquear la respuesta HTTP)
-        if clasificador is not None and "embedding" in data:
+        # Enviar la evaluación de conexiones al fondo (para no bloquear la respuesta HTTP), salvo que el usuario la prefiera bajo demanda (perfil Ligero)
+        sinapsis_bajo_demanda = clasificador is not None and "embedding" in data and not ajustes.leer().get("sinapsis_auto", True)
+        if clasificador is not None and "embedding" in data and not sinapsis_bajo_demanda:
             sinapsis.empezar(data.get("nombre", ""))
             background_tasks.add_task(
                 evaluar_conexiones_bg,
@@ -381,12 +389,29 @@ def inject_node(req: NodeInjectionRequest, background_tasks: BackgroundTasks):
             "clasificacion": {
                 "cluster": data["cluster"],
                 "motivo": data["motivo_clasificacion"]
-            }
+            },
+            "sinapsis_pendiente": sinapsis_bajo_demanda      # True: sus conexiones se calculan cuando se pida (POST /api/node/{id}/sinapsis/calcular)
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al asimilar la neurona: {str(e)}")
+
+@app.post("/api/node/{node_id}/sinapsis/calcular")
+def calcular_sinapsis(node_id: str, background_tasks: BackgroundTasks):
+    """Calcula ahora las conexiones de una neurona (con el perfil Ligero no se calculan solas al añadirla). Sigue en segundo plano: el avance sale en /api/sinapsis/estado."""
+    df = db_conn._get_df()
+    fila = df[df["id"].astype(str) == node_id] if not df.empty else df
+    if fila.empty:
+        raise HTTPException(status_code=404, detail="Neurona no encontrada.")
+    nodo = fila.iloc[0].to_dict()
+    embedding = nodo.get("embedding")
+    if embedding is None or len(embedding) == 0:
+        raise HTTPException(status_code=409, detail="Esta neurona no tiene huella semántica (se añadió sin el motor local), así que no se pueden calcular sus conexiones.")
+    sinapsis.empezar(nodo.get("nombre", ""))
+    background_tasks.add_task(evaluar_conexiones_bg, node_id, nodo.get("nombre", ""), nodo.get("teoria", ""), embedding, df.to_dict(orient="records"),
+                              nodo.get("glosario"), nodo.get("cluster_id"), db_conn.get_known_pairs())
+    return {"status": "Calculando conexiones en segundo plano"}
 
 class OpcionLab(BaseModel):
     valor: Union[float, str]
@@ -824,6 +849,60 @@ def sincronizar_ahora():
 def arrancar_ollama():
     """Levanta Ollama en segundo plano si está instalado y la IA local está activa. No espera: el estado real se lee en /api/ajustes."""
     return {"estado": arrancar_en_segundo_plano()}
+
+class RecursosRequest(BaseModel):
+    perfil: Optional[Literal["ligero", "equilibrado", "maximo"]] = None     # aplica todos los valores de ese perfil; los demás campos se ignoran
+    limite_cpu: Optional[int] = Field(None, ge=recursos.MIN_CPU, le=100)
+    limite_ram_mb: Optional[int] = Field(None, ge=0, le=1_048_576)          # 0 = sin tope; si no, no baja de recursos.MIN_RAM_MB
+    fps_max: Optional[int] = Field(None, ge=0, le=240)
+    calidad_3d: Optional[Literal["alta", "media", "baja"]] = None
+    ia_en_gpu: Optional[bool] = None
+    sinapsis_auto: Optional[bool] = None
+
+    @field_validator("limite_ram_mb")
+    @classmethod
+    def ram_suficiente(cls, v):
+        if v is not None and 0 < v < recursos.MIN_RAM_MB:
+            raise ValueError(f"Con menos de {recursos.MIN_RAM_MB} MB el motor local no cabe: usa {recursos.MIN_RAM_MB} MB o más, o 0 para no limitar.")
+        return v
+
+def _respuesta_recursos(aplicado=None):
+    guardados = ajustes.leer()
+    return {**recursos.estado(), "ajustes": {k: guardados[k] for k in ("perfil", "limite_cpu", "limite_ram_mb", "fps_max", "calidad_3d", "ia_en_gpu", "sinapsis_auto")},
+            "ollama_ajeno": recursos.ollama_ajeno(), "aplicado": aplicado}
+
+@app.get("/api/recursos")
+def leer_recursos():
+    """Hardware detectado, perfil sugerido, valores de cada perfil, ajustes de rendimiento actuales y si la IA está en pausa por falta de RAM."""
+    return _respuesta_recursos()
+
+@app.put("/api/recursos")
+def guardar_recursos(req: RecursosRequest):
+    """Elige un perfil (aplica sus valores) o cambia ajustes sueltos (el perfil pasa a «personalizado»), y aplica los topes de CPU/RAM al momento."""
+    cambios = req.model_dump(exclude_none=True)
+    perfil = cambios.pop("perfil", None)
+    if perfil:
+        cambios = {**recursos.valores_perfil(perfil), "perfil": perfil}
+    elif cambios:
+        cambios["perfil"] = "personalizado"
+    guardados = ajustes.guardar(cambios)
+    aplicado = recursos.aplicar(guardados)
+    if not recursos.limitando(guardados):
+        recursos.revisar_ram(guardados)                  # sin límites no hay pausa: se quita la que hubiera
+    return _respuesta_recursos(aplicado)
+
+@app.get("/api/recursos/medicion")
+def medir_recursos():
+    """Uso de CPU y RAM de la app (backend + Ollama) y libre en el equipo. La interfaz lo pide solo mientras Ajustes está abierto."""
+    return recursos.medir()
+
+@app.post("/api/recursos/reiniciar-ollama")
+def reiniciar_ollama_con_limites():
+    """Cierra el Ollama que corra por su cuenta (bandeja de Windows) y lo relanza con los topes y variables de la app. Sigue en segundo plano (puede tardar)."""
+    if not ajustes.leer()["ia_activa"]:
+        raise HTTPException(status_code=409, detail="La IA local está desactivada en Ajustes.")
+    threading.Thread(target=recursos.reiniciar_ollama, daemon=True).start()
+    return {"estado": "reiniciando"}
 
 @app.get("/api/exportar")
 def exportar_neuronas(subred: str = ""):

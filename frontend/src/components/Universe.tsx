@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { MODOS_PROMPT, conClustersExistentes, conTema, guardarModo, modoGuardado, promptExploracion, promptFuentes } from '../utils/prompts';
 import type { ModoPrompt } from '../utils/prompts';
 import { API } from '../utils/api';
+import { EVENTO_RENDIMIENTO, aplicarPerfil, calidadDe, cargarRendimiento, leerRendimientoGuardado, leerSugerencia, marcarSugerenciaVista, nombrePerfil } from '../utils/rendimiento';
+import type { AjustesRendimiento, Sugerencia } from '../utils/rendimiento';
 import Ajustes from './Ajustes';
 import Agenda from './Agenda';
 import Papelera from './Papelera';
@@ -13,6 +15,7 @@ import GestionSubredes from './Subredes';
 import ProcesandoNeurona from './ProcesandoNeurona';
 import Seguro from './Seguro';
 import Hud from './Hud';
+import LimitadorFps from './LimitadorFps';
 import { Cabecera, Dialogo, Modal } from './terminal';
 import type { EstadoProceso } from './ProcesandoNeurona';
 import Tutorial, { tutorialVisto } from './Tutorial';
@@ -690,6 +693,18 @@ export default function Universe() {
     // Estados para el Inyector Neuronal
     const [showInjector, setShowInjector] = useState(false);
     const [showAjustes, setShowAjustes] = useState(false);
+    // Rendimiento (Ajustes → Rendimiento): tope de FPS y calidad del 3D. Arranca con lo último guardado en el navegador y se pone al día con el backend;
+    // al cambiarlo en Ajustes llega el aviso y el universo se adapta al instante.
+    const [rendimiento, setRendimiento] = useState<AjustesRendimiento>(() => leerRendimientoGuardado());
+    useEffect(() => {
+        const alCambiar = (ev: Event) => setRendimiento((ev as CustomEvent<AjustesRendimiento>).detail);
+        window.addEventListener(EVENTO_RENDIMIENTO, alCambiar);
+        void cargarRendimiento();
+        void leerSugerencia().then(setSugerencia);      // la primera vez, si el equipo es justo, se propone un perfil
+        return () => window.removeEventListener(EVENTO_RENDIMIENTO, alCambiar);
+    }, []);
+    const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
+    const calidad = calidadDe(rendimiento.calidad_3d);
     const [showAgenda, setShowAgenda] = useState(false);
     const [showPapelera, setShowPapelera] = useState(false);
     const [confirmarReorganizar, setConfirmarReorganizar] = useState(false);
@@ -906,7 +921,8 @@ export default function Universe() {
 
     return (
         <div style={{ position: 'absolute', inset: 0, background: '#000000', overflow: 'hidden' }}>
-            <Canvas camera={{ position: [0, 0, 75], fov: 50 }}>
+            <Canvas camera={{ position: [0, 0, 75], fov: 50 }} dpr={[1, calidad.dprMax]} frameloop={rendimiento.fps_max > 0 ? 'never' : 'always'}>
+                {rendimiento.fps_max > 0 && <LimitadorFps fps={rendimiento.fps_max} />}
                 <color attach="background" args={['#020005']} />
                 <fog attach="fog" args={['#020005', 30, 150]} />
                 
@@ -923,11 +939,19 @@ export default function Universe() {
 
                 <CameraController resetFlag={resetCamera} targetPosition={null} distancia={distanciaCamara} />
 
-                <EffectComposer>
-                    {/* Bloom sutil para que imite la fluorescencia del microscopio */}
-                    <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={1.2} mipmapBlur />
-                    <Vignette eskil={false} offset={0.1} darkness={1.1} />
-                </EffectComposer>
+                {/* Postprocesado según la calidad: alta = Bloom + viñeta (como siempre), media = solo Bloom sin suavizado, baja = nada (lo más barato para la GPU) */}
+                {calidad.vignette && (
+                    <EffectComposer multisampling={calidad.multisampling}>
+                        {/* Bloom sutil para que imite la fluorescencia del microscopio */}
+                        <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={1.2} mipmapBlur />
+                        <Vignette eskil={false} offset={0.1} darkness={1.1} />
+                    </EffectComposer>
+                )}
+                {calidad.bloom && !calidad.vignette && (
+                    <EffectComposer multisampling={calidad.multisampling}>
+                        <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={1.2} mipmapBlur />
+                    </EffectComposer>
+                )}
             </Canvas>
 
             <Hud
@@ -1054,6 +1078,11 @@ export default function Universe() {
                                             setInjectionStatus(`Error: ${result.detail}`);
                                             return;
                                         }
+                                        if (result.sinapsis_pendiente) {      // perfil Ligero: las conexiones no se buscan solas (pestaña Red → [ Calcular conexiones ])
+                                            setProcesando({ fase: 'listo', nodo: '', hecho: 0, total: 0, conexiones: 0, pendientes: true });
+                                            setTimeout(() => window.location.reload(), 3200);
+                                            return;
+                                        }
                                         // Las conexiones se buscan en segundo plano (~1 min por neurona): se enseña el avance hasta que acaben.
                                         const consultar = () => fetch(`${API}/api/sinapsis/estado`).then(r => r.json()).catch(() => null);
                                         const limite = Date.now() + 10 * 60 * 1000;
@@ -1079,6 +1108,12 @@ export default function Universe() {
                 </Modal>
             )}
 
+            {sugerencia && !showTutorial && !showAjustes && (
+                <Dialogo titulo="Rendimiento" aceptar={`Aplicar ${nombrePerfil(sugerencia.perfil)}`}
+                    texto={`Tu equipo tiene ${sugerencia.ramGb} GB de RAM y ${sugerencia.nucleos} núcleos. Para que la app vaya fluida te recomendamos el perfil «${nombrePerfil(sugerencia.perfil)}»: limita lo que gastan el motor y la IA local y aligera el 3D. Puedes cambiarlo cuando quieras en Ajustes → Rendimiento.`}
+                    onAceptar={() => { const p = sugerencia.perfil; marcarSugerenciaVista(); setSugerencia(null); void aplicarPerfil(p); }}
+                    onCancelar={() => { marcarSugerenciaVista(); setSugerencia(null); }} />
+            )}
             {showAjustes && <Ajustes onCerrar={() => setShowAjustes(false)} onTutorial={() => { setShowAjustes(false); setShowTutorial(true); }} />}
             {showAgenda && <Agenda onCerrar={() => setShowAgenda(false)} />}
             {showPapelera && <Papelera onCerrar={() => setShowPapelera(false)} onCambio={recargar} />}
