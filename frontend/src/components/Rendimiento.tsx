@@ -50,7 +50,11 @@ export default function Rendimiento() {
         const medir = () => { if (!document.hidden) fetch(`${API}/api/recursos/medicion`).then(r => r.json()).then(setMedicion).catch(() => { /* el backend aún arranca */ }); };
         medir();
         const t = window.setInterval(() => { medir(); if (!document.hidden) void cargar(); }, 2000);
-        return () => { window.clearInterval(t); window.clearTimeout(temporizador.current); };
+        return () => {
+            window.clearInterval(t); window.clearTimeout(temporizador.current);
+            // Si se cambia de pestaña (o se cierra Ajustes) con un ajuste aún sin enviar, se envía ahora en vez de perderlo.
+            if (Object.keys(pendiente.current).length) fetch(`${API}/api/recursos`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pendiente.current) }).then(r => r.json()).then(r => avisarRendimiento(normalizarRendimiento(r.ajustes))).catch(() => { /* el backend no responde: se queda como estaba */ });
+        };
     }, [cargar]);
 
     const enviar = async (cuerpo: object) => {

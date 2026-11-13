@@ -702,7 +702,7 @@ export default function Universe() {
     // Estados para el Inyector Neuronal
     const [showInjector, setShowInjector] = useState(false);
     const [showAjustes, setShowAjustes] = useState(false);
-    // Rendimiento (Ajustes → Rendimiento): tope de FPS y calidad del 3D. Arranca con lo último guardado en el navegador y se pone al día con el backend;
+    // Rendimiento (Ajustes → Gráficos): tope de FPS y calidad del 3D. Arranca con lo último guardado en el navegador y se pone al día con el backend;
     // al cambiarlo en Ajustes llega el aviso y el universo se adapta al instante.
     const [rendimiento, setRendimiento] = useState<AjustesRendimiento>(() => leerRendimientoGuardado());
     useEffect(() => {
@@ -1116,7 +1116,7 @@ export default function Universe() {
 
             {sugerencia && !showTutorial && !showAjustes && (
                 <Dialogo titulo="Rendimiento" aceptar={`Aplicar ${nombrePerfil(sugerencia.perfil)}`}
-                    texto={`Tu equipo tiene ${sugerencia.ramGb} GB de RAM y ${sugerencia.nucleos} núcleos. Para que la app vaya fluida te recomendamos el perfil «${nombrePerfil(sugerencia.perfil)}»: limita lo que gastan el motor y la IA local y aligera el 3D. Puedes cambiarlo cuando quieras en Ajustes → Rendimiento.`}
+                    texto={`Tu equipo tiene ${sugerencia.ramGb} GB de RAM y ${sugerencia.nucleos} núcleos. Para que la app vaya fluida te recomendamos el perfil «${nombrePerfil(sugerencia.perfil)}»: limita lo que gastan el motor y la IA local y aligera el 3D. Puedes cambiarlo cuando quieras en Ajustes → Gráficos.`}
                     onAceptar={() => { const p = sugerencia.perfil; marcarSugerenciaVista(); setSugerencia(null); void aplicarPerfil(p); }}
                     onCancelar={() => { marcarSugerenciaVista(); setSugerencia(null); }} />
             )}

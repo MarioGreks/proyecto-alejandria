@@ -1,4 +1,4 @@
-// Límites de rendimiento (Ajustes → Rendimiento): lo que la interfaz necesita saber para no ir lenta en un PC justo. El backend guarda los ajustes y aplica los topes
+// Límites de rendimiento (Ajustes → Gráficos): lo que la interfaz necesita saber para no ir lenta en un PC justo. El backend guarda los ajustes y aplica los topes
 // de CPU/RAM; aquí quedan el tope de fotogramas y la calidad del universo 3D, que solo la ventana puede aplicar. Ver backend/recursos.py.
 import { API } from './api.ts';
 
