@@ -297,16 +297,8 @@ struct Progreso {
 
 /// El actualizador (tauri-plugin-updater): la dirección y la clave PÚBLICA salen de tauri.conf.json, y solo se instala lo que esté firmado con la clave privada
 /// del proyecto. `ALEJANDRIA_ACTUALIZACIONES` solo se admite para probar en local (https://127.0.0.1 o localhost, con certificado propio): la firma se sigue comprobando igual.
-/// `hijo`: el backend lanzado por esta app; el plugin termina el proceso con `exit(0)` (sin pasar por RunEvent::Exit), así que se cierra antes.
-fn actualizador(app: &AppHandle, hijo: Option<Arc<Mutex<Option<Child>>>>) -> Result<tauri_plugin_updater::Updater, String> {
+fn actualizador(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, String> {
     let mut b = app.updater_builder().restart_after_install(false); // el instalador reabre la app él mismo
-    if let Some(hijo) = hijo {
-        b = b.on_before_exit(move || {
-            if let Some(mut h) = hijo.lock().unwrap().take() {
-                let _ = h.kill();
-            }
-        });
-    }
     if let Ok(url) = std::env::var("ALEJANDRIA_ACTUALIZACIONES") {
         if url.starts_with("https://127.0.0.1") || url.starts_with("https://localhost") {
             b = b
@@ -321,26 +313,65 @@ fn actualizador(app: &AppHandle, hijo: Option<Arc<Mutex<Option<Child>>>>) -> Res
 #[tauri::command]
 /// ¿Hay una versión más nueva y firmada? Devuelve su número y sus novedades; `None` si ya está al día.
 async fn buscar_actualizacion(app: AppHandle) -> Result<Option<Novedad>, String> {
-    let actualizacion = actualizador(&app, None)?.check().await.map_err(|e| e.to_string())?;
+    let actualizacion = actualizador(&app)?.check().await.map_err(|e| e.to_string())?;
     Ok(actualizacion.map(|u| Novedad { version: u.version.clone(), notas: u.body.clone().unwrap_or_default() }))
 }
 
 #[tauri::command]
-/// Descarga la versión nueva (comprobando su firma), cierra la app y lanza el instalador en modo actualización; el instalador la vuelve a abrir.
+/// Descarga la versión nueva (comprobando su firma), la guarda y lanza el instalador en modo actualización; el instalador cierra y vuelve a abrir la app.
+/// Se hace a mano (no `download_and_install`) porque el plugin la deja en %TEMP%, donde Defender la bloquea al estrenarla (os error 5), y mata el backend antes de lanzarla.
 async fn instalar_actualizacion(app: AppHandle, estado: State<'_, Estado>) -> Result<(), String> {
-    let Some(u) = actualizador(&app, Some(estado.hijo.clone()))?.check().await.map_err(|e| e.to_string())? else {
+    let Some(u) = actualizador(&app)?.check().await.map_err(|e| e.to_string())? else {
         return Err("Ya no hay ninguna actualización disponible.".into());
     };
     let (avisos, mut recibido) = (app.clone(), 0u64);
-    u.download_and_install(
-        move |trozo, total| {
-            recibido += trozo as u64;
-            let _ = avisos.emit("actualizacion-progreso", Progreso { recibido, total });
-        },
-        || {},
-    )
+    let bytes = u
+        .download(
+            move |trozo, total| {
+                recibido += trozo as u64;
+                let _ = avisos.emit("actualizacion-progreso", Progreso { recibido, total });
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    let carpeta = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("actualizacion");
+    fs::create_dir_all(&carpeta).map_err(|e| format!("No se pudo preparar la carpeta de la actualización: {e}"))?;
+    if let Ok(viejos) = fs::read_dir(&carpeta) {
+        for f in viejos.flatten() {
+            if f.path().extension().is_some_and(|e| e == "exe") {
+                let _ = fs::remove_file(f.path());
+            }
+        }
+    }
+    let ruta = carpeta.join(format!("Proyecto-Alejandria-Setup-{}.exe", u.version));
+    fs::write(&ruta, &bytes).map_err(|e| format!("No se pudo guardar el instalador: {e}"))?;
+    let lanzado = tauri::async_runtime::spawn_blocking(move || {
+        let mut ultimo = None;
+        for intento in 0..5 {
+            if intento > 0 {
+                std::thread::sleep(Duration::from_secs(2));
+            }
+            match Command::new(&ruta).args(["/P", "/UPDATE"]).spawn() {
+                Ok(_) => return Ok(()),
+                Err(e) => ultimo = Some(e),
+            }
+        }
+        Err(ultimo.unwrap())
+    })
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    if let Err(e) = lanzado {
+        return Err(format!(
+            "Windows no dejó abrir el instalador ({e}). Puede que el antivirus lo esté revisando: prueba a reintentar en un momento o descárgalo a mano."
+        ));
+    }
+    // Solo con el instalador ya en marcha se mata el backend (el instalador cierra la app, pero así no queda vivo si tarda).
+    if let Some(mut h) = estado.hijo.lock().unwrap().take() {
+        let _ = h.kill();
+    }
+    app.exit(0);
+    Ok(())
 }
 
 #[tauri::command]

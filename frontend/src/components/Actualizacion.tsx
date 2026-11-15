@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { API } from '../utils/api';
 import { barraAscii } from '../utils/barraAscii';
 import { hayQueAvisarDeActualizado } from '../utils/versiones';
@@ -13,6 +14,7 @@ interface Progreso { recibido: number; total: number | null }
 
 const MB = (bytes: number) => (bytes / 1048576).toFixed(1);
 const CLAVE_VERSION = 'alejandria.versionVista';
+const URL_VERSIONES = 'https://github.com/MarioGreks/proyecto-alejandria/releases/latest';
 
 // Un cartel pequeño en la esquina de abajo a la derecha, encima de la barra inferior: sin velo oscuro y sin bloquear la app.
 const cartel: CSSProperties = {
@@ -94,6 +96,7 @@ export default function Actualizacion() {
                 )}
                 {error && <div style={{ color: 'var(--t-error)', fontSize: 11, marginTop: 6, whiteSpace: 'pre-wrap' }}>[ERROR] {error}</div>}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                    {error && <button className="t-btn plano" style={boton} onClick={() => { const url = URL_VERSIONES; openUrl(url).catch(() => window.open(url, '_blank', 'noopener,noreferrer')); }}>[ Descargar a mano ]</button>}
                     <button className="t-btn plano" style={boton} onClick={() => setOculta(true)}>[ Luego ]</button>
                     <button className="t-btn principal" style={boton} onClick={actualizar}>{error ? '[ Reintentar ]' : '[ Actualizar ]'}</button>
                 </div>
